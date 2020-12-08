@@ -1,0 +1,59 @@
+{
+    "name": "@vex-chat/vex-js",
+    "version": "0.4.2",
+    "description": "Library for communicating with xchat server.",
+    "main": "./dist/index.js",
+    "author": "Extra <extrahash@protonmail.com>",
+    "license": "UNLICENSED",
+    "scripts": {
+        "start": "node ./dist/test/test.js",
+        "build": "rm -rf ./dist/*; node ./node_modules/typescript/bin/tsc",
+        "prettier": "node ./node_modules/prettier/bin-prettier.js '**/*.{ts,tsx,json,md}' --trailing-comma es5 --tab-width 4 --ignore-path .gitignore  --arrow-parens always --write",
+        "lint": "./node_modules/tslint/bin/tslint src/**/*.ts{,x}",
+        "lint-fix": "./node_modules/tslint/bin/tslint src/**/*.ts{,x} --fix",
+        "prepack": "yarn build"
+    },
+    "devDependencies": {
+        "dotenv": "^8.2.0",
+        "husky": "^3.1.0",
+        "lint-staged": "^9.5.0",
+        "prettier": "^1.19.1",
+        "tslint": "^5.20.1",
+        "tslint-config-prettier": "^1.18.0",
+        "typescript": "^3.7.2"
+    },
+    "lint-staged": {
+        "src/**/*.{ts}": [
+            "./node_modules/tslint/bin/tslint -c tslint.json --fix",
+            "git add"
+        ]
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "yarn prettier; git add --all; lint-staged"
+        }
+    },
+    "dependencies": {
+        "@extrahash/sleep": "^1.0.0",
+        "@types/chalk": "^2.2.0",
+        "@types/create-hmac": "^1.1.0",
+        "@types/knex": "^0.16.1",
+        "@types/msgpack-lite": "^0.1.7",
+        "@types/uuid": "^8.3.0",
+        "@types/ws": "^7.4.0",
+        "@vex-chat/crypto-js": "^0.7.3",
+        "@vex-chat/types-js": "^0.7.2",
+        "axios": "^0.21.0",
+        "chalk": "^4.1.0",
+        "electron-log": "^4.1.1",
+        "knex": "^0.21.12",
+        "msgpack-lite": "^0.1.26",
+        "sqlite3": "^5.0.0",
+        "tweetnacl": "^1.0.3",
+        "uuid": "^8.3.1",
+        "ws": "^7.4.0"
+    },
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com/"
+    }
+}

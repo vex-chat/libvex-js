@@ -1,0 +1,11 @@
+node_modules
+./dist
+dist
+**/*.log
+.env*
+keys
+*.sqlite*
+.DS_Store
+databases
+*.tgz
+.vscode
