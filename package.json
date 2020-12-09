@@ -1,6 +1,6 @@
 {
     "name": "@vex-chat/vex-js",
-    "version": "0.6.2",
+    "version": "0.6.3",
     "description": "Library for communicating with xchat server.",
     "main": "./dist/index.js",
     "author": "Extra <extrahash@protonmail.com>",
