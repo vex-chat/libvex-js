@@ -35,14 +35,12 @@ export class Database {
             .orderBy("timestamp", "asc")
             .limit(100);
 
-        for (const message of messages.map((row) => {
+        // i'm not sure why i have to do this, these are
+        // coming through as strings
+        return messages.map((row) => {
             row.timestamp = new Date(row.timestamp);
             return row;
-        })) {
-            log.info(typeof message.timestamp);
-        }
-
-        return messages;
+        });
     }
 
     public async getIdentityKeys(): Promise<nacl.BoxKeyPair | null> {
