@@ -75,7 +75,7 @@ export class Client extends EventEmitter {
     public static randomUsername() {
         const IKM = XUtils.decodeHex(XUtils.encodeHex(nacl.randomBytes(16)));
         const mnemonic = xMnemonic(IKM).split(" ");
-        const addendum = XUtils.uint8ArrToNumber(nacl.randomBytes(4));
+        const addendum = XUtils.uint8ArrToNumber(nacl.randomBytes(1));
 
         return (
             capitalize(mnemonic[0]) +

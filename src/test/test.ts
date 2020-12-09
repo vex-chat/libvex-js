@@ -27,9 +27,7 @@ async function main() {
         /* you must register your identity with the server
         before logging in the first time. usernames and keys 
         must be unique */
-        let [user, err] = await client.register(
-            XUtils.encodeBase64(nacl.randomBytes(8))
-        );
+        let [user, err] = await client.register(Client.randomUsername());
         if (err) {
             console.error(err);
         }
