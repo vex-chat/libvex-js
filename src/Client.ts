@@ -283,6 +283,13 @@ export class Client extends EventEmitter {
             const hmac = xHMAC(mail, session.SK);
 
             this.send(msgb, hmac);
+
+            const message: IMessage = {
+                sender: mail.sender,
+                nonce: XUtils.encodeHex(mail.nonce),
+                message: XUtils.encodeUTF8(msg),
+            };
+            this.emit("message", message);
         }
     }
 
