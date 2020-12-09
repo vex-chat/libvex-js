@@ -22,9 +22,12 @@ import WebSocket from "ws";
 import { Database } from "./Database";
 
 export interface IMessage {
-    sender: string;
     nonce: string;
+    sender: string;
+    recipient: string;
     message: string;
+    direction: "incoming" | "outgoing";
+    timestamp: Date;
 }
 
 export interface IKeys {
@@ -286,8 +289,11 @@ export class Client extends EventEmitter {
 
             const message: IMessage = {
                 sender: mail.sender,
+                recipient: mail.recipient,
                 nonce: XUtils.encodeHex(mail.nonce),
                 message: XUtils.encodeUTF8(msg),
+                direction: "outgoing",
+                timestamp: new Date(Date.now()),
             };
             this.emit("message", message);
         }
@@ -518,9 +524,12 @@ export class Client extends EventEmitter {
 
                     // emit the message
                     const message: IMessage = {
-                        sender: mail.sender,
                         nonce: XUtils.encodeHex(mail.nonce),
+                        sender: mail.sender,
+                        recipient: this.getUser().userID,
                         message: XUtils.encodeUTF8(decrypted),
+                        direction: "incoming",
+                        timestamp: new Date(Date.now()),
                     };
                     this.emit("message", message);
 
@@ -601,10 +610,14 @@ export class Client extends EventEmitter {
                         XUtils.encodeUTF8(unsealed)
                     );
 
+                    // emit the message
                     const message: IMessage = {
-                        sender: mail.sender,
                         nonce: XUtils.encodeHex(mail.nonce),
+                        sender: mail.sender,
+                        recipient: this.getUser().userID,
                         message: XUtils.encodeUTF8(unsealed),
+                        direction: "incoming",
+                        timestamp: new Date(Date.now()),
                     };
                     this.emit("message", message);
 
