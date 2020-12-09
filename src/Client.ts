@@ -442,6 +442,17 @@ export class Client extends EventEmitter {
             data: mail,
         };
 
+        // emit the message
+        const emitMsg: IMessage = {
+            nonce: XUtils.encodeHex(mail.nonce),
+            sender: mail.sender,
+            recipient: mail.recipient,
+            message: XUtils.encodeUTF8(message),
+            direction: "outgoing",
+            timestamp: new Date(Date.now()),
+        };
+        this.emit("message", emitMsg);
+
         // discard the ephemeral keys
         this.newEphemeralKeys();
 
