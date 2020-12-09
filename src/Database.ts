@@ -1,6 +1,7 @@
 import { sleep } from "@extrahash/sleep";
 import { XUtils } from "@vex-chat/crypto-js";
 import { XTypes } from "@vex-chat/types-js";
+import log from "electron-log";
 import knex from "knex";
 import nacl from "tweetnacl";
 import { IMessage } from ".";
@@ -27,12 +28,18 @@ export class Database {
     }
 
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
-        return this.db("messages")
+        const messages = await this.db("messages")
             .select()
             .where({ sender: userID })
             .orWhere({ recipient: userID })
             .orderBy("timestamp", "asc")
             .limit(100);
+
+        for (const message of messages.map(row => { row.timetamp = new Date(row.timestamp); return row; })) {
+            log.info(typeof message.timestamp);
+        }
+    
+        return messages;
     }
 
     public async getIdentityKeys(): Promise<nacl.BoxKeyPair | null> {
@@ -208,15 +215,6 @@ export class Database {
     }
 
     private async init() {
-        const testMessage: IMessage = {
-            nonce: "",
-            sender: "",
-            recipient: "",
-            message: "hello",
-            direction: "incoming",
-            timestamp: new Date(Date.now()),
-        };
-
         if (!(await this.db.schema.hasTable("messages"))) {
             await this.db.schema.createTable("messages", (table) => {
                 table.string("nonce").primary();

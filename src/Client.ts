@@ -267,6 +267,7 @@ export class Client extends EventEmitter {
         const messages: IMessage[] = await this.database.getMessageHistory(
             userID
         );
+
         return messages;
     }
 
