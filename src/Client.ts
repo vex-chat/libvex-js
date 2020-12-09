@@ -49,6 +49,7 @@ interface IFamiliars {
 
 interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
+    retrieve: (userID: string) => Promise<IMessage[]>;
 }
 
 interface ISessions {
@@ -102,6 +103,7 @@ export class Client extends EventEmitter {
 
     public messages: IMessages = {
         send: this.sendMessage.bind(this),
+        retrieve: this.getMessageHistory.bind(this),
     };
 
     public sessions: ISessions = {
@@ -160,6 +162,13 @@ export class Client extends EventEmitter {
         );
 
         this.on("message", async (message) => {
+            if (
+                message.direction === "incoming" &&
+                message.recipient === message.sender
+            ) {
+                return;
+            }
+
             await this.database.saveMessage(message);
         });
 
@@ -252,6 +261,13 @@ export class Client extends EventEmitter {
         } else {
             return [null, new Error("Couldn't get regkey from server.")];
         }
+    }
+
+    private async getMessageHistory(userID: string): Promise<IMessage[]> {
+        const messages: IMessage[] = await this.database.getMessageHistory(
+            userID
+        );
+        return messages;
     }
 
     /* A thin wrapper around sendMail for string inputs. */
@@ -513,6 +529,7 @@ export class Client extends EventEmitter {
                             publicKey
                         )} Decryption failed.`
                     );
+                    await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
                 log.info("Session found for", mail.sender);
@@ -553,6 +570,7 @@ export class Client extends EventEmitter {
                     await this.sendReceipt(mail.nonce, transmissionID);
                 } else {
                     log.info("Decryption failed.");
+                    await this.sendReceipt(mail.nonce, transmissionID);
                 }
                 break;
             case XTypes.WS.MailType.initial:
@@ -807,6 +825,11 @@ export class Client extends EventEmitter {
             await this.getMail();
         } catch (err) {
             log.warn("Problem getting mail", err.toString());
+        }
+
+        while (true) {
+            await sleep(1000 * 10);
+            await this.getMail();
         }
     }
 

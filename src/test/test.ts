@@ -56,6 +56,9 @@ async function main() {
                     user.userID,
                     Buffer.from(nacl.randomBytes(8)).toString("base64")
                 );
+
+                // message history
+                const history = await client.messages.retrieve(user.userID);
             }
         }, 1000 * 10);
 

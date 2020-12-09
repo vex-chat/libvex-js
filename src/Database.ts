@@ -26,6 +26,15 @@ export class Database {
         await this.db("messages").insert(message);
     }
 
+    public async getMessageHistory(userID: string): Promise<IMessage[]> {
+        return this.db("messages")
+            .select()
+            .where({ sender: userID })
+            .orWhere({ recipient: userID })
+            .orderBy("timestamp", "asc")
+            .limit(100);
+    }
+
     public async getIdentityKeys(): Promise<nacl.BoxKeyPair | null> {
         await this.untilReady();
         const rows = await this.db.from("identityKeys").select();
@@ -182,6 +191,12 @@ export class Database {
 
     public async saveSession(session: XTypes.SQL.ISession) {
         await this.db("sessions").insert(session);
+    }
+
+    public async retrieveMessageHistory(userID: string) {
+        return this.db("messages")
+            .select()
+            .where({});
     }
 
     private async untilReady() {
