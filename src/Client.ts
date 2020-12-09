@@ -158,6 +158,11 @@ export class Client extends EventEmitter {
             "Client started, public key:",
             XUtils.encodeHex(this.signKeys.publicKey)
         );
+
+        this.on("message", async (message) => {
+            await this.database.saveMessage(message);
+        });
+
         this.emit("ready");
     }
 
@@ -318,15 +323,15 @@ export class Client extends EventEmitter {
         this.user = user;
     }
 
-    /* Retrieves the user db entry when provided either
-       the userID which is a uuid v4 or the public key
-       which is a 32 character hex string */
+    /* Retrieves the userID with the user identifier.
+    user identifier is checked for userID, then signkey,
+    and finally falls back to username. */
     private async retrieveUserDBEntry(
-        userIDorPubKey: string
+        userIdentifier: string
     ): Promise<XTypes.SQL.IUser | null> {
         try {
             const res = await ax.get(
-                "https://" + this.host + "/user/" + userIDorPubKey
+                "https://" + this.host + "/user/" + userIdentifier
             );
             return res.data;
         } catch (err) {

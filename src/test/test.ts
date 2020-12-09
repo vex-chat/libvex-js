@@ -13,7 +13,10 @@ async function main() {
     If you don't provide it, one will be generated */
     const { PK } = process.env;
 
-    const client = new Client(PK, { logLevel: "info", dbFolder: "databases" });
+    const client = new Client(undefined, {
+        logLevel: "info",
+        dbFolder: "databases",
+    });
 
     client.on("ready", async () => {
         console.log("Client ready.");

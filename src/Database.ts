@@ -3,6 +3,7 @@ import { XUtils } from "@vex-chat/crypto-js";
 import { XTypes } from "@vex-chat/types-js";
 import knex from "knex";
 import nacl from "tweetnacl";
+import { IMessage } from ".";
 
 export class Database {
     public ready: boolean = false;
@@ -19,6 +20,10 @@ export class Database {
             useNullAsDefault: true,
         });
         this.init();
+    }
+
+    public async saveMessage(message: IMessage) {
+        await this.db("messages").insert(message);
     }
 
     public async getIdentityKeys(): Promise<nacl.BoxKeyPair | null> {
@@ -188,6 +193,26 @@ export class Database {
     }
 
     private async init() {
+        const testMessage: IMessage = {
+            nonce: "",
+            sender: "",
+            recipient: "",
+            message: "hello",
+            direction: "incoming",
+            timestamp: new Date(Date.now()),
+        };
+
+        if (!(await this.db.schema.hasTable("messages"))) {
+            await this.db.schema.createTable("messages", (table) => {
+                table.string("nonce").primary();
+                table.string("sender").index();
+                table.string("recipient").index();
+                table.string("message");
+                table.string("direction");
+                table.date("timestamp");
+            });
+        }
+
         if (!(await this.db.schema.hasTable("identityKeys"))) {
             await this.db.schema.createTable("identityKeys", (table) => {
                 table.string("privateKey").primary();
