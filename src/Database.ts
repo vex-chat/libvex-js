@@ -35,10 +35,13 @@ export class Database {
             .orderBy("timestamp", "asc")
             .limit(100);
 
-        for (const message of messages.map(row => { row.timetamp = new Date(row.timestamp); return row; })) {
+        for (const message of messages.map((row) => {
+            row.timestamp = new Date(row.timestamp);
+            return row;
+        })) {
             log.info(typeof message.timestamp);
         }
-    
+
         return messages;
     }
 
