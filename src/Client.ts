@@ -38,6 +38,10 @@ export interface IKeys {
 // tslint:disable-next-line: no-empty-interface
 export interface IUser extends XTypes.SQL.IUser {}
 
+const capitalize = (s: string): string => {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
 interface IUsers {
     retrieve: (userID: string) => Promise<IUser | null>;
     me: () => XTypes.SQL.IUser;
@@ -67,6 +71,17 @@ export class Client extends EventEmitter {
     // Generates an ed25519 private key, formatted as a hex string.
     public static generateSecretKey(): string {
         return XUtils.encodeHex(nacl.sign.keyPair().secretKey);
+    }
+    public static randomUsername() {
+        const IKM = XUtils.decodeHex(XUtils.encodeHex(nacl.randomBytes(16)));
+        const mnemonic = xMnemonic(IKM).split(" ");
+        const addendum = XUtils.uint8ArrToNumber(nacl.randomBytes(4));
+
+        return (
+            capitalize(mnemonic[0]) +
+            capitalize(mnemonic[1]) +
+            addendum.toString()
+        );
     }
     private static getMnemonic(session: XTypes.SQL.ISession): string {
         return xMnemonic(xKDF(XUtils.decodeHex(session.fingerprint)));
