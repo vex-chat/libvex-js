@@ -1,3 +1,9 @@
-import { Client, IClientOptions, IMessage, IUser } from "./Client";
+import {
+    Client,
+    IClientOptions,
+    IConversation,
+    IMessage,
+    IUser,
+} from "./Client";
 
-export { Client, IClientOptions, IMessage, IUser };
+export { Client, IClientOptions, IMessage, IUser, IConversation };

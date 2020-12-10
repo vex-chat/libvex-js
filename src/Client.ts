@@ -526,7 +526,10 @@ export class Client extends EventEmitter {
             fingerprint: XUtils.encodeHex(AD),
         };
 
-        const conversation: IConversation = { userID, fingerprint: XUtils.encodeHex(AD) };
+        const conversation: IConversation = {
+            userID,
+            fingerprint: XUtils.encodeHex(AD),
+        };
         this.emit("conversation", conversation);
         await this.database.saveSession(sessionEntry);
     }
@@ -706,7 +709,10 @@ export class Client extends EventEmitter {
                     };
                     // for testing so i can create messages with myself
                     if (newSession.userID !== this.user!.userID) {
-                        const conversation: IConversation = { userID: newSession.userID, fingerprint: XUtils.encodeHex(AD) };
+                        const conversation: IConversation = {
+                            userID: newSession.userID,
+                            fingerprint: XUtils.encodeHex(AD),
+                        };
 
                         this.emit("conversation", conversation);
                         await this.database.saveSession(newSession);
