@@ -851,7 +851,7 @@ export class Client extends EventEmitter {
             this.conn = new WebSocket("wss://" + this.host + "/socket");
             this.conn.on("open", () => {
                 log.info("Connection opened.");
-                this.pingInterval = setInterval(this.ping, 5000);
+                this.pingInterval = setInterval(this.ping.bind(this), 5000);
             });
 
             this.conn.on("close", () => {
