@@ -51,6 +51,10 @@ interface IFamiliars {
     retrieve: () => Promise<IUser[]>;
 }
 
+interface IConversations {
+    retrieve: () => Promise<any>;
+}
+
 interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
     retrieve: (userID: string) => Promise<IMessage[]>;
@@ -125,6 +129,10 @@ export class Client extends EventEmitter {
         retrieve: this.getSessionList.bind(this),
         verify: Client.getMnemonic,
     };
+
+    public conversations: IConversations = {
+        retrieve: this.getFingerprints.bind(this),
+    }
 
     private database: Database;
     private dbPath: string;
@@ -276,6 +284,10 @@ export class Client extends EventEmitter {
         } else {
             return [null, new Error("Couldn't get regkey from server.")];
         }
+    }
+
+    private async getFingerprints() {
+        return this.database.getFingerprints();
     }
 
     private async getMessageHistory(userID: string): Promise<IMessage[]> {

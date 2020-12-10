@@ -78,6 +78,7 @@ export class Database {
         return index[0];
     }
 
+
     public async getSessionByPublicKey(publicKey: Uint8Array) {
         const str = XUtils.encodeHex(publicKey);
 
@@ -109,6 +110,24 @@ export class Database {
             .from("sessions")
             .update({ lastUsed: new Date(Date.now()) })
             .where({ sessionID });
+    }
+
+    public async getFingerprints(): Promise<Record<string, string[]>> {
+        const rows: XTypes.SQL.ISession[] = await this.db
+            .from("sessions")
+            .select("fingerprint", "userID")
+            .distinct();
+
+        const obj: Record<string, string[]> = {};
+
+        for (const row of rows) {
+            if (obj[row.userID] === undefined) {
+                obj[row.userID] = []
+            }
+            obj[row.userID].push(row.fingerprint)
+        }
+
+        return obj;
     }
 
     public async getSessions(): Promise<XTypes.SQL.ISession[]> {
