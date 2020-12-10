@@ -33,6 +33,7 @@ export interface IMessage {
 export interface IConversation {
     fingerprint: string;
     userID: string;
+    user: IUser;
 }
 
 export interface IKeys {
@@ -526,12 +527,22 @@ export class Client extends EventEmitter {
             fingerprint: XUtils.encodeHex(AD),
         };
 
-        const conversation: IConversation = {
-            userID,
-            fingerprint: XUtils.encodeHex(AD),
-        };
-        this.emit("conversation", conversation);
         await this.database.saveSession(sessionEntry);
+
+        const user = await this.retrieveUserDBEntry(userID);
+
+        if (user) {
+            const conversation: IConversation = {
+                userID,
+                fingerprint: XUtils.encodeHex(AD),
+                user,
+            };
+            this.emit("conversation", conversation);
+        } else {
+            throw new Error(
+                "We saved a session, but we didn't get it back from the db!"
+            );
+        }
     }
 
     private sendReceipt(nonce: Uint8Array, transmissionID: string) {
@@ -709,13 +720,25 @@ export class Client extends EventEmitter {
                     };
                     // for testing so i can create messages with myself
                     if (newSession.userID !== this.user!.userID) {
-                        const conversation: IConversation = {
-                            userID: newSession.userID,
-                            fingerprint: XUtils.encodeHex(AD),
-                        };
-
-                        this.emit("conversation", conversation);
                         await this.database.saveSession(newSession);
+
+                        const user = await this.retrieveUserDBEntry(
+                            newSession.userID
+                        );
+
+                        if (user) {
+                            const conversation: IConversation = {
+                                userID: newSession.userID,
+                                fingerprint: XUtils.encodeHex(AD),
+                                user,
+                            };
+
+                            this.emit("conversation", conversation);
+                        } else {
+                            throw new Error(
+                                "Saved session but got nothing back from db!"
+                            );
+                        }
                     }
                     await this.sendReceipt(mail.nonce, transmissionID);
                 } else {
