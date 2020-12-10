@@ -193,16 +193,14 @@ export class Client extends EventEmitter {
             this.signKeys = nacl.sign.keyPair.fromSecretKey(
                 XUtils.decodeHex(PK)
             );
+            const dbFileName =
+                XUtils.encodeHex(this.signKeys.publicKey) + ".sqlite";
+            this.dbPath = this.dbPath + "/" + dbFileName;
+            this.database = new Database(this.dbPath);
         }
         this.hasInit = true;
 
         await this.populateKeyRing();
-
-        log.info(
-            "Client started, public key:",
-            XUtils.encodeHex(this.signKeys.publicKey)
-        );
-
         this.on("message", async (message) => {
             if (
                 message.direction === "incoming" &&
@@ -853,6 +851,11 @@ export class Client extends EventEmitter {
             preKeys,
             ephemeralKeys,
         };
+
+        log.info(
+            "Keyring populated, public key:",
+            XUtils.encodeHex(this.signKeys.publicKey)
+        );
     }
 
     private initSocket() {
