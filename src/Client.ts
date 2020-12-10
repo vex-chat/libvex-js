@@ -185,18 +185,9 @@ export class Client extends EventEmitter {
 
     /* initialize the client. run this first and listen for
     the ready event. */
-    public async init(PK?: string) {
+    public async init() {
         if (this.hasInit) {
             return new Error("You should only call init() once.");
-        }
-        if (PK) {
-            this.signKeys = nacl.sign.keyPair.fromSecretKey(
-                XUtils.decodeHex(PK)
-            );
-            const dbFileName =
-                XUtils.encodeHex(this.signKeys.publicKey) + ".sqlite";
-            this.dbPath = this.dbPath + "/" + dbFileName;
-            this.database = new Database(this.dbPath);
         }
         this.hasInit = true;
 
