@@ -211,6 +211,8 @@ export class Client extends EventEmitter {
     }
 
     public async close(): Promise<void> {
+        log.info("Manually closing client.");
+
         if (this.pingInterval) {
             clearInterval(this.pingInterval);
         }
