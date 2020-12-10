@@ -155,6 +155,9 @@ export class Client extends EventEmitter {
     private hasInit: boolean = false;
     private hasLoggedIn: boolean = false;
 
+    private pingInterval?: NodeJS.Timeout;
+    private mailInterval?: NodeJS.Timeout;
+
     constructor(privateKey?: string, options?: IClientOptions) {
         super();
         this.setLogLevel(options?.logLevel || "error");
@@ -208,6 +211,13 @@ export class Client extends EventEmitter {
     }
 
     public async close(): Promise<void> {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+        }
+
+        if (this.mailInterval) {
+            clearInterval(this.mailInterval);
+        }
         this.conn.close();
         await this.database.close();
         delete this.xKeyRing;
@@ -839,7 +849,7 @@ export class Client extends EventEmitter {
             this.conn = new WebSocket("wss://" + this.host + "/socket");
             this.conn.on("open", () => {
                 log.info("Connection opened.");
-                this.pingLoop();
+                this.pingInterval = setInterval(this.ping, 5000);
             });
 
             this.conn.on("close", () => {
@@ -910,10 +920,7 @@ export class Client extends EventEmitter {
             log.warn("Problem getting mail", err.toString());
         }
 
-        while (true) {
-            await sleep(1000 * 10);
-            await this.getMail();
-        }
+        this.mailInterval = setInterval(this.getMail.bind(this), 5000);
     }
 
     private async getMail(): Promise<void> {
@@ -969,13 +976,6 @@ export class Client extends EventEmitter {
         log.debug(chalk.red.bold("OUT"), msg);
 
         this.conn.send(XUtils.packMessage(msg, header));
-    }
-
-    private async pingLoop() {
-        while (true) {
-            this.ping();
-            await sleep(5000);
-        }
     }
 
     private async retrieveKeyBundle(
