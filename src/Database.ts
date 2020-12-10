@@ -78,7 +78,6 @@ export class Database {
         return index[0];
     }
 
-
     public async getSessionByPublicKey(publicKey: Uint8Array) {
         const str = XUtils.encodeHex(publicKey);
 
@@ -122,9 +121,9 @@ export class Database {
 
         for (const row of rows) {
             if (obj[row.userID] === undefined) {
-                obj[row.userID] = []
+                obj[row.userID] = [];
             }
-            obj[row.userID].push(row.fingerprint)
+            obj[row.userID].push(row.fingerprint);
         }
 
         return obj;

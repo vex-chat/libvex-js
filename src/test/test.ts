@@ -24,30 +24,26 @@ async function main() {
         // get our private keys and store them somewhere safe.
         console.log("keys", client.getKeys());
 
-
-        console.log("sessions", client.conversations.retrieve())
-
         /* you must register your identity with the server
         before logging in the first time. usernames and keys 
         must be unique */
-        // let [user, err] = await client.register(Client.randomUsername());
-        // if (err) {
-        //     console.error(err);
-        // }
+        let [user, err] = await client.register(Client.randomUsername());
+        if (err) {
+            console.error(err);
+        }
 
         // login to the server
-        // err = await client.login();
-        // if (err) {
-        //     console.warn(err);
-        //     process.exit(1);
-        // }
+        err = await client.login();
+        if (err) {
+            console.warn(err);
+            process.exit(1);
+        }
     });
 
     client.on("authed", async () => {
         console.log("Client authorized.");
         // print our user info
         console.log("user", client.users.me());
-
 
         setInterval(async () => {
             // get the accounts we know about
@@ -61,9 +57,6 @@ async function main() {
 
                 // message history
                 const history = await client.messages.retrieve(user.userID);
-
-                console.log(await client.conversations.retrieve())
-
             }
         }, 1000 * 10);
 

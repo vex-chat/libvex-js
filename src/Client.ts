@@ -132,7 +132,7 @@ export class Client extends EventEmitter {
 
     public conversations: IConversations = {
         retrieve: this.getFingerprints.bind(this),
-    }
+    };
 
     private database: Database;
     private dbPath: string;
@@ -520,6 +520,7 @@ export class Client extends EventEmitter {
             lastUsed: new Date(Date.now()),
             fingerprint: XUtils.encodeHex(AD),
         };
+        this.emit("session", { userID, fingerprint: XUtils.encodeHex(AD) });
         await this.database.saveSession(sessionEntry);
     }
 
@@ -698,6 +699,10 @@ export class Client extends EventEmitter {
                     };
                     // for testing so i can create messages with myself
                     if (newSession.userID !== this.user!.userID) {
+                        this.emit("session", {
+                            userID: newSession.userID,
+                            fingerprint: XUtils.encodeHex(AD),
+                        });
                         await this.database.saveSession(newSession);
                     }
                     await this.sendReceipt(mail.nonce, transmissionID);
