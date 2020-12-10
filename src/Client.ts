@@ -30,6 +30,11 @@ export interface IMessage {
     timestamp: Date;
 }
 
+export interface IConversation {
+    fingerprint: string;
+    userID: string;
+}
+
 export interface IKeys {
     public: string;
     private: string;
@@ -520,7 +525,9 @@ export class Client extends EventEmitter {
             lastUsed: new Date(Date.now()),
             fingerprint: XUtils.encodeHex(AD),
         };
-        this.emit("conversation", { userID, fingerprint: XUtils.encodeHex(AD) });
+
+        const conversation: IConversation = { userID, fingerprint: XUtils.encodeHex(AD) };
+        this.emit("conversation", conversation);
         await this.database.saveSession(sessionEntry);
     }
 
@@ -699,10 +706,9 @@ export class Client extends EventEmitter {
                     };
                     // for testing so i can create messages with myself
                     if (newSession.userID !== this.user!.userID) {
-                        this.emit("conversation", {
-                            userID: newSession.userID,
-                            fingerprint: XUtils.encodeHex(AD),
-                        });
+                        const conversation: IConversation = { userID: newSession.userID, fingerprint: XUtils.encodeHex(AD) };
+
+                        this.emit("conversation", conversation);
                         await this.database.saveSession(newSession);
                     }
                     await this.sendReceipt(mail.nonce, transmissionID);
