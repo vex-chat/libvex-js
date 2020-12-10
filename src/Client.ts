@@ -223,6 +223,8 @@ export class Client extends EventEmitter {
         this.conn.close();
         await this.database.close();
         delete this.xKeyRing;
+
+        this.emit("closed");
         return;
     }
 
@@ -856,7 +858,6 @@ export class Client extends EventEmitter {
 
             this.conn.on("close", () => {
                 log.info("Connection closed.");
-                this.emit("close");
             });
 
             this.conn.on("error", (error) => {
