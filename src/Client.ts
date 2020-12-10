@@ -145,12 +145,15 @@ export class Client extends EventEmitter {
     private conn: WebSocket;
     private host: string;
     private signKeys: nacl.SignKeyPair;
-    private xKeyRing: XTypes.CRYPTO.IXKeyRing | null;
+    private xKeyRing?: XTypes.CRYPTO.IXKeyRing;
 
-    private user: XTypes.SQL.IUser | null;
+    private user?: XTypes.SQL.IUser;
     private isAlive: boolean = true;
     private reading: boolean = false;
     private getting: boolean = false;
+
+    private hasInit: boolean = false;
+    private hasLoggedIn: boolean = false;
 
     constructor(privateKey?: string, options?: IClientOptions) {
         super();
@@ -175,15 +178,15 @@ export class Client extends EventEmitter {
         // silence the error for connecting to junk ws
         // tslint:disable-next-line: no-empty
         this.conn.onerror = () => {};
-
-        // these get initialized during login
-        this.user = null;
-        this.xKeyRing = null;
     }
 
     /* initialize the client. run this first and listen for
     the ready event. */
     public async init() {
+        if (this.hasInit) {
+            return new Error("You should only call init() once.");
+        }
+        this.hasInit = true;
         await this.populateKeyRing();
         log.info(
             "Client started, public key:",
@@ -204,6 +207,13 @@ export class Client extends EventEmitter {
         this.emit("ready");
     }
 
+    public async close(): Promise<void> {
+        this.conn.close();
+        await this.database.close();
+        delete this.xKeyRing;
+        return;
+    }
+
     /* sets the log level. */
     public setLogLevel(logLevel: "error" | "warn" | "info" | "debug") {
         log.transports.console.level = logLevel;
@@ -219,6 +229,11 @@ export class Client extends EventEmitter {
 
     /* logs in to the server. you must have already registered. */
     public async login(): Promise<Error | null> {
+        if (this.hasLoggedIn) {
+            return new Error("You should only call login() once.");
+        }
+        this.hasLoggedIn = true;
+
         if (!this.user) {
             try {
                 const res = await ax.get(

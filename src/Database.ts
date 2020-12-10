@@ -23,6 +23,10 @@ export class Database {
         this.init();
     }
 
+    public async close() {
+        await this.db.destroy();
+    }
+
     public async saveMessage(message: IMessage) {
         await this.db("messages").insert(message);
     }
