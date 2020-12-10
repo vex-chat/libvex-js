@@ -185,12 +185,19 @@ export class Client extends EventEmitter {
 
     /* initialize the client. run this first and listen for
     the ready event. */
-    public async init() {
+    public async init(PK?: string) {
         if (this.hasInit) {
             return new Error("You should only call init() once.");
         }
+        if (PK) {
+            this.signKeys = nacl.sign.keyPair.fromSecretKey(
+                XUtils.decodeHex(PK)
+            );
+        }
         this.hasInit = true;
+
         await this.populateKeyRing();
+
         log.info(
             "Client started, public key:",
             XUtils.encodeHex(this.signKeys.publicKey)
