@@ -31,10 +31,10 @@ export class Database {
         await this.db("messages").insert(message);
     }
 
-    public async markSessionVerified(fingerprint: string) {
+    public async markSessionVerified(sessionID: string, status = true) {
         await this.db("sessions")
-            .where({ fingerprint })
-            .update({ verified: true });
+            .where({ sessionID })
+            .update({ verified: status });
     }
 
     public async getMessageHistory(userID: string): Promise<IMessage[]> {

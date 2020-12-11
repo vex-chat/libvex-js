@@ -316,8 +316,8 @@ export class Client extends EventEmitter {
         }
     }
 
-    private async markSessionVerified(fingerprint: string) {
-        return this.database.markSessionVerified(fingerprint);
+    private async markSessionVerified(sessionID: string, status = true) {
+        return this.database.markSessionVerified(sessionID, status);
     }
 
     private async getFingerprints() {
