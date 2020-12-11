@@ -55,7 +55,7 @@ interface IFamiliars {
 }
 
 interface IConversations {
-    retrieve: () => Promise<any>;
+    retrieve: () => Promise<Record<string, XTypes.SQL.ISession[]>>;
 }
 
 interface IMessages {

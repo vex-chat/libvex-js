@@ -122,24 +122,20 @@ export class Database {
     }
 
     public async getFingerprints(): Promise<
-        Record<string, Record<string, XTypes.SQL.ISession>>
+        Record<string, XTypes.SQL.ISession[]>
     > {
         const rows: XTypes.SQL.ISession[] = await this.db
             .from("sessions")
             .select();
 
-        const sessionsObj: Record<
-            string,
-            Record<string, XTypes.SQL.ISession>
-        > = {};
+        const sessionsObj: Record<string, XTypes.SQL.ISession[]> = {};
 
         for (const sess of rows) {
             if (sessionsObj[sess.userID] === undefined) {
-                sessionsObj[sess.userID] = {};
+                sessionsObj[sess.userID] = [];
             }
-            sessionsObj[sess.userID][sess.fingerprint] = sess;
+            sessionsObj[sess.userID].push(sess);
         }
-
         return sessionsObj;
     }
 
