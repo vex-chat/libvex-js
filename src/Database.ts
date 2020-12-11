@@ -115,22 +115,26 @@ export class Database {
             .where({ sessionID });
     }
 
-    public async getFingerprints(): Promise<Record<string, string[]>> {
+    public async getFingerprints(): Promise<
+        Record<string, Record<string, XTypes.SQL.ISession>>
+    > {
         const rows: XTypes.SQL.ISession[] = await this.db
             .from("sessions")
-            .select("fingerprint", "userID")
-            .distinct();
+            .select();
 
-        const obj: Record<string, string[]> = {};
+        const sessionsObj: Record<
+            string,
+            Record<string, XTypes.SQL.ISession>
+        > = {};
 
-        for (const row of rows) {
-            if (obj[row.userID] === undefined) {
-                obj[row.userID] = [];
+        for (const sess of rows) {
+            if (sessionsObj[sess.userID] === undefined) {
+                sessionsObj[sess.userID] = {};
             }
-            obj[row.userID].push(row.fingerprint);
+            sessionsObj[sess.userID][sess.fingerprint] = sess;
         }
 
-        return obj;
+        return sessionsObj;
     }
 
     public async getSessions(): Promise<XTypes.SQL.ISession[]> {
@@ -264,6 +268,7 @@ export class Database {
                 table.string("fingerprint");
                 table.string("mode");
                 table.date("lastUsed");
+                table.boolean("verified");
             });
         }
         if (!(await this.db.schema.hasTable("preKeys"))) {

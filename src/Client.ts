@@ -543,6 +543,7 @@ export class Client extends EventEmitter {
         // save the encryption session
         log.info("Saving new session.");
         const sessionEntry: XTypes.SQL.ISession = {
+            verified: false,
             sessionID: uuidv4(),
             userID,
             mode: "initiator",
@@ -735,6 +736,7 @@ export class Client extends EventEmitter {
 
                     // save session
                     const newSession: XTypes.SQL.ISession = {
+                        verified: false,
                         sessionID: uuidv4(),
                         userID: mail.sender,
                         mode: "receiver",
