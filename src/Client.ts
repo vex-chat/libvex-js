@@ -30,12 +30,6 @@ export interface IMessage {
     timestamp: Date;
 }
 
-export interface IConversation {
-    fingerprint: string;
-    userID: string;
-    user: IUser;
-}
-
 export interface IKeys {
     public: string;
     private: string;
@@ -43,6 +37,9 @@ export interface IKeys {
 
 // tslint:disable-next-line: no-empty-interface
 export interface IUser extends XTypes.SQL.IUser {}
+
+// tslint:disable-next-line: no-empty-interface
+export interface ISession extends XTypes.SQL.ISession {}
 
 const capitalize = (s: string): string => {
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -558,12 +555,7 @@ export class Client extends EventEmitter {
         const user = await this.retrieveUserDBEntry(userID);
 
         if (user) {
-            const conversation: IConversation = {
-                userID,
-                fingerprint: XUtils.encodeHex(AD),
-                user,
-            };
-            this.emit("conversation", conversation);
+            this.emit("conversation", sessionEntry, user);
         } else {
             throw new Error(
                 "We saved a session, but we didn't get it back from the db!"
@@ -754,13 +746,7 @@ export class Client extends EventEmitter {
                         );
 
                         if (user) {
-                            const conversation: IConversation = {
-                                userID: newSession.userID,
-                                fingerprint: XUtils.encodeHex(AD),
-                                user,
-                            };
-
-                            this.emit("conversation", conversation);
+                            this.emit("conversation", newSession, user);
                         } else {
                             throw new Error(
                                 "Saved session but got nothing back from db!"
