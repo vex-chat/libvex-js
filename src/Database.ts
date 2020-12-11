@@ -31,6 +31,12 @@ export class Database {
         await this.db("messages").insert(message);
     }
 
+    public async markSessionVerified(fingerprint: string) {
+        await this.db("sessions")
+            .where({ fingerprint })
+            .update({ verified: true });
+    }
+
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
         const messages = await this.db("messages")
             .select()

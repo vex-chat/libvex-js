@@ -69,6 +69,7 @@ interface IMessages {
 interface ISessions {
     retrieve: () => Promise<XTypes.SQL.ISession[]>;
     verify: (session: XTypes.SQL.ISession) => string;
+    markVerified: (fingerprint: string) => void;
 }
 
 export interface IClientOptions {
@@ -134,6 +135,7 @@ export class Client extends EventEmitter {
     public sessions: ISessions = {
         retrieve: this.getSessionList.bind(this),
         verify: Client.getMnemonic,
+        markVerified: this.markSessionVerified.bind(this),
     };
 
     public conversations: IConversations = {
@@ -315,6 +317,10 @@ export class Client extends EventEmitter {
         } else {
             return [null, new Error("Couldn't get regkey from server.")];
         }
+    }
+
+    private async markSessionVerified(fingerprint: string) {
+        return this.database.markSessionVerified(fingerprint);
     }
 
     private async getFingerprints() {
