@@ -139,6 +139,9 @@ export class Client extends EventEmitter {
         retrieve: this.getFingerprints.bind(this),
     };
 
+    public hasInit: boolean = false;
+    public hasLoggedIn: boolean = false;
+
     private database: Database;
     private dbPath: string;
     private conn: WebSocket;
@@ -150,9 +153,6 @@ export class Client extends EventEmitter {
     private isAlive: boolean = true;
     private reading: boolean = false;
     private getting: boolean = false;
-
-    private hasInit: boolean = false;
-    private hasLoggedIn: boolean = false;
 
     private pingInterval?: NodeJS.Timeout;
     private mailInterval?: NodeJS.Timeout;
