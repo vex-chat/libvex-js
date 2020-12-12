@@ -127,7 +127,12 @@ export class Database {
             .select()
             .orderBy("lastUsed", "desc");
 
-        return rows;
+        const fixedRows = rows.map((session) => {
+            session.verified = Boolean(session.verified);
+            return session;
+        });
+
+        return fixedRows;
     }
 
     public async getSession(
