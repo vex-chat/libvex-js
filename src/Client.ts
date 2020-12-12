@@ -131,12 +131,9 @@ export class Client extends EventEmitter {
 
     public sessions: ISessions = {
         retrieve: this.getSessionList.bind(this),
+
         verify: Client.getMnemonic,
         markVerified: this.markSessionVerified.bind(this),
-    };
-
-    public conversations: IConversations = {
-        retrieve: this.getFingerprints.bind(this),
     };
 
     public hasInit: boolean = false;
@@ -322,10 +319,6 @@ export class Client extends EventEmitter {
 
     private async markSessionVerified(sessionID: string, status = true) {
         return this.database.markSessionVerified(sessionID, status);
-    }
-
-    private async getFingerprints() {
-        return this.database.getFingerprints();
     }
 
     private async getMessageHistory(userID: string): Promise<IMessage[]> {
@@ -565,7 +558,7 @@ export class Client extends EventEmitter {
         const user = await this.retrieveUserDBEntry(userID);
 
         if (user) {
-            this.emit("conversation", sessionEntry, user);
+            this.emit("session", sessionEntry, user);
         } else {
             throw new Error(
                 "We saved a session, but we didn't get it back from the db!"
@@ -756,7 +749,7 @@ export class Client extends EventEmitter {
                         );
 
                         if (user) {
-                            this.emit("conversation", newSession, user);
+                            this.emit("session", newSession, user);
                         } else {
                             throw new Error(
                                 "Saved session but got nothing back from db!"
