@@ -151,11 +151,14 @@ export class Client extends EventEmitter {
 
     private user?: XTypes.SQL.IUser;
     private isAlive: boolean = true;
+    private failCount: number = 0;
     private reading: boolean = false;
     private getting: boolean = false;
 
     private pingInterval?: NodeJS.Timeout;
     private mailInterval?: NodeJS.Timeout;
+
+    private manuallyClosing: boolean = false;
 
     constructor(privateKey?: string, options?: IClientOptions) {
         super();
@@ -206,6 +209,7 @@ export class Client extends EventEmitter {
     }
 
     public async close(): Promise<void> {
+        this.manuallyClosing = true;
         log.info("Manually closing client.");
 
         if (this.pingInterval) {
@@ -853,6 +857,9 @@ export class Client extends EventEmitter {
 
             this.conn.on("close", () => {
                 log.info("Connection closed.");
+                if (!this.manuallyClosing) {
+                    this.emit("disconnect");
+                }
             });
 
             this.conn.on("error", (error) => {
@@ -1115,7 +1122,11 @@ export class Client extends EventEmitter {
 
     private ping() {
         if (!this.isAlive) {
-            log.warn("Connection might be down.");
+            log.warn("Ping failed.");
+            this.failCount++;
+            if (this.failCount === 2) {
+                this.conn.close();
+            }
         }
         this.setAlive(false);
         this.send({ transmissionID: uuidv4(), type: "ping" });
