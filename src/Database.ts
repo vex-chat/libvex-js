@@ -4,7 +4,6 @@ import { XTypes } from "@vex-chat/types-js";
 import knex from "knex";
 import nacl from "tweetnacl";
 import { IMessage } from ".";
-import { log } from "./Client";
 
 export class Database {
     public ready: boolean = false;

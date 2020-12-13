@@ -14,7 +14,7 @@ async function main() {
     const { PK } = process.env;
 
     const client = new Client(PK, {
-        logLevel: "info",
+        logLevel: "debug",
         dbFolder: "databases",
     });
 
