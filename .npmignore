@@ -16,3 +16,4 @@ typedoc.json
 *.log
 databases
 dist/test
+docs

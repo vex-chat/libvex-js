@@ -165,7 +165,7 @@ export declare interface Client {
      */
     on(
         event: "session",
-        callback: (message: IMessage, user: IUser) => void
+        callback: (session: ISession, user: IUser) => void
     ): this;
 
     /**
