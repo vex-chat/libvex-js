@@ -61,7 +61,7 @@ export interface ISession extends XTypes.SQL.ISession {}
  * @ignore
  */
 interface IUsers {
-    retrieve: (userID: string) => Promise<[IUser | null, Error | null]>;
+    retrieve: (userID: string) => Promise<[IUser | null, AxiosError | null]>;
     me: () => XTypes.SQL.IUser;
     familiars: () => Promise<IUser[]>;
 }
