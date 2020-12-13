@@ -61,7 +61,7 @@ export interface ISession extends XTypes.SQL.ISession {}
  * @ignore
  */
 interface IUsers {
-    retrieve: (userID: string) => Promise<IUser | null>;
+    retrieve: (userID: string) => Promise<[IUser | null, Error | null]>;
     me: () => XTypes.SQL.IUser;
     familiars: () => Promise<IUser[]>;
 }
@@ -693,15 +693,14 @@ export class Client extends EventEmitter {
     and finally falls back to username. */
     private async retrieveUserDBEntry(
         userIdentifier: string
-    ): Promise<XTypes.SQL.IUser | null> {
+    ): Promise<[XTypes.SQL.IUser | null, Error | null]> {
         try {
             const res = await ax.get(
                 "https://" + this.host + "/user/" + userIdentifier
             );
-            return res.data;
+            return [res.data, null];
         } catch (err) {
-            console.error("Error retrieving user from server:", err.toString());
-            return null;
+            return [null, err];
         }
     }
 
@@ -1065,7 +1064,6 @@ export class Client extends EventEmitter {
                         lastUsed: new Date(Date.now()),
                         fingerprint: XUtils.encodeHex(AD),
                     };
-                    // for testing so i can create messages with myself
                     if (newSession.userID !== this.user!.userID) {
                         await this.database.saveSession(newSession);
 
