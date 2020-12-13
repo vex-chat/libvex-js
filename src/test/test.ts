@@ -47,7 +47,7 @@ async function main() {
 
         setInterval(async () => {
             // get the accounts we know about
-            const familiars = await client.familiars.retrieve();
+            const familiars = await client.users.familiars();
             // send each of them a message
             for (const user of familiars) {
                 client.messages.send(

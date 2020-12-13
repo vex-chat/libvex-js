@@ -1,3 +1,5 @@
+// tslint:disable: no-empty-interface
+
 import { sleep } from "@extrahash/sleep";
 import {
     xConcat,
@@ -20,7 +22,11 @@ import { parse as uuidParse, v4 as uuidv4 } from "uuid";
 import winston from "winston";
 import WebSocket from "ws";
 import { Database } from "./Database";
+import { capitalize } from "./utils/capitalize";
 
+/**
+ * IMessage is a chat message.
+ */
 export interface IMessage {
     nonce: string;
     sender: string;
@@ -31,32 +37,30 @@ export interface IMessage {
     decrypted: boolean;
 }
 
+/**
+ * IKeys are a pair of ed25519 public and private keys,
+ * encoded as hex strings.
+ */
 export interface IKeys {
     public: string;
     private: string;
 }
 
-// tslint:disable-next-line: no-empty-interface
+/**
+ * IKeys are a pair of ed25519 public and private keys,
+ * encoded as hex strings.
+ */
 export interface IUser extends XTypes.SQL.IUser {}
 
-// tslint:disable-next-line: no-empty-interface
+/**
+ * ISession is an end to end encryption session with another peer.
+ */
 export interface ISession extends XTypes.SQL.ISession {}
-
-const capitalize = (s: string): string => {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-};
 
 interface IUsers {
     retrieve: (userID: string) => Promise<IUser | null>;
     me: () => XTypes.SQL.IUser;
-}
-
-interface IFamiliars {
-    retrieve: () => Promise<IUser[]>;
-}
-
-interface IConversations {
-    retrieve: () => Promise<Record<string, XTypes.SQL.ISession[]>>;
+    familiars: () => Promise<IUser[]>;
 }
 
 interface IMessages {
@@ -70,6 +74,9 @@ interface ISessions {
     markVerified: (fingerprint: string) => void;
 }
 
+/**
+ * IClientOptions are the options you can pass into the client.
+ */
 export interface IClientOptions {
     logLevel?:
         | "error"
@@ -83,11 +90,53 @@ export interface IClientOptions {
     dbFolder?: string;
 }
 
+/**
+ * Client provides an interface for you to use a vex chat server and
+ * send end to end encrypted messages to other users.
+ * ```
+ * export function initClient(): void {
+ *     const PK = Client.generateSecretKey();
+ *     client = new Client(PK, {
+ *         dbFolder: progFolder,
+ *         logLevel: "info",
+ *     });
+ *     client.on("ready", async () => {
+ *         // you can retrieve users before you login
+ *         const registeredUser = await client.users.retrieve(
+ *             client.getKeys().public
+ *         );
+ *         if (registeredUser) {
+ *             await client.login();
+ *         } else {
+ *             await client.register("MyUsername");
+ *             await client.login();
+ *         }
+ *     });
+ *     client.on("authed", async () => {
+ *         const familiars = await client.users.familiars();
+ *         for (const user of familiars) {
+ *             client.messages.send(user.userID, "Hello world!");
+ *         }
+ *     })
+ *     client.init();
+ * }
+ * ```
+ */
 export class Client extends EventEmitter {
-    // Generates an ed25519 private key, formatted as a hex string.
+    /**
+     * Generates an ed25519 secret key as a hex string.
+     *
+     * @returns - A secret key to use for the client. Save it permanently somewhere safe.
+     */
     public static generateSecretKey(): string {
         return XUtils.encodeHex(nacl.sign.keyPair().secretKey);
     }
+
+    /**
+     * Generates a random username using bip39.
+     *
+     * @returns - The username.
+     */
     public static randomUsername() {
         const IKM = XUtils.decodeHex(XUtils.encodeHex(nacl.randomBytes(16)));
         const mnemonic = xMnemonic(IKM).split(" ");
@@ -123,28 +172,80 @@ export class Client extends EventEmitter {
         }
     }
 
+    /**
+     * The IUsers interface contains methods for dealing with users.
+     */
     public users: IUsers = {
+        /**
+         * Retrieves a user's information by a string identifier.
+         * @param identifier: A userID, hex string public key, or a username.
+         *
+         * @returns - The user's IUser object, or null if the user does not exist.
+         */
         retrieve: this.retrieveUserDBEntry.bind(this),
+        /**
+         * Retrieves the currently logged in user's (you) information.
+         *
+         * @returns - The logged in user's IUser object.
+         */
         me: this.getUser.bind(this),
-    };
-
-    public familiars: IFamiliars = {
-        retrieve: this.getFamiliars.bind(this),
+        /**
+         * Retrieves the list of users you can currently access, or are already familiar with.
+         *
+         * @returns - The list of IUser objects.
+         */
+        familiars: this.getFamiliars.bind(this),
     };
 
     public messages: IMessages = {
+        /**
+         * Send a chat message.
+         * @param userID: The userID of the user to send a message to.
+         * @param message: The message to send.
+         */
         send: this.sendMessage.bind(this),
+        /**
+         * Gets the message history with a specific userID.
+         * @param userID: The userID of the user to retrieve message history for.
+         *
+         * @returns - The list of IMessage objects.
+         */
         retrieve: this.getMessageHistory.bind(this),
     };
 
     public sessions: ISessions = {
+        /**
+         * Gets all encryption sessions.
+         *
+         * @returns - The list of ISession encryption sessions.
+         */
         retrieve: this.getSessionList.bind(this),
 
+        /**
+         * Returns a mnemonic for the session, to verify with the other user.
+         * @param session the ISession object to get the mnemonic for.
+         *
+         * @returns - The mnemonic representation of the session.
+         */
         verify: Client.getMnemonic,
+
+        /**
+         * Marks a mnemonic verified, implying that the the user has confirmed
+         * that the session mnemonic matches with the other user.
+         * @param sessionID the sessionID of the session to mark.
+         * @param status Optionally, what to mark it as. Defaults to true.
+         */
         markVerified: this.markSessionVerified.bind(this),
     };
 
+    /**
+     * This is true if the client has ever been initialized. You can only initialize
+     * a client once.
+     */
     public hasInit: boolean = false;
+    /**
+     * This is true if the client has ever logged in before. You can only login a client once.
+     */
     public hasLoggedIn: boolean = false;
 
     private database: Database;
@@ -230,8 +331,9 @@ export class Client extends EventEmitter {
         }
     }
 
-    /* initialize the client. run this first and listen for
-    the ready event. */
+    /**
+     * Initializes the keyring. This must be called before anything else.
+     */
     public async init() {
         if (this.hasInit) {
             return new Error("You should only call init() once.");
@@ -253,6 +355,9 @@ export class Client extends EventEmitter {
         this.emit("ready");
     }
 
+    /**
+     * Manually closes the client. Emits the closed event on successful shutdown.
+     */
     public async close(): Promise<void> {
         this.manuallyClosing = true;
         this.log.info("Manually closing client.");
@@ -272,7 +377,9 @@ export class Client extends EventEmitter {
         return;
     }
 
-    /* gets the public and private keys. */
+    /**
+     * Gets the hex string representations of the public and private keys.
+     */
     public getKeys(): IKeys {
         return {
             public: XUtils.encodeHex(this.signKeys.publicKey),
@@ -280,7 +387,10 @@ export class Client extends EventEmitter {
         };
     }
 
-    /* logs in to the server. you must have already registered. */
+    /**
+     * Logs in to the server. You must have registered() before with your current
+     * private key.
+     */
     public async login(): Promise<Error | null> {
         if (this.hasLoggedIn) {
             return new Error("You should only call login() once.");
@@ -312,7 +422,14 @@ export class Client extends EventEmitter {
         return null;
     }
 
-    /* Registers a new account on the server. */
+    /**
+     * Registers a new account on the server.
+     * @param username The username to register. Must be unique.
+     *
+     * @returns The error, or the user object.
+     *
+     * @example [user, err] = await client.register("MyUsername");
+     */
     public async register(
         username: string
     ): Promise<[XTypes.SQL.IUser | null, Error | null]> {
