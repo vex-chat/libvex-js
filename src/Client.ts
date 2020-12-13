@@ -374,6 +374,8 @@ export class Client extends EventEmitter {
      */
     public hasLoggedIn: boolean = false;
 
+    private wsOpen = false;
+
     private database: Database;
     private dbPath: string;
     private conn: WebSocket;
@@ -1073,8 +1075,6 @@ export class Client extends EventEmitter {
                             newSession.userID
                         );
 
-                        let fail = 0;
-
                         if (user) {
                             this.emit("session", newSession, user);
                         } else {
@@ -1165,6 +1165,7 @@ export class Client extends EventEmitter {
             this.conn.on("open", () => {
                 this.log.info("Connection opened.");
                 this.pingInterval = setInterval(this.ping.bind(this), 5000);
+                this.wsOpen = true;
             });
 
             this.conn.on("close", () => {
@@ -1292,6 +1293,17 @@ export class Client extends EventEmitter {
     or contains an HMAC of the message with
     a derived SK */
     private async send(msg: any, header?: Uint8Array) {
+        let i = 0;
+        while (!this.wsOpen) {
+            await sleep(i);
+            i *= 2;
+
+            if (i > 500) {
+                this.close(true);
+                this.emit("disconnect");
+            }
+        }
+
         this.log.debug(
             chalk.red.bold("OUTH ") +
                 XUtils.encodeHex(header || XUtils.emptyHeader())
