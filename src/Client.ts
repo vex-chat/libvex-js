@@ -847,7 +847,7 @@ export class Client extends EventEmitter {
 
         await this.database.saveSession(sessionEntry);
 
-        let user = await this.retrieveUserDBEntry(userID);
+        let [user, err] = await this.retrieveUserDBEntry(userID);
 
         if (user) {
             this.emit("session", sessionEntry, user);
@@ -855,7 +855,7 @@ export class Client extends EventEmitter {
             let failed = 1;
             // retry a couple times
             while (!user) {
-                user = await this.retrieveUserDBEntry(userID);
+                [user, err] = await this.retrieveUserDBEntry(userID);
                 failed++;
                 if (failed > 3) {
                     throw new Error(
@@ -1069,16 +1069,28 @@ export class Client extends EventEmitter {
                     if (newSession.userID !== this.user!.userID) {
                         await this.database.saveSession(newSession);
 
-                        const user = await this.retrieveUserDBEntry(
+                        let [user, err] = await this.retrieveUserDBEntry(
                             newSession.userID
                         );
+
+                        let fail = 0;
 
                         if (user) {
                             this.emit("session", newSession, user);
                         } else {
-                            throw new Error(
-                                "Saved session but got nothing back from db!"
-                            );
+                            let failed = 1;
+                            // retry a couple times
+                            while (!user) {
+                                [user, err] = await this.retrieveUserDBEntry(
+                                    newSession.userID
+                                );
+                                failed++;
+                                if (failed > 3) {
+                                    throw new Error(
+                                        "We saved a session, but we didn't get it back from the db!"
+                                    );
+                                }
+                            }
                         }
                     }
                     await this.sendReceipt(mail.nonce, transmissionID);
