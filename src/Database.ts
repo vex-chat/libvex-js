@@ -55,26 +55,6 @@ export class Database {
         });
     }
 
-    public async getIdentityKeys(): Promise<nacl.BoxKeyPair | null> {
-        await this.untilReady();
-        const rows = await this.db.from("identityKeys").select();
-        if (rows.length === 0) {
-            return null;
-        }
-        const [keys] = rows;
-        return nacl.box.keyPair.fromSecretKey(
-            XUtils.decodeHex(keys.privateKey)
-        );
-    }
-
-    public async saveIdentityKeys(idKeys: nacl.BoxKeyPair) {
-        await this.untilReady();
-        await this.db("identityKeys").insert({
-            privateKey: XUtils.encodeHex(idKeys.secretKey),
-            publicKey: XUtils.encodeHex(idKeys.publicKey),
-        });
-    }
-
     public async savePreKeys(
         preKeys: XTypes.CRYPTO.IPreKeys,
         oneTime: boolean
@@ -242,13 +222,6 @@ export class Database {
                 table.string("direction");
                 table.date("timestamp");
                 table.boolean("decrypted");
-            });
-        }
-
-        if (!(await this.db.schema.hasTable("identityKeys"))) {
-            await this.db.schema.createTable("identityKeys", (table) => {
-                table.string("privateKey").primary();
-                table.string("publicKey");
             });
         }
         if (!(await this.db.schema.hasTable("sessions"))) {

@@ -1122,27 +1122,9 @@ export class Client extends EventEmitter {
     }
 
     private async populateKeyRing() {
-        let identityKeys = await this.database.getIdentityKeys();
-
-        const providedKeys = XKeyConvert.convertKeyPair(this.signKeys);
-        if (!providedKeys) {
-            throw new Error("Could not convert ed25519 key to X25519!");
-        }
-
+        const identityKeys = XKeyConvert.convertKeyPair(this.signKeys);
         if (!identityKeys) {
-            await this.database.saveIdentityKeys(providedKeys!);
-            identityKeys = providedKeys;
-        } else {
-            if (
-                !XUtils.bytesEqual(
-                    identityKeys.secretKey,
-                    providedKeys.secretKey
-                )
-            ) {
-                throw new Error(
-                    "Private key changed. Please delete or move the database file."
-                );
-            }
+            throw new Error("Could not convert ed25519 key to X25519!");
         }
 
         let preKeys = await this.database.getPreKeys();
