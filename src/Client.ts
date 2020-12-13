@@ -484,7 +484,7 @@ export class Client extends EventEmitter {
     /**
      * Manually closes the client. Emits the closed event on successful shutdown.
      */
-    public async close(): Promise<void> {
+    public async close(muteEvent = false): Promise<void> {
         this.manuallyClosing = true;
         this.log.info("Manually closing client.");
 
@@ -499,7 +499,9 @@ export class Client extends EventEmitter {
         await this.database.close();
         delete this.xKeyRing;
 
-        this.emit("closed");
+        if (!muteEvent) {
+            this.emit("closed");
+        }
         return;
     }
 
@@ -1424,12 +1426,13 @@ export class Client extends EventEmitter {
         this.send({ transmissionID, type: "pong" });
     }
 
-    private ping() {
+    private async ping() {
         if (!this.isAlive) {
             this.log.warn("Ping failed.");
             this.failCount++;
             if (this.failCount === 2) {
-                this.conn.close();
+                await this.close(true);
+                this.emit("disconnect");
             }
         }
         this.setAlive(false);
