@@ -5,6 +5,9 @@ import knex from "knex";
 import nacl from "tweetnacl";
 import { IMessage } from ".";
 
+/**
+ * @hidden
+ */
 export class Database {
     public ready: boolean = false;
     private dbPath: string;

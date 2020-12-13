@@ -57,17 +57,26 @@ export interface IUser extends XTypes.SQL.IUser {}
  */
 export interface ISession extends XTypes.SQL.ISession {}
 
+/**
+ * @ignore
+ */
 interface IUsers {
     retrieve: (userID: string) => Promise<IUser | null>;
     me: () => XTypes.SQL.IUser;
     familiars: () => Promise<IUser[]>;
 }
 
+/**
+ * @ignore
+ */
 interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
     retrieve: (userID: string) => Promise<IMessage[]>;
 }
 
+/**
+ * @ignore
+ */
 interface ISessions {
     retrieve: () => Promise<XTypes.SQL.ISession[]>;
     verify: (session: XTypes.SQL.ISession) => string;
@@ -90,37 +99,148 @@ export interface IClientOptions {
     dbFolder?: string;
 }
 
+// tslint:disable-next-line: interface-name
+export declare interface Client {
+    /**
+     * This is emitted whenever the keyring is done initializing after an init()
+     * call. You must wait to login or register until after this event.
+     *
+     * Example:
+     *
+     * ```ts
+     *   client.on("ready", () => {
+     *       await client.register()
+     *   });
+     * ```
+     *
+     * @event
+     */
+    on(event: "ready", callback: () => void): this;
+
+    /**
+     * This is emitted when you are logged in succesfully. You can now call the rest of the methods in the api.
+     *
+     * Example:
+     *
+     * ```ts
+     *   client.on("authed", (user) => {
+     *       // do something
+     *   });
+     * ```
+     *
+     * @event
+     */
+    // tslint:disable-next-line: unified-signatures
+    on(event: "authed", callback: () => void): this;
+
+    /**
+     * This is emitted for every sent and received message.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("message", (msg: IMessage) => {
+     *       console.log(message);
+     *   });
+     * ```
+     * @event
+     */
+    on(event: "message", callback: (message: IMessage) => void): this;
+
+    /**
+     * This is emitted for a new encryption session being created with
+     * a specific user.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("message", (msg: IMessage, user: IUser) => {
+     *       console.log(message);
+     *       console.log(user);
+     *   });
+     * ```
+     * @event
+     */
+    on(
+        event: "session",
+        callback: (message: IMessage, user: IUser) => void
+    ): this;
+
+    /**
+     * This is emitted whenever the connection is closed. You must discard the client
+     * and connect again with a fresh one.
+     *
+     * Example:
+     * ```ts
+     *
+     *   client.on("disconnect", () => {
+     *     // do something
+     *   });
+     * ```
+     * @event
+     */
+    // tslint:disable-next-line: unified-signatures
+    on(event: "disconnect", callback: () => void): this;
+
+    /**
+     * This is emitted whenever the close() event is called and completed successfully.
+     * Note this is not fired for an unintentional disconnect, see the disconnect event.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("closed", () => {
+     *       process.exit(0);
+     *   });
+     * ```
+     *
+     * @event
+     */
+    // tslint:disable-next-line: unified-signatures
+    on(event: "closed", callback: () => void): this;
+}
+
 /**
  * Client provides an interface for you to use a vex chat server and
  * send end to end encrypted messages to other users.
+ *
+ * Quickstart:
+ * ```ts
+ *    export function initClient(): void {
+ *        const PK = Client.generateSecretKey();
+ *        const client = new Client(PK, {
+ *            dbFolder: progFolder,
+ *            logLevel: "info",
+ *        });
+ *        client.on("ready", async () => {
+ *            // you can retrieve users before you login
+ *            const registeredUser = await client.users.retrieve(
+ *                client.getKeys().public
+ *            );
+ *            if (registeredUser) {
+ *                await client.login();
+ *            } else {
+ *                await client.register("MyUsername");
+ *                await client.login();
+ *            }
+ *        });
+ *        client.on("authed", async () => {
+ *            const familiars = await client.users.familiars();
+ *            for (const user of familiars) {
+ *                client.messages.send(user.userID, "Hello world!");
+ *            }
+ *        });
+ *        client.init();
+ *    }
+ *
+ *    initClient();
  * ```
- * export function initClient(): void {
- *     const PK = Client.generateSecretKey();
- *     client = new Client(PK, {
- *         dbFolder: progFolder,
- *         logLevel: "info",
- *     });
- *     client.on("ready", async () => {
- *         // you can retrieve users before you login
- *         const registeredUser = await client.users.retrieve(
- *             client.getKeys().public
- *         );
- *         if (registeredUser) {
- *             await client.login();
- *         } else {
- *             await client.register("MyUsername");
- *             await client.login();
- *         }
- *     });
- *     client.on("authed", async () => {
- *         const familiars = await client.users.familiars();
- *         for (const user of familiars) {
- *             client.messages.send(user.userID, "Hello world!");
- *         }
- *     })
- *     client.init();
- * }
- * ```
+ *
+ *
+ * @noInheritDoc
  */
 export class Client extends EventEmitter {
     /**
@@ -197,6 +317,9 @@ export class Client extends EventEmitter {
         familiars: this.getFamiliars.bind(this),
     };
 
+    /**
+     * The IMessages interface contains methods for dealing with messages.
+     */
     public messages: IMessages = {
         /**
          * Send a chat message.
@@ -213,6 +336,9 @@ export class Client extends EventEmitter {
         retrieve: this.getMessageHistory.bind(this),
     };
 
+    /**
+     * The ISessions interface contains methods for dealing with encryption sessions.
+     */
     public sessions: ISessions = {
         /**
          * Gets all encryption sessions.

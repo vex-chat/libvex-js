@@ -6,6 +6,9 @@ import { loadEnv } from "./loadEnv";
 
 main();
 
+/**
+ * @ignore
+ */
 async function main() {
     loadEnv();
 

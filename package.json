@@ -11,7 +11,8 @@
         "prettier": "node ./node_modules/prettier/bin-prettier.js '**/*.{ts,tsx,json,md}' --trailing-comma es5 --tab-width 4 --ignore-path .gitignore  --arrow-parens always --write",
         "lint": "./node_modules/tslint/bin/tslint src/**/*.ts{,x}",
         "lint-fix": "./node_modules/tslint/bin/tslint src/**/*.ts{,x} --fix",
-        "prepack": "yarn build"
+        "prepack": "yarn build",
+        "docs": "npx typedoc --options typedoc.json"
     },
     "devDependencies": {
         "dotenv": "^8.2.0",
@@ -20,6 +21,7 @@
         "prettier": "^1.19.1",
         "tslint": "^5.20.1",
         "tslint-config-prettier": "^1.18.0",
+        "typedoc": "^0.19.2",
         "typescript": "^3.7.2"
     },
     "lint-staged": {
