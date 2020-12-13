@@ -14,7 +14,7 @@ import {
     XUtils,
 } from "@vex-chat/crypto-js";
 import { XTypes } from "@vex-chat/types-js";
-import ax from "axios";
+import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
 import nacl from "tweetnacl";
@@ -693,7 +693,7 @@ export class Client extends EventEmitter {
     and finally falls back to username. */
     private async retrieveUserDBEntry(
         userIdentifier: string
-    ): Promise<[XTypes.SQL.IUser | null, Error | null]> {
+    ): Promise<[XTypes.SQL.IUser | null, AxiosError | null]> {
         try {
             const res = await ax.get(
                 "https://" + this.host + "/user/" + userIdentifier
