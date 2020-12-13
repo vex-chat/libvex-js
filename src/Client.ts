@@ -369,7 +369,10 @@ export class Client extends EventEmitter {
             userID
         );
 
-        return messages;
+        return messages.map((row) => {
+            row.decrypted = Boolean(row.decrypted);
+            return row;
+        });
     }
 
     /* A thin wrapper around sendMail for string inputs. */

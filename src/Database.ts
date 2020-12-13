@@ -238,6 +238,7 @@ export class Database {
                 table.string("message");
                 table.string("direction");
                 table.date("timestamp");
+                table.boolean("decrypted");
             });
         }
 
