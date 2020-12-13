@@ -14,12 +14,48 @@ import {
 import { XTypes } from "@vex-chat/types-js";
 import ax from "axios";
 import chalk from "chalk";
-import log from "electron-log";
 import { EventEmitter } from "events";
 import nacl from "tweetnacl";
 import { parse as uuidParse, v4 as uuidv4 } from "uuid";
+import winston from "winston";
 import WebSocket from "ws";
 import { Database } from "./Database";
+
+export const log = winston.createLogger({
+    level: "debug",
+    format: winston.format.combine(
+        winston.format.timestamp({
+            format: "YYYY-MM-DD HH:mm:ss",
+        }),
+        winston.format.errors({ stack: true }),
+        winston.format.splat(),
+        winston.format.json()
+    ),
+    defaultMeta: { service: "vex-js" },
+    transports: [
+        //
+        // - Write all logs with level `error` and below to `error.log`
+        // - Write all logs with level `info` and below to `combined.log`
+        //
+        new winston.transports.File({ filename: "error.log", level: "error" }),
+        new winston.transports.File({ filename: "combined.log" }),
+    ],
+});
+
+//
+// If we're not in production then log to the `console` with the format:
+// `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
+//
+if (process.env.NODE_ENV !== "production") {
+    log.add(
+        new winston.transports.Console({
+            format: winston.format.combine(
+                winston.format.colorize(),
+                winston.format.simple()
+            ),
+        })
+    );
+}
 
 export interface IMessage {
     nonce: string;
@@ -159,7 +195,6 @@ export class Client extends EventEmitter {
 
     constructor(privateKey?: string, options?: IClientOptions) {
         super();
-        this.setLogLevel(options?.logLevel || "error");
 
         this.signKeys = privateKey
             ? nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(privateKey))
@@ -222,11 +257,6 @@ export class Client extends EventEmitter {
 
         this.emit("closed");
         return;
-    }
-
-    /* sets the log level. */
-    public setLogLevel(logLevel: "error" | "warn" | "info" | "debug") {
-        log.transports.console.level = logLevel;
     }
 
     /* gets the public and private keys. */
@@ -336,10 +366,10 @@ export class Client extends EventEmitter {
 
     /* Sends encrypted mail to a user. */
     private async sendMail(userID: string, msg: Uint8Array): Promise<void> {
-        log.info("Sending mail to", userID);
+        log.info("Sending mail to" + userID);
         const session = await this.database.getSession(userID);
         if (!session) {
-            log.info("Creating new session for", userID);
+            log.info("Creating new session for " + userID);
             await this.createSession(userID, msg);
         } else {
             const nonce = xMakeNonce();
@@ -512,7 +542,7 @@ export class Client extends EventEmitter {
         };
 
         const hmac = xHMAC(mail, SK);
-        log.info("Generated hmac:", XUtils.encodeHex(hmac));
+        log.info("Generated hmac: " + XUtils.encodeHex(hmac));
 
         const msg: XTypes.WS.IResourceMsg = {
             transmissionID: uuidv4(),
@@ -555,14 +585,22 @@ export class Client extends EventEmitter {
 
         await this.database.saveSession(sessionEntry);
 
-        const user = await this.retrieveUserDBEntry(userID);
+        let user = await this.retrieveUserDBEntry(userID);
 
         if (user) {
             this.emit("session", sessionEntry, user);
         } else {
-            throw new Error(
-                "We saved a session, but we didn't get it back from the db!"
-            );
+            let failed = 1;
+            // retry a couple times
+            while (!user) {
+                user = await this.retrieveUserDBEntry(userID);
+                failed++;
+                if (failed > 3) {
+                    throw new Error(
+                        "We saved a session, but we didn't get it back from the db!"
+                    );
+                }
+            }
         }
     }
 
@@ -603,8 +641,8 @@ export class Client extends EventEmitter {
                     await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
-                log.info("Session found for", mail.sender);
-                log.info("Mail nonce", XUtils.encodeHex(mail.nonce));
+                log.info("Session found for " + mail.sender);
+                log.info("Mail nonce " + XUtils.encodeHex(mail.nonce));
 
                 const HMAC = xHMAC(mail, session.SK);
 
@@ -622,8 +660,7 @@ export class Client extends EventEmitter {
 
                 if (decrypted) {
                     log.info(
-                        "Decryption successful:",
-                        XUtils.encodeUTF8(decrypted)
+                        "Decryption successful: " + XUtils.encodeUTF8(decrypted)
                     );
 
                     // emit the message
@@ -688,7 +725,7 @@ export class Client extends EventEmitter {
                 const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
 
                 const hmac = xHMAC(mail, SK);
-                log.info("Calculated hmac:", XUtils.encodeHex(hmac));
+                log.info("Calculated hmac: ", XUtils.encodeHex(hmac));
 
                 // associated data
                 const AD = xConcat(
@@ -711,8 +748,7 @@ export class Client extends EventEmitter {
                 );
                 if (unsealed) {
                     log.info(
-                        "Decryption successful:",
-                        XUtils.encodeUTF8(unsealed)
+                        "Decryption successful " + XUtils.encodeUTF8(unsealed)
                     );
 
                     // emit the message
@@ -791,7 +827,7 @@ export class Client extends EventEmitter {
                 this.getMail();
                 break;
             default:
-                log.info("Unsupported notification event", msg.event);
+                log.info("Unsupported notification event " + msg.event);
                 break;
         }
     }
@@ -835,8 +871,8 @@ export class Client extends EventEmitter {
         };
 
         log.info(
-            "Keyring populated, public key:",
-            XUtils.encodeHex(this.signKeys.publicKey)
+            "Keyring populated, public key: " +
+                XUtils.encodeHex(this.signKeys.publicKey)
         );
     }
 
@@ -862,8 +898,8 @@ export class Client extends EventEmitter {
             this.conn.on("message", async (message: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(message);
 
-                log.debug(chalk.red.bold("INH"), header.toString());
-                log.debug(chalk.red.bold("IN"), msg);
+                log.debug(chalk.red.bold("INH ") + XUtils.encodeHex(header));
+                log.debug(chalk.red.bold("IN ") + JSON.stringify(msg, null, 4));
 
                 switch (msg.type) {
                     case "ping":
@@ -878,8 +914,7 @@ export class Client extends EventEmitter {
                         break;
                     case "authorized":
                         log.info(
-                            "Authenticated with userID",
-                            this.user!.userID
+                            "Authenticated with userID " + this.user!.userID
                         );
                         this.emit("authed");
                         this.postAuth();
@@ -890,7 +925,7 @@ export class Client extends EventEmitter {
                         this.handleNotify(msg as XTypes.WS.INotifyMsg);
                         break;
                     default:
-                        log.info("Unsupported message", msg.type);
+                        log.info("Unsupported message " + msg.type);
                         break;
                 }
             });
@@ -968,10 +1003,10 @@ export class Client extends EventEmitter {
     a derived SK */
     private async send(msg: any, header?: Uint8Array) {
         log.debug(
-            chalk.red.bold("OUTH"),
-            header?.toString() || XUtils.emptyHeader().toString()
+            chalk.red.bold("OUTH ") +
+                XUtils.encodeHex(header || XUtils.emptyHeader())
         );
-        log.debug(chalk.red.bold("OUT"), msg);
+        log.debug(chalk.red.bold("OUT ") + JSON.stringify(msg, null, 4));
 
         this.conn.send(XUtils.packMessage(msg, header));
     }
@@ -1064,7 +1099,7 @@ export class Client extends EventEmitter {
 
     private async negotiateOTK() {
         let otkCount = await this.getOTKCount();
-        log.info("Server reported OTK: ", otkCount);
+        log.info("Server reported OTK: " + otkCount.toString());
         const needs = xConstants.MIN_OTK_SUPPLY - otkCount;
         if (needs > 0) {
             log.info("Filling server OTK supply.");

@@ -45,12 +45,12 @@
         "@vex-chat/types-js": "^0.7.5",
         "axios": "^0.21.0",
         "chalk": "^4.1.0",
-        "electron-log": "^4.1.1",
         "knex": "^0.21.12",
         "msgpack-lite": "^0.1.26",
         "sqlite3": "^5.0.0",
         "tweetnacl": "^1.0.3",
         "uuid": "^8.3.1",
+        "winston": "^3.3.3",
         "ws": "^7.4.0"
     },
     "publishConfig": {

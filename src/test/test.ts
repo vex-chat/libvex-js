@@ -41,9 +41,9 @@ async function main() {
     });
 
     client.on("authed", async () => {
-        console.log("Client authorized.");
+        console.log("TEST", "Client authorized.");
         // print our user info
-        console.log("user", client.users.me());
+        console.log("TEST", "user", client.users.me());
 
         setInterval(async () => {
             // get the accounts we know about
@@ -64,15 +64,15 @@ async function main() {
         const sessions = await client.sessions.retrieve();
 
         for (const session of sessions) {
-            console.log(session);
-            console.log(client.sessions.verify(session));
+            console.log("TEST", session);
+            console.log("TEST", client.sessions.verify(session));
         }
         // verify the mnemonic with the other user through a secure channel
     });
 
     // listen for new messages
     client.on("message", (message: IMessage) => {
-        console.log("message", message);
+        console.log("TEST", "message", message);
     });
 
     // start the client

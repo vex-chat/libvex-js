@@ -1,10 +1,10 @@
 import { sleep } from "@extrahash/sleep";
 import { XUtils } from "@vex-chat/crypto-js";
 import { XTypes } from "@vex-chat/types-js";
-import log from "electron-log";
 import knex from "knex";
 import nacl from "tweetnacl";
 import { IMessage } from ".";
+import { log } from "./Client";
 
 export class Database {
     public ready: boolean = false;
