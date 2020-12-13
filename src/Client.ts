@@ -737,7 +737,7 @@ export class Client extends EventEmitter {
                 const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
 
                 const hmac = xHMAC(mail, SK);
-                this.log.info("Calculated hmac: ", XUtils.encodeHex(hmac));
+                this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
 
                 // associated data
                 const AD = xConcat(
