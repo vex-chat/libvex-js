@@ -28,6 +28,7 @@ export interface IMessage {
     message: string;
     direction: "incoming" | "outgoing";
     timestamp: Date;
+    decrypted: boolean;
 }
 
 export interface IKeys {
@@ -378,7 +379,7 @@ export class Client extends EventEmitter {
 
     /* Sends encrypted mail to a user. */
     private async sendMail(userID: string, msg: Uint8Array): Promise<void> {
-        this.log.info("Sending mail to" + userID);
+        this.log.info("Sending mail to " + userID);
         const session = await this.database.getSession(userID);
         if (!session) {
             this.log.info("Creating new session for " + userID);
@@ -416,6 +417,7 @@ export class Client extends EventEmitter {
                 message: XUtils.encodeUTF8(msg),
                 direction: "outgoing",
                 timestamp: new Date(Date.now()),
+                decrypted: true,
             };
             this.emit("message", message);
         }
@@ -572,6 +574,7 @@ export class Client extends EventEmitter {
             message: XUtils.encodeUTF8(message),
             direction: "outgoing",
             timestamp: new Date(Date.now()),
+            decrypted: true,
         };
         this.emit("message", emitMsg);
 
@@ -650,6 +653,19 @@ export class Client extends EventEmitter {
                             publicKey
                         )} Decryption failed.`
                     );
+
+                    // emit the message
+                    const message: IMessage = {
+                        nonce: XUtils.encodeHex(mail.nonce),
+                        sender: mail.sender,
+                        recipient: mail.recipient,
+                        message: "",
+                        direction: "incoming",
+                        timestamp: new Date(Date.now()),
+                        decrypted: false,
+                    };
+                    this.emit("message", message);
+
                     await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
@@ -679,10 +695,11 @@ export class Client extends EventEmitter {
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
                         sender: mail.sender,
-                        recipient: this.getUser().userID,
+                        recipient: mail.recipient,
                         message: XUtils.encodeUTF8(decrypted),
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
+                        decrypted: true,
                     };
                     this.emit("message", message);
 
@@ -690,6 +707,19 @@ export class Client extends EventEmitter {
                     await this.sendReceipt(mail.nonce, transmissionID);
                 } else {
                     this.log.info("Decryption failed.");
+
+                    // emit the message
+                    const message: IMessage = {
+                        nonce: XUtils.encodeHex(mail.nonce),
+                        sender: mail.sender,
+                        recipient: mail.recipient,
+                        message: "",
+                        direction: "incoming",
+                        timestamp: new Date(Date.now()),
+                        decrypted: false,
+                    };
+                    this.emit("message", message);
+
                     await this.sendReceipt(mail.nonce, transmissionID);
                 }
                 break;
@@ -767,10 +797,11 @@ export class Client extends EventEmitter {
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
                         sender: mail.sender,
-                        recipient: this.getUser().userID,
+                        recipient: mail.recipient,
                         message: XUtils.encodeUTF8(unsealed),
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
+                        decrypted: true,
                     };
                     this.emit("message", message);
 
