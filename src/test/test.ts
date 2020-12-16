@@ -46,15 +46,14 @@ async function main() {
         // print our user info
         console.log("TEST", "user", client.users.me());
 
-        // console.log("TEST", await client.servers.create("FunHouse"));
+        console.log("TEST", await client.servers.create("FunHouse"));
         const servers = await client.servers.retrieve();
 
+        console.log(servers);
+
         for (const server of servers) {
-            console.log(server);
-            console.log(
-                "TEST",
-                await client.channels.retrieve(server.serverID)
-            );
+            const channels = await client.channels.retrieve(server.serverID);
+            console.log(channels);
         }
     });
 

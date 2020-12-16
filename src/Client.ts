@@ -23,6 +23,7 @@ import winston from "winston";
 import WebSocket from "ws";
 import { Database } from "./Database";
 import { capitalize } from "./utils/capitalize";
+import { uuidToUint8 } from "./utils/uint8uuid";
 
 /**
  * IMessage is a chat message.
@@ -80,6 +81,7 @@ interface IUsers {
  */
 interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
+    group: (channelID: string, message: string) => Promise<void>;
     retrieve: (userID: string) => Promise<IMessage[]>;
 }
 
@@ -347,11 +349,17 @@ export class Client extends EventEmitter {
      */
     public messages: IMessages = {
         /**
-         * Send a chat message.
+         * Send a direct message.
          * @param userID: The userID of the user to send a message to.
          * @param message: The message to send.
          */
         send: this.sendMessage.bind(this),
+        /**
+         * Send a group message to a channel.
+         * @param channelID: The channelID of the channel to send a message to.
+         * @param message: The message to send.
+         */
+        group: this.sendGroupMessage.bind(this),
         /**
          * Gets the message history with a specific userID.
          * @param userID: The userID of the user to retrieve message history for.
@@ -642,6 +650,32 @@ export class Client extends EventEmitter {
         }
     }
 
+    private getUserList(channelID: string): Promise<IUser[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuidv4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "userlist",
+                action: "RETRIEVE",
+                data: channelID,
+            };
+            this.send(outMsg);
+        });
+    }
+
     private async markSessionVerified(sessionID: string, status = true) {
         return this.database.markSessionVerified(sessionID, status);
     }
@@ -660,6 +694,17 @@ export class Client extends EventEmitter {
     /* A thin wrapper around sendMail for string inputs. */
     private async sendMessage(userID: string, message: string) {
         await this.sendMail(userID, XUtils.decodeUTF8(message));
+    }
+
+    private async sendGroupMessage(channelID: string, message: string) {
+        const userList = await this.getUserList(channelID);
+        for (const user of userList) {
+            await this.sendMail(
+                user.userID,
+                XUtils.decodeUTF8(message),
+                uuidToUint8(channelID)
+            );
+        }
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
@@ -689,7 +734,11 @@ export class Client extends EventEmitter {
     }
 
     /* Sends encrypted mail to a user. */
-    private async sendMail(userID: string, msg: Uint8Array): Promise<void> {
+    private async sendMail(
+        userID: string,
+        msg: Uint8Array,
+        group?: Uint8Array
+    ): Promise<void> {
         this.log.info("Sending mail to " + userID);
         const session = await this.database.getSession(userID);
         if (!session) {
@@ -707,6 +756,7 @@ export class Client extends EventEmitter {
                 nonce,
                 extra,
                 sender: this.user!.userID,
+                group,
             };
 
             const msgb: XTypes.WS.IResourceMsg = {

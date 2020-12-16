@@ -1,12 +1,12 @@
 import {
     Client,
+    IChannel,
     IClientOptions,
     IKeys,
     IMessage,
+    IServer,
     ISession,
     IUser,
-    IChannel,
-    IServer,
 } from "./Client";
 
 export {
