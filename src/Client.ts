@@ -691,6 +691,7 @@ export class Client extends EventEmitter {
                     }
                 }
             };
+            console.log(params);
             this.conn.on("message", callback);
             const outMsg: XTypes.WS.IResourceMsg = {
                 transmissionID,

@@ -44,13 +44,24 @@ async function main() {
     client.on("authed", async () => {
         await client.servers.create("hello");
 
+        const familiars = await client.users.familiars();
         const servers = await client.servers.retrieve();
         for (const server of servers) {
             const channels = await client.channels.retrieve(server.serverID);
             for (const channel of channels) {
                 await client.messages.group(channel.channelID, "Hello world!");
             }
+            for (const familiar of familiars) {
+                const perms = await client.permissions.create({
+                    userID: familiar.userID,
+                    resourceType: "server",
+                    resourceID: server.serverID,
+                });
+                console.log(perms);
+            }
         }
+
+        console.log(await client.permissions.retrieve());
     });
 
     // listen for new messages
