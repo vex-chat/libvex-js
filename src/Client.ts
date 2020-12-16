@@ -47,8 +47,7 @@ export interface IKeys {
 }
 
 /**
- * IKeys are a pair of ed25519 public and private keys,
- * encoded as hex strings.
+ * IUser is a single user on the vex platform.
  */
 export interface IUser extends XTypes.SQL.IUser {}
 
@@ -56,6 +55,16 @@ export interface IUser extends XTypes.SQL.IUser {}
  * ISession is an end to end encryption session with another peer.
  */
 export interface ISession extends XTypes.SQL.ISession {}
+
+/**
+ * IChannel is a chat channel on a server.
+ */
+export interface IChannel extends XTypes.SQL.IChannel {}
+
+/**
+ * IServer is a single chat server.
+ */
+export interface IServer extends XTypes.SQL.IServer {}
 
 /**
  * @ignore
