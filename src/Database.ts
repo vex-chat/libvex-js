@@ -218,6 +218,7 @@ export class Database {
                 table.string("nonce").primary();
                 table.string("sender").index();
                 table.string("recipient").index();
+                table.string("group").index();
                 table.string("message");
                 table.string("direction");
                 table.date("timestamp");
