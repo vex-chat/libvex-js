@@ -18,12 +18,11 @@ import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
 import nacl from "tweetnacl";
-import { parse as uuidParse, v4 as uuidv4 } from "uuid";
+import * as uuid from "uuid";
 import winston from "winston";
 import WebSocket from "ws";
 import { Database } from "./Database";
 import { capitalize } from "./utils/capitalize";
-import * as uuid from "uuid";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
 /**
@@ -39,6 +38,11 @@ export interface IMessage {
     decrypted: boolean;
     group?: string;
 }
+
+/**
+ * IPermission is a permission to a resource.
+ */
+export interface IPermission extends XTypes.SQL.IPermission {}
 
 /**
  * IKeys are a pair of ed25519 public and private keys,
@@ -93,6 +97,18 @@ interface IMessages {
 interface IServers {
     retrieve: () => Promise<XTypes.SQL.IServer[]>;
     create: (name: string) => Promise<XTypes.SQL.IServer>;
+}
+
+/**
+ * @ignore
+ */
+interface IPermissions {
+    retrieve: () => Promise<XTypes.SQL.IPermission[]>;
+    create: (params: {
+        userID: string;
+        resourceType: string;
+        resourceID: string;
+    }) => Promise<XTypes.SQL.IPermission>;
 }
 
 /**
@@ -344,6 +360,11 @@ export class Client extends EventEmitter {
          * @returns - The list of IUser objects.
          */
         familiars: this.getFamiliars.bind(this),
+    };
+
+    public permissions: IPermissions = {
+        retrieve: this.getPermissions.bind(this),
+        create: this.createPermission.bind(this),
     };
 
     /**
@@ -616,7 +637,7 @@ export class Client extends EventEmitter {
             const signKey = XUtils.encodeHex(this.signKeys.publicKey);
             const signed = XUtils.encodeHex(
                 nacl.sign(
-                    Uint8Array.from(uuidParse(regKey.key)),
+                    Uint8Array.from(uuid.parse(regKey.key)),
                     this.signKeys.secretKey
                 )
             );
@@ -652,9 +673,64 @@ export class Client extends EventEmitter {
         }
     }
 
+    private createPermission(params: {
+        userID: string;
+        resourceType: string;
+        resourceID: string;
+    }): Promise<XTypes.SQL.IPermission> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "permissions",
+                action: "CREATE",
+                data: params,
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private getPermissions(): Promise<XTypes.SQL.IPermission[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "permissions",
+                action: "RETRIEVE",
+            };
+            this.send(outMsg);
+        });
+    }
+
     private getUserList(channelID: string): Promise<IUser[]> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -711,7 +787,7 @@ export class Client extends EventEmitter {
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -762,7 +838,7 @@ export class Client extends EventEmitter {
             };
 
             const msgb: XTypes.WS.IResourceMsg = {
-                transmissionID: uuidv4(),
+                transmissionID: uuid.v4(),
                 type: "resource",
                 resourceType: "mail",
                 action: "CREATE",
@@ -793,7 +869,7 @@ export class Client extends EventEmitter {
 
     private async getServerList(): Promise<XTypes.SQL.IServer[]> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -821,7 +897,7 @@ export class Client extends EventEmitter {
         serverID: string
     ): Promise<XTypes.SQL.IChannel> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -849,7 +925,7 @@ export class Client extends EventEmitter {
         serverID: string
     ): Promise<XTypes.SQL.IChannel[]> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -907,7 +983,7 @@ export class Client extends EventEmitter {
     /* Retrieves the current list of users you have access to. */
     private getFamiliars(): Promise<XTypes.SQL.IUser[]> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -1009,7 +1085,7 @@ export class Client extends EventEmitter {
         this.log.info("Generated hmac: " + XUtils.encodeHex(hmac));
 
         const msg: XTypes.WS.IResourceMsg = {
-            transmissionID: uuidv4(),
+            transmissionID: uuid.v4(),
             type: "resource",
             resourceType: "mail",
             action: "CREATE",
@@ -1040,7 +1116,7 @@ export class Client extends EventEmitter {
         this.log.info("Saving new session.");
         const sessionEntry: XTypes.SQL.ISession = {
             verified: false,
-            sessionID: uuidv4(),
+            sessionID: uuid.v4(),
             userID,
             mode: "initiator",
             SK: XUtils.encodeHex(SK),
@@ -1274,7 +1350,7 @@ export class Client extends EventEmitter {
                     // save session
                     const newSession: XTypes.SQL.ISession = {
                         verified: false,
-                        sessionID: uuidv4(),
+                        sessionID: uuid.v4(),
                         userID: mail.sender,
                         mode: "receiver",
                         SK: XUtils.encodeHex(SK),
@@ -1464,7 +1540,7 @@ export class Client extends EventEmitter {
         }
         this.getting = true;
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -1531,7 +1607,7 @@ export class Client extends EventEmitter {
         userID: string
     ): Promise<XTypes.WS.IKeyBundle> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -1557,7 +1633,7 @@ export class Client extends EventEmitter {
 
     private async getOTKCount(): Promise<number> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -1581,7 +1657,7 @@ export class Client extends EventEmitter {
 
     private async submitOTK(): Promise<void> {
         return new Promise(async (res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMessage: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMessage);
                 if (msg.transmissionID === transmissionID) {
@@ -1674,6 +1750,6 @@ export class Client extends EventEmitter {
             }
         }
         this.setAlive(false);
-        this.send({ transmissionID: uuidv4(), type: "ping" });
+        this.send({ transmissionID: uuid.v4(), type: "ping" });
     }
 }
