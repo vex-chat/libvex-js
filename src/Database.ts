@@ -261,6 +261,10 @@ export class Database extends EventEmitter {
                     table.string("signature");
                 });
             }
+
+            // make test read
+            await this.db.from("preKeys").select();
+
             this.ready = true;
             this.emit("ready");
         } catch (err) {
