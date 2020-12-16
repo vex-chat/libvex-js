@@ -42,24 +42,20 @@ async function main() {
     });
 
     client.on("authed", async () => {
-        console.log("TEST", "Client authorized.");
-        // print our user info
-        console.log("TEST", "user", client.users.me());
+        await client.servers.create("hello");
 
-        console.log("TEST", await client.servers.create("FunHouse"));
         const servers = await client.servers.retrieve();
-
-        console.log(servers);
-
         for (const server of servers) {
             const channels = await client.channels.retrieve(server.serverID);
-            console.log(channels);
+            for (const channel of channels) {
+                await client.messages.group(channel.channelID, "Hello world!");
+            }
         }
     });
 
     // listen for new messages
     client.on("message", (message: IMessage) => {
-        console.log("TEST", "message", message);
+        console.log("IN", "message", message);
     });
 
     // start the client

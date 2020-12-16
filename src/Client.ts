@@ -23,6 +23,7 @@ import winston from "winston";
 import WebSocket from "ws";
 import { Database } from "./Database";
 import { capitalize } from "./utils/capitalize";
+import * as uuid from "uuid";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
 /**
@@ -744,7 +745,7 @@ export class Client extends EventEmitter {
         const session = await this.database.getSession(userID);
         if (!session) {
             this.log.info("Creating new session for " + userID);
-            await this.createSession(userID, msg);
+            await this.createSession(userID, msg, group);
         } else {
             const nonce = xMakeNonce();
             const cipher = nacl.secretbox(msg, nonce, session.SK);
@@ -780,7 +781,7 @@ export class Client extends EventEmitter {
                 direction: "outgoing",
                 timestamp: new Date(Date.now()),
                 decrypted: true,
-                group: mail.group ? XUtils.encodeHex(mail.group) : undefined,
+                group: mail.group ? uuid.stringify(mail.group) : undefined,
             };
             this.emit("message", message);
         }
@@ -929,7 +930,11 @@ export class Client extends EventEmitter {
         });
     }
 
-    private async createSession(userID: string, message: Uint8Array) {
+    private async createSession(
+        userID: string,
+        message: Uint8Array,
+        group?: Uint8Array
+    ) {
         let keyBundle: XTypes.WS.IKeyBundle;
 
         this.log.info("Requesting key bundle.");
@@ -997,6 +1002,7 @@ export class Client extends EventEmitter {
             nonce,
             extra,
             sender: this.user!.userID,
+            group,
         };
 
         const hmac = xHMAC(mail, SK);
@@ -1019,7 +1025,7 @@ export class Client extends EventEmitter {
             direction: "outgoing",
             timestamp: new Date(Date.now()),
             decrypted: true,
-            group: mail.group ? XUtils.encodeHex(mail.group) : undefined,
+            group: mail.group ? uuid.stringify(mail.group) : undefined,
         };
         this.emit("message", emitMsg);
 
@@ -1109,7 +1115,7 @@ export class Client extends EventEmitter {
                         timestamp: new Date(Date.now()),
                         decrypted: false,
                         group: mail.group
-                            ? XUtils.encodeHex(mail.group)
+                            ? uuid.stringify(mail.group)
                             : undefined,
                     };
                     this.emit("message", message);
@@ -1149,7 +1155,7 @@ export class Client extends EventEmitter {
                         timestamp: new Date(Date.now()),
                         decrypted: true,
                         group: mail.group
-                            ? XUtils.encodeHex(mail.group)
+                            ? uuid.stringify(mail.group)
                             : undefined,
                     };
                     this.emit("message", message);
@@ -1169,7 +1175,7 @@ export class Client extends EventEmitter {
                         timestamp: new Date(Date.now()),
                         decrypted: false,
                         group: mail.group
-                            ? XUtils.encodeHex(mail.group)
+                            ? uuid.stringify(mail.group)
                             : undefined,
                     };
                     this.emit("message", message);
@@ -1257,7 +1263,7 @@ export class Client extends EventEmitter {
                         timestamp: new Date(Date.now()),
                         decrypted: true,
                         group: mail.group
-                            ? XUtils.encodeHex(mail.group)
+                            ? uuid.stringify(mail.group)
                             : undefined,
                     };
                     this.emit("message", message);
