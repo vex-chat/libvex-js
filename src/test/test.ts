@@ -1,6 +1,4 @@
 // tslint:disable: prefer-const
-import { XUtils } from "@vex-chat/crypto-js";
-import nacl from "tweetnacl";
 import { Client, IMessage } from "..";
 import { loadEnv } from "./loadEnv";
 
@@ -17,7 +15,7 @@ async function main() {
     const { PK } = process.env;
 
     const client = new Client(PK, {
-        logLevel: "debug",
+        logLevel: "error",
         dbFolder: "databases",
     });
 
@@ -48,29 +46,16 @@ async function main() {
         // print our user info
         console.log("TEST", "user", client.users.me());
 
-        setInterval(async () => {
-            // get the accounts we know about
-            const familiars = await client.users.familiars();
-            // send each of them a message
-            for (const user of familiars) {
-                client.messages.send(
-                    user.userID,
-                    Buffer.from(nacl.randomBytes(8)).toString("base64")
-                );
+        // console.log("TEST", await client.servers.create("FunHouse"));
+        const servers = await client.servers.retrieve();
 
-                // message history
-                const history = await client.messages.retrieve(user.userID);
-            }
-        }, 1000 * 10);
-
-        // get all of our sessions
-        const sessions = await client.sessions.retrieve();
-
-        for (const session of sessions) {
-            console.log("TEST", session);
-            console.log("TEST", client.sessions.verify(session));
+        for (const server of servers) {
+            console.log(server);
+            console.log(
+                "TEST",
+                await client.channels.retrieve(server.serverID)
+            );
         }
-        // verify the mnemonic with the other user through a secure channel
     });
 
     // listen for new messages

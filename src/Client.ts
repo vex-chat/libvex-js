@@ -77,6 +77,22 @@ interface IMessages {
 /**
  * @ignore
  */
+interface IServers {
+    retrieve: () => Promise<XTypes.SQL.IServer[]>;
+    create: (name: string) => Promise<XTypes.SQL.IServer>;
+}
+
+/**
+ * @ignore
+ */
+interface IChannels {
+    retrieve: (serverID: string) => Promise<XTypes.SQL.IChannel[]>;
+    create: (name: string, serverID: string) => Promise<XTypes.SQL.IChannel>;
+}
+
+/**
+ * @ignore
+ */
 interface ISessions {
     retrieve: () => Promise<XTypes.SQL.ISession[]>;
     verify: (session: XTypes.SQL.ISession) => string;
@@ -364,6 +380,16 @@ export class Client extends EventEmitter {
         markVerified: this.markSessionVerified.bind(this),
     };
 
+    public servers: IServers = {
+        retrieve: this.getServerList.bind(this),
+        create: this.createServer.bind(this),
+    };
+
+    public channels: IChannels = {
+        retrieve: this.getChannelList.bind(this),
+        create: this.createChannel.bind(this),
+    };
+
     /**
      * This is true if the client has ever been initialized. You can only initialize
      * a client once.
@@ -627,6 +653,32 @@ export class Client extends EventEmitter {
         await this.sendMail(userID, XUtils.decodeUTF8(message));
     }
 
+    private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuidv4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "servers",
+                action: "CREATE",
+                data: name,
+            };
+            this.send(outMsg);
+        });
+    }
+
     /* Sends encrypted mail to a user. */
     private async sendMail(userID: string, msg: Uint8Array): Promise<void> {
         this.log.info("Sending mail to " + userID);
@@ -675,6 +727,88 @@ export class Client extends EventEmitter {
 
     private async getSessionList() {
         return this.database.getSessions();
+    }
+
+    private async getServerList(): Promise<XTypes.SQL.IServer[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuidv4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "servers",
+                action: "RETRIEVE",
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private async createChannel(
+        name: string,
+        serverID: string
+    ): Promise<XTypes.SQL.IChannel> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuidv4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "channels",
+                action: "CREATE",
+                data: { name, serverID },
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private async getChannelList(
+        serverID: string
+    ): Promise<XTypes.SQL.IChannel[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuidv4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "channels",
+                action: "RETRIEVE",
+                data: serverID,
+            };
+            this.send(outMsg);
+        });
     }
 
     /* Get the currently logged in user. You cannot call this until 
