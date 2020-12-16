@@ -503,6 +503,11 @@ export class Client extends EventEmitter {
 
         this.database = new Database(this.dbPath);
 
+        this.database.on("error", (error) => {
+            this.close(true);
+            this.emit("disconnect");
+        });
+
         // we want to initialize this later with login()
         this.conn = new WebSocket("ws://localhost:1234");
         // silence the error for connecting to junk ws

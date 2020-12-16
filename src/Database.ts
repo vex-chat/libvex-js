@@ -1,6 +1,7 @@
 import { sleep } from "@extrahash/sleep";
 import { XUtils } from "@vex-chat/crypto-js";
 import { XTypes } from "@vex-chat/types-js";
+import { EventEmitter } from "events";
 import knex from "knex";
 import nacl from "tweetnacl";
 import { IMessage } from ".";
@@ -8,12 +9,14 @@ import { IMessage } from ".";
 /**
  * @hidden
  */
-export class Database {
+export class Database extends EventEmitter {
     public ready: boolean = false;
     private dbPath: string;
     private db: knex<any, unknown[]>;
 
     constructor(dbPath: string) {
+        super();
+
         this.dbPath = dbPath;
         this.db = knex({
             client: "sqlite3",
@@ -213,50 +216,55 @@ export class Database {
     }
 
     private async init() {
-        if (!(await this.db.schema.hasTable("messages"))) {
-            await this.db.schema.createTable("messages", (table) => {
-                table.string("nonce").primary();
-                table.string("sender").index();
-                table.string("recipient").index();
-                table.string("group").index();
-                table.string("message");
-                table.string("direction");
-                table.date("timestamp");
-                table.boolean("decrypted");
-            });
+        try {
+            if (!(await this.db.schema.hasTable("messages"))) {
+                await this.db.schema.createTable("messages", (table) => {
+                    table.string("nonce").primary();
+                    table.string("sender").index();
+                    table.string("recipient").index();
+                    table.string("group").index();
+                    table.string("message");
+                    table.string("direction");
+                    table.date("timestamp");
+                    table.boolean("decrypted");
+                });
+            }
+            if (!(await this.db.schema.hasTable("sessions"))) {
+                await this.db.schema.createTable("sessions", (table) => {
+                    table.string("sessionID").primary();
+                    table.string("userID");
+                    table.string("SK").unique();
+                    table.string("publicKey");
+                    table.string("fingerprint");
+                    table.string("mode");
+                    table.date("lastUsed");
+                    table.boolean("verified");
+                });
+            }
+            if (!(await this.db.schema.hasTable("preKeys"))) {
+                await this.db.schema.createTable("preKeys", (table) => {
+                    table.increments("index");
+                    table.string("keyID").unique();
+                    table.string("userID");
+                    table.string("privateKey");
+                    table.string("publicKey");
+                    table.string("signature");
+                });
+            }
+            if (!(await this.db.schema.hasTable("oneTimeKeys"))) {
+                await this.db.schema.createTable("oneTimeKeys", (table) => {
+                    table.increments("index");
+                    table.string("keyID").unique();
+                    table.string("userID");
+                    table.string("privateKey");
+                    table.string("publicKey");
+                    table.string("signature");
+                });
+            }
+            this.ready = true;
+            this.emit("ready");
+        } catch (err) {
+            this.emit("error", err);
         }
-        if (!(await this.db.schema.hasTable("sessions"))) {
-            await this.db.schema.createTable("sessions", (table) => {
-                table.string("sessionID").primary();
-                table.string("userID");
-                table.string("SK").unique();
-                table.string("publicKey");
-                table.string("fingerprint");
-                table.string("mode");
-                table.date("lastUsed");
-                table.boolean("verified");
-            });
-        }
-        if (!(await this.db.schema.hasTable("preKeys"))) {
-            await this.db.schema.createTable("preKeys", (table) => {
-                table.increments("index");
-                table.string("keyID").unique();
-                table.string("userID");
-                table.string("privateKey");
-                table.string("publicKey");
-                table.string("signature");
-            });
-        }
-        if (!(await this.db.schema.hasTable("oneTimeKeys"))) {
-            await this.db.schema.createTable("oneTimeKeys", (table) => {
-                table.increments("index");
-                table.string("keyID").unique();
-                table.string("userID");
-                table.string("privateKey");
-                table.string("publicKey");
-                table.string("signature");
-            });
-        }
-        this.ready = true;
     }
 }
