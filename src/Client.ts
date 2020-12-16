@@ -780,6 +780,7 @@ export class Client extends EventEmitter {
                 direction: "outgoing",
                 timestamp: new Date(Date.now()),
                 decrypted: true,
+                group: mail.group ? XUtils.encodeHex(mail.group) : undefined,
             };
             this.emit("message", message);
         }
@@ -1018,6 +1019,7 @@ export class Client extends EventEmitter {
             direction: "outgoing",
             timestamp: new Date(Date.now()),
             decrypted: true,
+            group: mail.group ? XUtils.encodeHex(mail.group) : undefined,
         };
         this.emit("message", emitMsg);
 
@@ -1106,6 +1108,9 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: false,
+                        group: mail.group
+                            ? XUtils.encodeHex(mail.group)
+                            : undefined,
                     };
                     this.emit("message", message);
 
@@ -1143,6 +1148,9 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: true,
+                        group: mail.group
+                            ? XUtils.encodeHex(mail.group)
+                            : undefined,
                     };
                     this.emit("message", message);
 
@@ -1160,6 +1168,9 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: false,
+                        group: mail.group
+                            ? XUtils.encodeHex(mail.group)
+                            : undefined,
                     };
                     this.emit("message", message);
 
@@ -1245,6 +1256,9 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: true,
+                        group: mail.group
+                            ? XUtils.encodeHex(mail.group)
+                            : undefined,
                     };
                     this.emit("message", message);
 
