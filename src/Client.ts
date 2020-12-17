@@ -835,7 +835,7 @@ export class Client extends EventEmitter {
         const session = await this.database.getSession(userID);
         if (!session) {
             this.log.info("Creating new session for " + userID);
-            await this.createSession(userID, msg, group);
+            await this.createSession(userID, msg, group, mailID);
         } else {
             const nonce = xMakeNonce();
             const cipher = nacl.secretbox(msg, nonce, session.SK);
@@ -1025,7 +1025,10 @@ export class Client extends EventEmitter {
     private async createSession(
         userID: string,
         message: Uint8Array,
-        group: Uint8Array | null
+        group: Uint8Array | null,
+        /* this is passed through if the first message is 
+        part of a group message */
+        mailID?: string
     ) {
         let keyBundle: XTypes.WS.IKeyBundle;
 
@@ -1089,7 +1092,7 @@ export class Client extends EventEmitter {
 
         const mail: XTypes.WS.IMail = {
             mailType: XTypes.WS.MailType.initial,
-            mailID: uuid.v4(),
+            mailID: mailID || uuid.v4(),
             recipient: userID,
             cipher,
             nonce,
