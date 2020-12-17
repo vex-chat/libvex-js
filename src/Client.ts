@@ -778,7 +778,7 @@ export class Client extends EventEmitter {
 
     /* A thin wrapper around sendMail for string inputs. */
     private async sendMessage(userID: string, message: string) {
-        await this.sendMail(userID, XUtils.decodeUTF8(message));
+        await this.sendMail(userID, XUtils.decodeUTF8(message), null);
     }
 
     private async sendGroupMessage(channelID: string, message: string) {
@@ -822,7 +822,7 @@ export class Client extends EventEmitter {
     private async sendMail(
         userID: string,
         msg: Uint8Array,
-        group?: Uint8Array
+        group: Uint8Array | null
     ): Promise<void> {
         this.log.info("Sending mail to " + userID);
         const session = await this.database.getSession(userID);
@@ -835,8 +835,8 @@ export class Client extends EventEmitter {
             const extra = session.publicKey;
 
             const mail: XTypes.WS.IMail = {
-                mailID: uuid.v4(),
                 mailType: XTypes.WS.MailType.subsequent,
+                mailID: uuid.v4(),
                 recipient: userID,
                 cipher,
                 nonce,
@@ -1018,7 +1018,7 @@ export class Client extends EventEmitter {
     private async createSession(
         userID: string,
         message: Uint8Array,
-        group?: Uint8Array
+        group: Uint8Array | null
     ) {
         let keyBundle: XTypes.WS.IKeyBundle;
 
@@ -1093,6 +1093,8 @@ export class Client extends EventEmitter {
 
         const hmac = xHMAC(mail, SK);
         this.log.info("Generated hmac: " + XUtils.encodeHex(hmac));
+
+        console.log(mail);
 
         const msg: XTypes.WS.IResourceMsg = {
             transmissionID: uuid.v4(),
@@ -1318,6 +1320,7 @@ export class Client extends EventEmitter {
 
                 const hmac = xHMAC(mail, SK);
                 this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
+                console.log(mail);
 
                 // associated data
                 const AD = xConcat(
