@@ -783,11 +783,13 @@ export class Client extends EventEmitter {
 
     private async sendGroupMessage(channelID: string, message: string) {
         const userList = await this.getUserList(channelID);
+        const messageID = uuid.v4();
         for (const user of userList) {
             await this.sendMail(
                 user.userID,
                 XUtils.decodeUTF8(message),
-                uuidToUint8(channelID)
+                uuidToUint8(channelID),
+                messageID
             );
         }
     }
@@ -822,7 +824,8 @@ export class Client extends EventEmitter {
     private async sendMail(
         userID: string,
         msg: Uint8Array,
-        group: Uint8Array | null
+        group: Uint8Array | null,
+        mailID?: string
     ): Promise<void> {
         this.log.info("Sending mail to " + userID);
         const session = await this.database.getSession(userID);
@@ -836,7 +839,7 @@ export class Client extends EventEmitter {
 
             const mail: XTypes.WS.IMail = {
                 mailType: XTypes.WS.MailType.subsequent,
-                mailID: uuid.v4(),
+                mailID: mailID || uuid.v4(),
                 recipient: userID,
                 cipher,
                 nonce,
