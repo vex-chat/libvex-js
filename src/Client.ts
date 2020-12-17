@@ -195,6 +195,21 @@ export declare interface Client {
     on(event: "message", callback: (message: IMessage) => void): this;
 
     /**
+     * This is emitted when the user is granted a new permission.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("permission", (perm: IPermission) => {
+     *       console.log(perm);
+     *   });
+     * ```
+     * @event
+     */
+    on(event: "permission", callback: (permission: IPermission) => void): this;
+
+    /**
      * This is emitted for a new encryption session being created with
      * a specific user.
      *
@@ -202,8 +217,8 @@ export declare interface Client {
      *
      * ```ts
      *
-     *   client.on("message", (msg: IMessage, user: IUser) => {
-     *       console.log(message);
+     *   client.on("session", (session: ISession, user: IUser) => {
+     *       console.log(session);
      *       console.log(user);
      *   });
      * ```
@@ -697,7 +712,6 @@ export class Client extends EventEmitter {
                     }
                 }
             };
-            console.log(params);
             this.conn.on("message", callback);
             const outMsg: XTypes.WS.IResourceMsg = {
                 transmissionID,
@@ -1445,6 +1459,9 @@ export class Client extends EventEmitter {
                 this.log.info("Server has informed us of new mail.");
                 this.getMail();
                 break;
+            case "permission":
+                this.emit("permission", msg.data as IPermission);
+                break;
             default:
                 this.log.info("Unsupported notification event " + msg.event);
                 break;
@@ -1526,6 +1543,9 @@ export class Client extends EventEmitter {
                         this.postAuth();
                         break;
                     case "success":
+                        break;
+                    case "error":
+                        console.error(msg);
                         break;
                     case "notify":
                         this.handleNotify(msg as XTypes.WS.INotifyMsg);
