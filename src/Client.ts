@@ -834,6 +834,7 @@ export class Client extends EventEmitter {
             const extra = session.publicKey;
 
             const mail: XTypes.WS.IMail = {
+                mailID: uuid.v4(),
                 mailType: XTypes.WS.MailType.subsequent,
                 recipient: userID,
                 cipher,
@@ -1079,6 +1080,7 @@ export class Client extends EventEmitter {
 
         const mail: XTypes.WS.IMail = {
             mailType: XTypes.WS.MailType.initial,
+            mailID: uuid.v4(),
             recipient: userID,
             cipher,
             nonce,

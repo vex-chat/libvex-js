@@ -223,6 +223,7 @@ export class Database extends EventEmitter {
                     table.string("sender").index();
                     table.string("recipient").index();
                     table.string("group").index();
+                    table.string("mailID");
                     table.string("message");
                     table.string("direction");
                     table.date("timestamp");
