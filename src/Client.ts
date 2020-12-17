@@ -30,6 +30,7 @@ import { uuidToUint8 } from "./utils/uint8uuid";
  */
 export interface IMessage {
     nonce: string;
+    mailID: string;
     sender: string;
     recipient: string;
     message: string;
@@ -857,6 +858,7 @@ export class Client extends EventEmitter {
             this.send(msgb, hmac);
 
             const message: IMessage = {
+                mailID: mail.mailID,
                 sender: mail.sender,
                 recipient: mail.recipient,
                 nonce: XUtils.encodeHex(mail.nonce),
@@ -1103,6 +1105,7 @@ export class Client extends EventEmitter {
         // emit the message
         const emitMsg: IMessage = {
             nonce: XUtils.encodeHex(mail.nonce),
+            mailID: mail.mailID,
             sender: mail.sender,
             recipient: mail.recipient,
             message: XUtils.encodeUTF8(message),
@@ -1192,6 +1195,7 @@ export class Client extends EventEmitter {
                     // emit the message
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
                         sender: mail.sender,
                         recipient: mail.recipient,
                         message: "",
@@ -1232,6 +1236,7 @@ export class Client extends EventEmitter {
                     // emit the message
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
                         sender: mail.sender,
                         recipient: mail.recipient,
                         message: XUtils.encodeUTF8(decrypted),
@@ -1252,6 +1257,7 @@ export class Client extends EventEmitter {
                     // emit the message
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
                         sender: mail.sender,
                         recipient: mail.recipient,
                         message: "",
@@ -1340,6 +1346,7 @@ export class Client extends EventEmitter {
                     // emit the message
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
                         sender: mail.sender,
                         recipient: mail.recipient,
                         message: XUtils.encodeUTF8(unsealed),
