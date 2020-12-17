@@ -784,14 +784,18 @@ export class Client extends EventEmitter {
     private async sendGroupMessage(channelID: string, message: string) {
         const userList = await this.getUserList(channelID);
         const messageID = uuid.v4();
+        const promises: Array<Promise<void>> = [];
         for (const user of userList) {
-            await this.sendMail(
-                user.userID,
-                XUtils.decodeUTF8(message),
-                uuidToUint8(channelID),
-                messageID
+            promises.push(
+                this.sendMail(
+                    user.userID,
+                    XUtils.decodeUTF8(message),
+                    uuidToUint8(channelID),
+                    messageID
+                )
             );
         }
+        Promise.all(promises);
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
