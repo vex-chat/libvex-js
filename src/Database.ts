@@ -68,7 +68,7 @@ export class Database extends EventEmitter {
 
         // i'm not sure why i have to do this, these are
         // coming through as strings
-        return messages.map((row) => {
+        return messages.reverse().map((row) => {
             row.timestamp = new Date(row.timestamp);
             return row;
         });
