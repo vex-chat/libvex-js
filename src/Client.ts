@@ -800,7 +800,7 @@ export class Client extends EventEmitter {
         message: string
     ): Promise<void[]> {
         const userList = await this.getUserList(channelID);
-        const messageID = uuid.v4();
+        const mailID = uuid.v4();
         const promises: Array<Promise<void>> = [];
         for (const user of userList) {
             promises.push(
@@ -808,12 +808,13 @@ export class Client extends EventEmitter {
                     user.userID,
                     XUtils.decodeUTF8(message),
                     uuidToUint8(channelID),
-                    messageID
+                    mailID
                 )
             );
         }
 
-        return Promise.all(promises).catch((err) => {
+        return Promise.all(promises).catch(async (err) => {
+            await this.database.deleteMessage(mailID);
             throw err;
         });
     }
@@ -898,13 +899,14 @@ export class Client extends EventEmitter {
         this.emit("message", outMsg);
 
         await new Promise((res, rej) => {
-            const callback = (packedMsg: Buffer) => {
+            const callback = async (packedMsg: Buffer) => {
                 const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
                 if (receivedMsg.transmissionID === msgb.transmissionID) {
                     this.conn.off("message", callback);
                     if (receivedMsg.type === "success") {
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
+                        await this.database.deleteMessage(outMsg.mailID);
                         rej({
                             error: receivedMsg,
                             message: outMsg,

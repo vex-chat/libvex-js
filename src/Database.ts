@@ -36,6 +36,13 @@ export class Database extends EventEmitter {
         await this.db("messages").insert(message);
     }
 
+    public async deleteMessage(mailID: string) {
+        await this.db
+            .from("messages")
+            .where({ mailID })
+            .del();
+    }
+
     public async markSessionVerified(sessionID: string, status = true) {
         await this.db("sessions")
             .where({ sessionID })
