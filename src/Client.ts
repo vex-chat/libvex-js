@@ -23,6 +23,7 @@ import winston from "winston";
 import WebSocket from "ws";
 import { Database } from "./Database";
 import { capitalize } from "./utils/capitalize";
+import { createLogger } from "./utils/createLogger";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
 /**
@@ -481,29 +482,7 @@ export class Client extends EventEmitter {
     constructor(privateKey?: string, options?: IClientOptions) {
         super();
 
-        this.log = winston.createLogger({
-            level: options?.logLevel || "error",
-            format: winston.format.combine(
-                winston.format.timestamp({
-                    format: "YYYY-MM-DD HH:mm:ss",
-                }),
-                winston.format.errors({ stack: true }),
-                winston.format.splat(),
-                winston.format.json()
-            ),
-            defaultMeta: { service: "vex-js" },
-            transports: [
-                //
-                // - Write all logs with level `error` and below to `error.log`
-                // - Write all logs with level `info` and below to `combined.log`
-                //
-                new winston.transports.File({
-                    filename: "error.log",
-                    level: "error",
-                }),
-                new winston.transports.File({ filename: "combined.log" }),
-            ],
-        });
+        this.log = createLogger("client", options);
 
         this.signKeys = privateKey
             ? nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(privateKey))
@@ -517,7 +496,7 @@ export class Client extends EventEmitter {
             ? options?.dbFolder + "/" + dbFileName
             : dbFileName;
 
-        this.database = new Database(this.dbPath);
+        this.database = new Database(this.dbPath, options);
 
         this.database.on("error", (error) => {
             this.close(true);
@@ -529,21 +508,6 @@ export class Client extends EventEmitter {
         // silence the error for connecting to junk ws
         // tslint:disable-next-line: no-empty
         this.conn.onerror = () => {};
-
-        //
-        // If we're not in production then log to the `console` with the format:
-        // `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-        //
-        if (process.env.NODE_ENV !== "production") {
-            this.log.add(
-                new winston.transports.Console({
-                    format: winston.format.combine(
-                        winston.format.colorize(),
-                        winston.format.simple()
-                    ),
-                })
-            );
-        }
     }
 
     /**
@@ -792,7 +756,17 @@ export class Client extends EventEmitter {
 
     /* A thin wrapper around sendMail for string inputs. */
     private async sendMessage(userID: string, message: string): Promise<void> {
-        await this.sendMail(userID, XUtils.decodeUTF8(message), null);
+        try {
+            await this.sendMail(userID, XUtils.decodeUTF8(message), null);
+        } catch (err) {
+            this.log.error(
+                "Message " + (err.message?.mailID || "") + " threw exception."
+            );
+            if (err.message?.mailID) {
+                await this.database.deleteMessage(err.message.mailID);
+            }
+            throw err;
+        }
     }
 
     private async sendGroupMessage(
@@ -814,6 +788,7 @@ export class Client extends EventEmitter {
         }
 
         return Promise.all(promises).catch(async (err) => {
+            this.log.error("Message " + mailID + " threw exception.");
             await this.database.deleteMessage(mailID);
             throw err;
         });
@@ -906,7 +881,6 @@ export class Client extends EventEmitter {
                     if (receivedMsg.type === "success") {
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
-                        await this.database.deleteMessage(outMsg.mailID);
                         rej({
                             error: receivedMsg,
                             message: outMsg,

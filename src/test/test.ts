@@ -17,7 +17,7 @@ async function main() {
     const { PK } = process.env;
 
     const client = new Client(PK, {
-        logLevel: "warn",
+        logLevel: "info",
         dbFolder: "databases",
     });
 
@@ -49,14 +49,23 @@ async function main() {
 
         const channels = await client.channels.retrieve(server.serverID);
         const [general] = channels;
+        console.log("history", await client.messages.retrieve(me.userID));
 
         while (true) {
             try {
                 console.log("awaiting");
+                // await client.messages.send(me.userID, "shorter words");
+                // await client.messages.send(me.userID, words);
+                await client.messages.group(general.channelID, "hi");
+                await client.messages.group(general.channelID, "hi");
                 await client.messages.group(general.channelID, words);
+                await client.messages.group(general.channelID, "hi");
+                await client.messages.group(general.channelID, "hi");
             } catch (err) {
                 console.log("REACHED CATCH BLOCK");
             }
+
+            console.log("history", await client.messages.retrieve(me.userID));
             console.log("sleeping");
             await sleep(5000);
         }

@@ -4,7 +4,9 @@ import { XTypes } from "@vex-chat/types-js";
 import { EventEmitter } from "events";
 import knex from "knex";
 import nacl from "tweetnacl";
-import { IMessage } from ".";
+import winston from "winston";
+import { IClientOptions, IMessage } from ".";
+import { createLogger } from "./utils/createLogger";
 
 /**
  * @hidden
@@ -13,8 +15,9 @@ export class Database extends EventEmitter {
     public ready: boolean = false;
     private dbPath: string;
     private db: knex<any, unknown[]>;
+    private log: winston.Logger;
 
-    constructor(dbPath: string) {
+    constructor(dbPath: string, options?: IClientOptions) {
         super();
 
         this.dbPath = dbPath;
@@ -25,6 +28,7 @@ export class Database extends EventEmitter {
             },
             useNullAsDefault: true,
         });
+        this.log = createLogger("db", options);
         this.init();
     }
 
@@ -37,6 +41,7 @@ export class Database extends EventEmitter {
     }
 
     public async deleteMessage(mailID: string) {
+        this.log.info("deleteMessage(): deleting mailid " + mailID);
         await this.db
             .from("messages")
             .where({ mailID })
@@ -223,6 +228,7 @@ export class Database extends EventEmitter {
     }
 
     private async init() {
+        this.log.info("Starting up database.");
         try {
             if (!(await this.db.schema.hasTable("messages"))) {
                 await this.db.schema.createTable("messages", (table) => {
