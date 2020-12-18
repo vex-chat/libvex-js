@@ -45,11 +45,15 @@ async function main() {
 
     client.on("authed", async () => {
         const me = await client.users.me();
+        const server = await client.servers.create("My Gay Server");
+
+        const channels = await client.channels.retrieve(server.serverID);
+        const [general] = channels;
 
         while (true) {
             try {
                 console.log("awaiting");
-                await client.messages.send(me.userID, words);
+                await client.messages.group(general.channelID, words);
             } catch (err) {
                 console.error(err);
             }

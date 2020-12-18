@@ -809,9 +809,16 @@ export class Client extends EventEmitter {
                 )
             );
         }
-        Promise.all(promises).catch((err) => {
-            throw err;
-        });
+        Promise.all(promises)
+            .then((results) => {
+                for (const result of results) {
+                    console.log(result);
+                }
+            })
+            .catch((err) => {
+                console.log(err);
+                console.log("you nigger.");
+            });
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
@@ -901,7 +908,10 @@ export class Client extends EventEmitter {
                     if (receivedMsg.type === "success") {
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
-                        rej(outMsg);
+                        rej({
+                            error: receivedMsg,
+                            message: outMsg,
+                        });
                     }
                 }
             };
@@ -1202,7 +1212,10 @@ export class Client extends EventEmitter {
                     if (receivedMsg.type === "success") {
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
-                        rej(emitMsg);
+                        rej({
+                            error: receivedMsg,
+                            message: emitMsg,
+                        });
                     }
                 }
             };
