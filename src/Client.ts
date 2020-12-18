@@ -889,7 +889,7 @@ export class Client extends EventEmitter {
             direction: "outgoing",
             timestamp: new Date(Date.now()),
             decrypted: true,
-            group: mail.group ? uuid.stringify(mail.group) : undefined,
+            group: mail.group ? uuid.stringify(mail.group) : null,
         };
         this.emit("message", outMsg);
 
@@ -1189,7 +1189,7 @@ export class Client extends EventEmitter {
             direction: "outgoing",
             timestamp: new Date(Date.now()),
             decrypted: true,
-            group: mail.group ? uuid.stringify(mail.group) : undefined,
+            group: mail.group ? uuid.stringify(mail.group) : null,
         };
         this.emit("message", emitMsg);
 
@@ -1257,9 +1257,7 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: false,
-                        group: mail.group
-                            ? uuid.stringify(mail.group)
-                            : undefined,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
                     };
                     this.emit("message", message);
 
@@ -1298,9 +1296,7 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: true,
-                        group: mail.group
-                            ? uuid.stringify(mail.group)
-                            : undefined,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
                     };
 
                     this.emit("message", message);
@@ -1320,9 +1316,7 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: false,
-                        group: mail.group
-                            ? uuid.stringify(mail.group)
-                            : undefined,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
                     };
                     this.emit("message", message);
 
@@ -1409,9 +1403,7 @@ export class Client extends EventEmitter {
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
                         decrypted: true,
-                        group: mail.group
-                            ? uuid.stringify(mail.group)
-                            : undefined,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
                     };
                     this.emit("message", message);
 
