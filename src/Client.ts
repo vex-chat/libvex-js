@@ -878,25 +878,26 @@ export class Client extends EventEmitter {
 
         const hmac = xHMAC(mail, session.SK);
 
+        const outMsg: IMessage = {
+            mailID: mail.mailID,
+            sender: mail.sender,
+            recipient: mail.recipient,
+            nonce: XUtils.encodeHex(mail.nonce),
+            message: XUtils.encodeUTF8(msg),
+            direction: "outgoing",
+            timestamp: new Date(Date.now()),
+            decrypted: true,
+            group: mail.group ? uuid.stringify(mail.group) : undefined,
+        };
+        this.emit("message", outMsg);
+
         await new Promise((res, rej) => {
             const transmissionID = uuid.v4();
-            const outMsg: IMessage = {
-                mailID: mail.mailID,
-                sender: mail.sender,
-                recipient: mail.recipient,
-                nonce: XUtils.encodeHex(mail.nonce),
-                message: XUtils.encodeUTF8(msg),
-                direction: "outgoing",
-                timestamp: new Date(Date.now()),
-                decrypted: true,
-                group: mail.group ? uuid.stringify(mail.group) : undefined,
-            };
             const callback = (packedMsg: Buffer) => {
                 const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
                 if (receivedMsg.transmissionID === transmissionID) {
                     this.conn.off("message", callback);
                     if (receivedMsg.type === "success") {
-                        this.emit("message", outMsg);
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
                         rej(outMsg);
@@ -1177,26 +1178,27 @@ export class Client extends EventEmitter {
             }
         }
 
+        // emit the message
+        const emitMsg: IMessage = {
+            nonce: XUtils.encodeHex(mail.nonce),
+            mailID: mail.mailID,
+            sender: mail.sender,
+            recipient: mail.recipient,
+            message: XUtils.encodeUTF8(message),
+            direction: "outgoing",
+            timestamp: new Date(Date.now()),
+            decrypted: true,
+            group: mail.group ? uuid.stringify(mail.group) : undefined,
+        };
+        this.emit("message", emitMsg);
+
         // send mail and wait for response
         return new Promise((res, rej) => {
-            // emit the message
-            const emitMsg: IMessage = {
-                nonce: XUtils.encodeHex(mail.nonce),
-                mailID: mail.mailID,
-                sender: mail.sender,
-                recipient: mail.recipient,
-                message: XUtils.encodeUTF8(message),
-                direction: "outgoing",
-                timestamp: new Date(Date.now()),
-                decrypted: true,
-                group: mail.group ? uuid.stringify(mail.group) : undefined,
-            };
             const callback = (packedMsg: Buffer) => {
                 const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
                 if (receivedMsg.transmissionID === msg.transmissionID) {
                     this.conn.off("message", callback);
                     if (receivedMsg.type === "success") {
-                        this.emit("message", emitMsg);
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
                         rej(msg);
@@ -1571,7 +1573,7 @@ export class Client extends EventEmitter {
                     case "success":
                         break;
                     case "error":
-                        this.log.warn(msg);
+                        this.log.warn(JSON.stringify(msg));
                         break;
                     case "notify":
                         this.handleNotify(msg as XTypes.WS.INotifyMsg);
