@@ -1118,8 +1118,6 @@ export class Client extends EventEmitter {
         const hmac = xHMAC(mail, SK);
         this.log.info("Generated hmac: " + XUtils.encodeHex(hmac));
 
-        console.log(mail);
-
         const msg: XTypes.WS.IResourceMsg = {
             transmissionID: uuid.v4(),
             type: "resource",
@@ -1545,7 +1543,7 @@ export class Client extends EventEmitter {
                     case "success":
                         break;
                     case "error":
-                        console.error(msg);
+                        this.log.warn(msg);
                         break;
                     case "notify":
                         this.handleNotify(msg as XTypes.WS.INotifyMsg);
