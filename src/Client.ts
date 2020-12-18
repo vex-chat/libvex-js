@@ -892,10 +892,9 @@ export class Client extends EventEmitter {
         this.emit("message", outMsg);
 
         await new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
-                if (receivedMsg.transmissionID === transmissionID) {
+                if (receivedMsg.transmissionID === msgb.transmissionID) {
                     this.conn.off("message", callback);
                     if (receivedMsg.type === "success") {
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
@@ -1201,7 +1200,7 @@ export class Client extends EventEmitter {
                     if (receivedMsg.type === "success") {
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
-                        rej(receivedMsg);
+                        rej(emitMsg);
                     }
                 }
             };

@@ -17,7 +17,7 @@ async function main() {
     const { PK } = process.env;
 
     const client = new Client(PK, {
-        logLevel: "info",
+        logLevel: "warn",
         dbFolder: "databases",
     });
 
@@ -48,17 +48,19 @@ async function main() {
 
         while (true) {
             try {
+                console.log("awaiting");
                 await client.messages.send(me.userID, words);
             } catch (err) {
-                console.warn(err);
+                console.error(err);
             }
+            console.log("sleeping");
             await sleep(5000);
         }
     });
 
     // listen for new messages
     client.on("message", (message: IMessage) => {
-        console.log("message", message);
+        //  console.log("message", message);
     });
 
     // start the client
