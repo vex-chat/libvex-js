@@ -809,16 +809,17 @@ export class Client extends EventEmitter {
                 )
             );
         }
+
+        let error: Error | null = null;
         Promise.all(promises)
-            .then((results) => {
-                for (const result of results) {
-                    console.log(result);
-                }
-            })
+            .then(() => {})
             .catch((err) => {
-                console.log(err);
-                console.log("you nigger.");
+                error = err;
             });
+
+        if (error) {
+            throw error;
+        }
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
