@@ -47,7 +47,7 @@ export class Database extends EventEmitter {
             .select()
             .where({ sender: userID })
             .orWhere({ recipient: userID })
-            .orderBy("timestamp", "asc")
+            .orderBy("timestamp", "desc")
             .limit(100);
 
         // i'm not sure why i have to do this, these are
