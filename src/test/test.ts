@@ -55,7 +55,7 @@ async function main() {
                 console.log("awaiting");
                 await client.messages.group(general.channelID, words);
             } catch (err) {
-                console.error(err);
+                console.log("REACHED CATCH BLOCK");
             }
             console.log("sleeping");
             await sleep(5000);

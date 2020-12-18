@@ -88,7 +88,7 @@ interface IUsers {
  */
 interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
-    group: (channelID: string, message: string) => Promise<void>;
+    group: (channelID: string, message: string) => Promise<void[]>;
     retrieve: (userID: string) => Promise<IMessage[]>;
 }
 
@@ -791,11 +791,14 @@ export class Client extends EventEmitter {
     }
 
     /* A thin wrapper around sendMail for string inputs. */
-    private async sendMessage(userID: string, message: string) {
+    private async sendMessage(userID: string, message: string): Promise<void> {
         await this.sendMail(userID, XUtils.decodeUTF8(message), null);
     }
 
-    private async sendGroupMessage(channelID: string, message: string) {
+    private async sendGroupMessage(
+        channelID: string,
+        message: string
+    ): Promise<void[]> {
         const userList = await this.getUserList(channelID);
         const messageID = uuid.v4();
         const promises: Array<Promise<void>> = [];
@@ -810,16 +813,9 @@ export class Client extends EventEmitter {
             );
         }
 
-        let error: Error | null = null;
-        Promise.all(promises)
-            .then(() => {})
-            .catch((err) => {
-                error = err;
-            });
-
-        if (error) {
-            throw error;
-        }
+        return Promise.all(promises).catch((err) => {
+            throw err;
+        });
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
