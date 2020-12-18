@@ -1201,7 +1201,7 @@ export class Client extends EventEmitter {
                     if (receivedMsg.type === "success") {
                         res((receivedMsg as XTypes.WS.ISucessMsg).data);
                     } else {
-                        rej(msg);
+                        rej(receivedMsg);
                     }
                 }
             };

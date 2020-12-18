@@ -2,6 +2,7 @@
 import { sleep } from "@extrahash/sleep";
 import { Client, IMessage } from "..";
 import { loadEnv } from "./loadEnv";
+import { words } from "./words";
 
 main();
 
@@ -46,14 +47,18 @@ async function main() {
         const me = await client.users.me();
 
         while (true) {
-            await client.messages.send(me.userID, "hello");
+            try {
+                await client.messages.send(me.userID, words);
+            } catch (err) {
+                console.warn(err);
+            }
             await sleep(5000);
         }
     });
 
     // listen for new messages
     client.on("message", (message: IMessage) => {
-        console.log("IN", "message", message);
+        console.log("message", message);
     });
 
     // start the client
