@@ -850,35 +850,37 @@ export class Client extends EventEmitter {
         if (!session) {
             this.log.info("Creating new session for " + userID);
             await this.createSession(userID, msg, group, mailID);
-        } else {
-            const nonce = xMakeNonce();
-            const cipher = nacl.secretbox(msg, nonce, session.SK);
-            const extra = session.publicKey;
+            return;
+        }
 
-            const mail: XTypes.WS.IMail = {
-                mailType: XTypes.WS.MailType.subsequent,
-                mailID: mailID || uuid.v4(),
-                recipient: userID,
-                cipher,
-                nonce,
-                extra,
-                sender: this.user!.userID,
-                group,
-            };
+        const nonce = xMakeNonce();
+        const cipher = nacl.secretbox(msg, nonce, session.SK);
+        const extra = session.publicKey;
 
-            const msgb: XTypes.WS.IResourceMsg = {
-                transmissionID: uuid.v4(),
-                type: "resource",
-                resourceType: "mail",
-                action: "CREATE",
-                data: mail,
-            };
+        const mail: XTypes.WS.IMail = {
+            mailType: XTypes.WS.MailType.subsequent,
+            mailID: mailID || uuid.v4(),
+            recipient: userID,
+            cipher,
+            nonce,
+            extra,
+            sender: this.user!.userID,
+            group,
+        };
 
-            const hmac = xHMAC(mail, session.SK);
+        const msgb: XTypes.WS.IResourceMsg = {
+            transmissionID: uuid.v4(),
+            type: "resource",
+            resourceType: "mail",
+            action: "CREATE",
+            data: mail,
+        };
 
-            this.send(msgb, hmac);
+        const hmac = xHMAC(mail, session.SK);
 
-            const message: IMessage = {
+        await new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const outMsg: IMessage = {
                 mailID: mail.mailID,
                 sender: mail.sender,
                 recipient: mail.recipient,
@@ -889,8 +891,21 @@ export class Client extends EventEmitter {
                 decrypted: true,
                 group: mail.group ? uuid.stringify(mail.group) : undefined,
             };
-            this.emit("message", message);
-        }
+            const callback = (packedMsg: Buffer) => {
+                const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
+                if (receivedMsg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (receivedMsg.type === "success") {
+                        this.emit("message", outMsg);
+                        res((receivedMsg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(outMsg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            this.send(msgb, hmac);
+        });
     }
 
     private async getSessionList() {
@@ -1043,7 +1058,7 @@ export class Client extends EventEmitter {
         /* this is passed through if the first message is 
         part of a group message */
         mailID?: string
-    ) {
+    ): Promise<void> {
         let keyBundle: XTypes.WS.IKeyBundle;
 
         this.log.info("Requesting key bundle.");
@@ -1126,26 +1141,8 @@ export class Client extends EventEmitter {
             data: mail,
         };
 
-        // emit the message
-        const emitMsg: IMessage = {
-            nonce: XUtils.encodeHex(mail.nonce),
-            mailID: mail.mailID,
-            sender: mail.sender,
-            recipient: mail.recipient,
-            message: XUtils.encodeUTF8(message),
-            direction: "outgoing",
-            timestamp: new Date(Date.now()),
-            decrypted: true,
-            group: mail.group ? uuid.stringify(mail.group) : undefined,
-        };
-        this.emit("message", emitMsg);
-
         // discard the ephemeral keys
         this.newEphemeralKeys();
-
-        // send the message
-        this.send(msg, hmac);
-        this.log.info("Mail sent.");
 
         // save the encryption session
         this.log.info("Saving new session.");
@@ -1179,6 +1176,37 @@ export class Client extends EventEmitter {
                 }
             }
         }
+
+        // send mail and wait for response
+        return new Promise((res, rej) => {
+            // emit the message
+            const emitMsg: IMessage = {
+                nonce: XUtils.encodeHex(mail.nonce),
+                mailID: mail.mailID,
+                sender: mail.sender,
+                recipient: mail.recipient,
+                message: XUtils.encodeUTF8(message),
+                direction: "outgoing",
+                timestamp: new Date(Date.now()),
+                decrypted: true,
+                group: mail.group ? uuid.stringify(mail.group) : undefined,
+            };
+            const callback = (packedMsg: Buffer) => {
+                const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
+                if (receivedMsg.transmissionID === msg.transmissionID) {
+                    this.conn.off("message", callback);
+                    if (receivedMsg.type === "success") {
+                        this.emit("message", emitMsg);
+                        res((receivedMsg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            this.send(msg, hmac);
+            this.log.info("Mail sent.");
+        });
     }
 
     private sendReceipt(nonce: Uint8Array, transmissionID: string) {
@@ -1271,6 +1299,7 @@ export class Client extends EventEmitter {
                             ? uuid.stringify(mail.group)
                             : undefined,
                     };
+
                     this.emit("message", message);
 
                     await this.database.markSessionUsed(session.sessionID);
@@ -1342,7 +1371,6 @@ export class Client extends EventEmitter {
 
                 const hmac = xHMAC(mail, SK);
                 this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
-                console.log(mail);
 
                 // associated data
                 const AD = xConcat(

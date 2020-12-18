@@ -1,4 +1,5 @@
 // tslint:disable: prefer-const
+import { sleep } from "@extrahash/sleep";
 import { Client, IMessage } from "..";
 import { loadEnv } from "./loadEnv";
 
@@ -44,12 +45,15 @@ async function main() {
     client.on("authed", async () => {
         const me = await client.users.me();
 
-        await client.messages.send(me.userID, "hello");
+        while (true) {
+            await client.messages.send(me.userID, "hello");
+            await sleep(5000);
+        }
     });
 
     // listen for new messages
     client.on("message", (message: IMessage) => {
-        // console.log("IN", "message", message);
+        console.log("IN", "message", message);
     });
 
     // start the client
