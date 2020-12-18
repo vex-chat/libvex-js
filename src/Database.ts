@@ -19,8 +19,11 @@ export class Database extends EventEmitter {
 
     constructor(dbPath: string, options?: IClientOptions) {
         super();
+        this.log = createLogger("db", options);
 
         this.dbPath = dbPath;
+
+        this.log.info("Opening database file at " + this.dbPath);
         this.db = knex({
             client: "sqlite3",
             connection: {
@@ -28,11 +31,12 @@ export class Database extends EventEmitter {
             },
             useNullAsDefault: true,
         });
-        this.log = createLogger("db", options);
+
         this.init();
     }
 
     public async close() {
+        this.log.info("Closing database.");
         await this.db.destroy();
     }
 
@@ -228,7 +232,7 @@ export class Database extends EventEmitter {
     }
 
     private async init() {
-        this.log.info("Starting up database.");
+        this.log.info("Initializing database tables.");
         try {
             if (!(await this.db.schema.hasTable("messages"))) {
                 await this.db.schema.createTable("messages", (table) => {
