@@ -37,7 +37,7 @@ export interface IMessage {
     direction: "incoming" | "outgoing";
     timestamp: Date;
     decrypted: boolean;
-    group?: string;
+    group: string | null;
 }
 
 /**
