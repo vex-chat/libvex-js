@@ -809,11 +809,9 @@ export class Client extends EventEmitter {
                 )
             );
         }
-        try {
-            Promise.all(promises);
-        } catch (err) {
+        Promise.all(promises).catch((err) => {
             throw err;
-        }
+        });
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
