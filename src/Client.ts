@@ -463,7 +463,11 @@ export class Client extends EventEmitter {
     private dbPath: string;
     private conn: WebSocket;
     private host: string;
+
+    // these are created from one set of sign keys
     private signKeys: nacl.SignKeyPair;
+    private idKeys: nacl.BoxKeyPair | null;
+
     private xKeyRing?: XTypes.CRYPTO.IXKeyRing;
 
     private user?: XTypes.SQL.IUser;
@@ -487,6 +491,11 @@ export class Client extends EventEmitter {
         this.signKeys = privateKey
             ? nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(privateKey))
             : nacl.sign.keyPair();
+        this.idKeys = XKeyConvert.convertKeyPair(this.signKeys);
+
+        if (!this.idKeys) {
+            throw new Error("Could not convert key to X25519!");
+        }
 
         this.host = options?.host || "api.vex.chat";
 
@@ -496,7 +505,7 @@ export class Client extends EventEmitter {
             ? options?.dbFolder + "/" + dbFileName
             : dbFileName;
 
-        this.database = new Database(this.dbPath, options);
+        this.database = new Database(this.dbPath, this.idKeys, options);
 
         this.database.on("error", (error) => {
             this.close(true);
@@ -748,10 +757,7 @@ export class Client extends EventEmitter {
             userID
         );
 
-        return messages.map((row) => {
-            row.decrypted = Boolean(row.decrypted);
-            return row;
-        });
+        return messages;
     }
 
     /* A thin wrapper around sendMail for string inputs. */
@@ -1476,10 +1482,8 @@ export class Client extends EventEmitter {
     }
 
     private async populateKeyRing() {
-        const identityKeys = XKeyConvert.convertKeyPair(this.signKeys);
-        if (!identityKeys) {
-            throw new Error("Could not convert ed25519 key to X25519!");
-        }
+        // we've checked in the constructor that these exist
+        const identityKeys = this.idKeys!;
 
         let preKeys = await this.database.getPreKeys();
         if (!preKeys) {

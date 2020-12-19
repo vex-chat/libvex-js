@@ -47,28 +47,10 @@ async function main() {
         const me = await client.users.me();
         const server = await client.servers.create("My Gay Server");
 
-        const channels = await client.channels.retrieve(server.serverID);
-        const [general] = channels;
-        console.log("history", await client.messages.retrieve(me.userID));
+        console.log(me);
 
-        while (true) {
-            try {
-                console.log("awaiting");
-                // await client.messages.send(me.userID, "shorter words");
-                // await client.messages.send(me.userID, words);
-                await client.messages.group(general.channelID, "hi");
-                await client.messages.group(general.channelID, "hi");
-                await client.messages.group(general.channelID, words);
-                await client.messages.group(general.channelID, "hi");
-                await client.messages.group(general.channelID, "hi");
-            } catch (err) {
-                console.log("REACHED CATCH BLOCK");
-            }
-
-            console.log("history", await client.messages.retrieve(me.userID));
-            console.log("sleeping");
-            await sleep(5000);
-        }
+        await client.messages.send(me.userID, "Hello fren");
+        console.log(await client.messages.retrieve(me.userID));
     });
 
     // listen for new messages

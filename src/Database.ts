@@ -16,11 +16,17 @@ export class Database extends EventEmitter {
     private dbPath: string;
     private db: knex<any, unknown[]>;
     private log: winston.Logger;
+    private idKeys: nacl.BoxKeyPair;
 
-    constructor(dbPath: string, options?: IClientOptions) {
+    constructor(
+        dbPath: string,
+        idKeys: nacl.BoxKeyPair,
+        options?: IClientOptions
+    ) {
         super();
         this.log = createLogger("db", options);
 
+        this.idKeys = idKeys;
         this.dbPath = dbPath;
 
         this.log.info("Opening database file at " + this.dbPath);
@@ -41,6 +47,15 @@ export class Database extends EventEmitter {
     }
 
     public async saveMessage(message: IMessage) {
+        // encrypt plaintext with our idkey before it gets saved to disk
+        message.message = XUtils.encodeHex(
+            nacl.secretbox(
+                XUtils.decodeUTF8(message.message),
+                XUtils.decodeHex(message.nonce),
+                this.idKeys.secretKey
+            )
+        );
+
         await this.db("messages").insert(message);
     }
 
@@ -66,11 +81,25 @@ export class Database extends EventEmitter {
             .orderBy("timestamp", "desc")
             .limit(100);
 
-        // i'm not sure why i have to do this, these are
-        // coming through as strings
-        return messages.reverse().map((row) => {
-            row.timestamp = new Date(row.timestamp);
-            return row;
+        return messages.reverse().map((message) => {
+            // some cleanup because of how knex serializes the data
+            message.timestamp = new Date(message.timestamp);
+            // decrypt
+            message.decrypted = Boolean(message.decrypted);
+
+            const decrypted = nacl.secretbox.open(
+                XUtils.decodeHex(message.message),
+                XUtils.decodeHex(message.nonce),
+                this.idKeys!.secretKey
+            );
+
+            if (decrypted) {
+                message.message = XUtils.encodeUTF8(decrypted);
+            } else {
+                throw new Error("Couldn't decrypt messages on disk!");
+            }
+
+            return message;
         });
     }
 
@@ -215,12 +244,6 @@ export class Database extends EventEmitter {
 
     public async saveSession(session: XTypes.SQL.ISession) {
         await this.db("sessions").insert(session);
-    }
-
-    public async retrieveMessageHistory(userID: string) {
-        return this.db("messages")
-            .select()
-            .where({});
     }
 
     private async untilReady() {
