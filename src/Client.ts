@@ -963,7 +963,9 @@ export class Client extends EventEmitter {
         channelID: string
     ): Promise<XTypes.SQL.IChannel | null> {
         try {
-            const res = await ax.get(this.host + "/channel/" + channelID);
+            const res = await ax.get(
+                "https://" + this.host + "/channel/" + channelID
+            );
             return res.data;
         } catch (err) {
             return null;
