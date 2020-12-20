@@ -118,6 +118,7 @@ interface IPermissions {
  */
 interface IChannels {
     retrieve: (serverID: string) => Promise<XTypes.SQL.IChannel[]>;
+    retrieveByID: (channelID: string) => Promise<XTypes.SQL.IChannel | null>;
     create: (name: string, serverID: string) => Promise<XTypes.SQL.IChannel>;
 }
 
@@ -444,6 +445,7 @@ export class Client extends EventEmitter {
 
     public channels: IChannels = {
         retrieve: this.getChannelList.bind(this),
+        retrieveByID: this.getChannelByID.bind(this),
         create: this.createChannel.bind(this),
     };
 
@@ -955,6 +957,17 @@ export class Client extends EventEmitter {
             };
             this.send(outMsg);
         });
+    }
+
+    private async getChannelByID(
+        channelID: string
+    ): Promise<XTypes.SQL.IChannel | null> {
+        try {
+            const res = await ax.get(this.host + "/channel/" + channelID);
+            return res.data;
+        } catch (err) {
+            return null;
+        }
     }
 
     private async getChannelList(

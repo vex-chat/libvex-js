@@ -50,12 +50,11 @@ async function main() {
         console.log(me);
 
         await client.messages.send(me.userID, "Hello fren");
-        console.log(await client.messages.retrieve(me.userID));
     });
 
     // listen for new messages
     client.on("message", (message: IMessage) => {
-        //  console.log("message", message);
+        console.log("message", message);
     });
 
     // start the client
