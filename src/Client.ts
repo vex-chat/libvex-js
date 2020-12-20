@@ -98,6 +98,7 @@ interface IMessages {
  */
 interface IServers {
     retrieve: () => Promise<XTypes.SQL.IServer[]>;
+    retrieveByID: (serverID: string) => Promise<XTypes.SQL.IServer | null>;
     create: (name: string) => Promise<XTypes.SQL.IServer>;
 }
 
@@ -440,6 +441,7 @@ export class Client extends EventEmitter {
 
     public servers: IServers = {
         retrieve: this.getServerList.bind(this),
+        retrieveByID: this.getServerByID.bind(this),
         create: this.createServer.bind(this),
     };
 
@@ -957,6 +959,19 @@ export class Client extends EventEmitter {
             };
             this.send(outMsg);
         });
+    }
+
+    private async getServerByID(
+        serverID: string
+    ): Promise<XTypes.SQL.IServer | null> {
+        try {
+            const res = await ax.get(
+                "https://" + this.host + "/server/" + serverID
+            );
+            return res.data;
+        } catch (err) {
+            return null;
+        }
     }
 
     private async getChannelByID(
