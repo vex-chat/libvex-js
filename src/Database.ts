@@ -47,8 +47,10 @@ export class Database extends EventEmitter {
     }
 
     public async saveMessage(message: IMessage) {
+        const copy = { ...message };
+
         // encrypt plaintext with our idkey before it gets saved to disk
-        message.message = XUtils.encodeHex(
+        copy.message = XUtils.encodeHex(
             nacl.secretbox(
                 XUtils.decodeUTF8(message.message),
                 XUtils.decodeHex(message.nonce),
@@ -56,7 +58,7 @@ export class Database extends EventEmitter {
             )
         );
 
-        await this.db("messages").insert(message);
+        await this.db("messages").insert(copy);
     }
 
     public async deleteMessage(mailID: string) {
