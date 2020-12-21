@@ -1,59 +1,36 @@
-# xchat-js
+# vex-js
 
 nodejs for interfacing with xchat server.
 
-Example usage:
+## Quickstart
 
 ```ts
-import { Client, IMessage } from ".";
-
-main();
-
-async function main() {
-    // initialize the client. you can provide your secret key
-    // as the first parameter or one will be generated for you.
-    const client = new Client();
-
+export function initClient(): void {
+    const PK = Client.generateSecretKey();
+    client = new Client(PK, {
+        dbFolder: progFolder,
+        logLevel: "info",
+    });
     client.on("ready", async () => {
-        console.log("Client ready.");
-
-        // we get the secret key and save it somewhere permanent and safe
-        console.log("secret", client.getSecret());
-
-        /* you must register your identity with the server
-        before logging in the first time. usernames and keys 
-        must be unique */
-        let [user, err] = await client.register("my-username");
-        if (err) {
-            console.error(err);
-        }
-
-        // login to the server
-        err = await client.login();
-        if (err) {
-            console.error(err);
-            process.exit(1);
+        // you can retrieve users before you login
+        const registeredUser = await client.users.retrieve(
+            client.getKeys().public
+        );
+        if (registeredUser) {
+            await client.login();
+        } else {
+            await client.register("MyUsername");
+            await client.login();
         }
     });
-
     client.on("authed", async () => {
-        console.log("Client authorized.");
-
-        // get the accounts we know about
-        const familiars = await client.familiars.retrieve();
-
-        // send each of them a message
+        const familiars = await client.users.familiars();
         for (const user of familiars) {
-            client.messages.send(user.userID, "hello friend");
+            client.messages.send(user.userID, "Hello world!");
         }
     });
-
-    // listen for new messages
-    client.on("message", (message: IMessage) => {
-        console.log("message", message);
-    });
-
-    // start the client
     client.init();
 }
+
+initClient();
 ```

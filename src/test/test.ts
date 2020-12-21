@@ -1,11 +1,14 @@
 // tslint:disable: prefer-const
-import { XUtils } from "@vex-chat/crypto-js";
-import nacl from "tweetnacl";
+import { sleep } from "@extrahash/sleep";
 import { Client, IMessage } from "..";
 import { loadEnv } from "./loadEnv";
+import { words } from "./words";
 
 main();
 
+/**
+ * @ignore
+ */
 async function main() {
     loadEnv();
 
@@ -41,33 +44,12 @@ async function main() {
     });
 
     client.on("authed", async () => {
-        console.log("Client authorized.");
-        // print our user info
-        console.log("user", client.users.me());
+        const me = await client.users.me();
+        const server = await client.servers.create("My Gay Server");
 
-        setInterval(async () => {
-            // get the accounts we know about
-            const familiars = await client.familiars.retrieve();
-            // send each of them a message
-            for (const user of familiars) {
-                client.messages.send(
-                    user.userID,
-                    Buffer.from(nacl.randomBytes(8)).toString("base64")
-                );
+        console.log(me);
 
-                // message history
-                const history = await client.messages.retrieve(user.userID);
-            }
-        }, 1000 * 10);
-
-        // get all of our sessions
-        const sessions = await client.sessions.retrieve();
-
-        for (const session of sessions) {
-            console.log(session);
-            console.log(client.sessions.verify(session));
-        }
-        // verify the mnemonic with the other user through a secure channel
+        await client.messages.send(me.userID, "Hello fren");
     });
 
     // listen for new messages

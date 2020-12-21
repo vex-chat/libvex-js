@@ -1,3 +1,5 @@
+// tslint:disable: no-empty-interface
+
 import { sleep } from "@extrahash/sleep";
 import {
     xConcat,
@@ -12,77 +14,313 @@ import {
     XUtils,
 } from "@vex-chat/crypto-js";
 import { XTypes } from "@vex-chat/types-js";
-import ax from "axios";
+import ax, { AxiosError } from "axios";
 import chalk from "chalk";
-import log from "electron-log";
 import { EventEmitter } from "events";
 import nacl from "tweetnacl";
-import { parse as uuidParse, v4 as uuidv4 } from "uuid";
+import * as uuid from "uuid";
+import winston from "winston";
 import WebSocket from "ws";
 import { Database } from "./Database";
+import { capitalize } from "./utils/capitalize";
+import { createLogger } from "./utils/createLogger";
+import { uuidToUint8 } from "./utils/uint8uuid";
 
+/**
+ * IMessage is a chat message.
+ */
 export interface IMessage {
     nonce: string;
+    mailID: string;
     sender: string;
     recipient: string;
     message: string;
     direction: "incoming" | "outgoing";
     timestamp: Date;
+    decrypted: boolean;
+    group: string | null;
 }
 
-export interface IConversation {
-    fingerprint: string;
-    userID: string;
-    user: IUser;
-}
+/**
+ * IPermission is a permission to a resource.
+ */
+export interface IPermission extends XTypes.SQL.IPermission {}
 
+/**
+ * IKeys are a pair of ed25519 public and private keys,
+ * encoded as hex strings.
+ */
 export interface IKeys {
     public: string;
     private: string;
 }
 
-// tslint:disable-next-line: no-empty-interface
+/**
+ * IUser is a single user on the vex platform.
+ */
 export interface IUser extends XTypes.SQL.IUser {}
 
-const capitalize = (s: string): string => {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-};
+/**
+ * ISession is an end to end encryption session with another peer.
+ */
+export interface ISession extends XTypes.SQL.ISession {}
 
+/**
+ * IChannel is a chat channel on a server.
+ */
+export interface IChannel extends XTypes.SQL.IChannel {}
+
+/**
+ * IServer is a single chat server.
+ */
+export interface IServer extends XTypes.SQL.IServer {}
+
+/**
+ * @ignore
+ */
 interface IUsers {
-    retrieve: (userID: string) => Promise<IUser | null>;
+    retrieve: (userID: string) => Promise<[IUser | null, AxiosError | null]>;
     me: () => XTypes.SQL.IUser;
+    familiars: () => Promise<IUser[]>;
 }
 
-interface IFamiliars {
-    retrieve: () => Promise<IUser[]>;
-}
-
-interface IConversations {
-    retrieve: () => Promise<any>;
-}
-
+/**
+ * @ignore
+ */
 interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
+    group: (channelID: string, message: string) => Promise<void[]>;
     retrieve: (userID: string) => Promise<IMessage[]>;
 }
 
+/**
+ * @ignore
+ */
+interface IServers {
+    retrieve: () => Promise<XTypes.SQL.IServer[]>;
+    retrieveByID: (serverID: string) => Promise<XTypes.SQL.IServer | null>;
+    create: (name: string) => Promise<XTypes.SQL.IServer>;
+}
+
+/**
+ * @ignore
+ */
+interface IPermissions {
+    retrieve: () => Promise<XTypes.SQL.IPermission[]>;
+    create: (params: {
+        userID: string;
+        resourceType: string;
+        resourceID: string;
+    }) => Promise<XTypes.SQL.IPermission>;
+}
+
+/**
+ * @ignore
+ */
+interface IChannels {
+    retrieve: (serverID: string) => Promise<XTypes.SQL.IChannel[]>;
+    retrieveByID: (channelID: string) => Promise<XTypes.SQL.IChannel | null>;
+    create: (name: string, serverID: string) => Promise<XTypes.SQL.IChannel>;
+}
+
+/**
+ * @ignore
+ */
 interface ISessions {
     retrieve: () => Promise<XTypes.SQL.ISession[]>;
     verify: (session: XTypes.SQL.ISession) => string;
     markVerified: (fingerprint: string) => void;
 }
 
+/**
+ * IClientOptions are the options you can pass into the client.
+ */
 export interface IClientOptions {
-    logLevel?: "error" | "warn" | "info" | "debug";
+    logLevel?:
+        | "error"
+        | "warn"
+        | "info"
+        | "http"
+        | "verbose"
+        | "debug"
+        | "silly";
     host?: string;
     dbFolder?: string;
 }
 
+// tslint:disable-next-line: interface-name
+export declare interface Client {
+    /**
+     * This is emitted whenever the keyring is done initializing after an init()
+     * call. You must wait to login or register until after this event.
+     *
+     * Example:
+     *
+     * ```ts
+     *   client.on("ready", () => {
+     *       await client.register()
+     *   });
+     * ```
+     *
+     * @event
+     */
+    on(event: "ready", callback: () => void): this;
+
+    /**
+     * This is emitted when you are logged in succesfully. You can now call the rest of the methods in the api.
+     *
+     * Example:
+     *
+     * ```ts
+     *   client.on("authed", (user) => {
+     *       // do something
+     *   });
+     * ```
+     *
+     * @event
+     */
+    // tslint:disable-next-line: unified-signatures
+    on(event: "authed", callback: () => void): this;
+
+    /**
+     * This is emitted for every sent and received message.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("message", (msg: IMessage) => {
+     *       console.log(message);
+     *   });
+     * ```
+     * @event
+     */
+    on(event: "message", callback: (message: IMessage) => void): this;
+
+    /**
+     * This is emitted when the user is granted a new permission.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("permission", (perm: IPermission) => {
+     *       console.log(perm);
+     *   });
+     * ```
+     * @event
+     */
+    on(event: "permission", callback: (permission: IPermission) => void): this;
+
+    /**
+     * This is emitted for a new encryption session being created with
+     * a specific user.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("session", (session: ISession, user: IUser) => {
+     *       console.log(session);
+     *       console.log(user);
+     *   });
+     * ```
+     * @event
+     */
+    on(
+        event: "session",
+        callback: (session: ISession, user: IUser) => void
+    ): this;
+
+    /**
+     * This is emitted whenever the connection is closed. You must discard the client
+     * and connect again with a fresh one.
+     *
+     * Example:
+     * ```ts
+     *
+     *   client.on("disconnect", () => {
+     *     // do something
+     *   });
+     * ```
+     * @event
+     */
+    // tslint:disable-next-line: unified-signatures
+    on(event: "disconnect", callback: () => void): this;
+
+    /**
+     * This is emitted whenever the close() event is called and completed successfully.
+     * Note this is not fired for an unintentional disconnect, see the disconnect event.
+     *
+     * Example:
+     *
+     * ```ts
+     *
+     *   client.on("closed", () => {
+     *       process.exit(0);
+     *   });
+     * ```
+     *
+     * @event
+     */
+    // tslint:disable-next-line: unified-signatures
+    on(event: "closed", callback: () => void): this;
+}
+
+/**
+ * Client provides an interface for you to use a vex chat server and
+ * send end to end encrypted messages to other users.
+ *
+ * Quickstart:
+ * ```ts
+ *    export function initClient(): void {
+ *        const PK = Client.generateSecretKey();
+ *        const client = new Client(PK, {
+ *            dbFolder: progFolder,
+ *            logLevel: "info",
+ *        });
+ *        client.on("ready", async () => {
+ *            // you can retrieve users before you login
+ *            const registeredUser = await client.users.retrieve(
+ *                client.getKeys().public
+ *            );
+ *            if (registeredUser) {
+ *                await client.login();
+ *            } else {
+ *                await client.register("MyUsername");
+ *                await client.login();
+ *            }
+ *        });
+ *        client.on("authed", async () => {
+ *            const familiars = await client.users.familiars();
+ *            for (const user of familiars) {
+ *                client.messages.send(user.userID, "Hello world!");
+ *            }
+ *        });
+ *        client.init();
+ *    }
+ *
+ *    initClient();
+ * ```
+ *
+ *
+ * @noInheritDoc
+ */
 export class Client extends EventEmitter {
-    // Generates an ed25519 private key, formatted as a hex string.
+    /**
+     * Generates an ed25519 secret key as a hex string.
+     *
+     * @returns - A secret key to use for the client. Save it permanently somewhere safe.
+     */
     public static generateSecretKey(): string {
         return XUtils.encodeHex(nacl.sign.keyPair().secretKey);
     }
+
+    /**
+     * Generates a random username using bip39.
+     *
+     * @returns - The username.
+     */
     public static randomUsername() {
         const IKM = XUtils.decodeHex(XUtils.encodeHex(nacl.randomBytes(16)));
         const mnemonic = xMnemonic(IKM).split(" ");
@@ -118,55 +356,150 @@ export class Client extends EventEmitter {
         }
     }
 
+    /**
+     * The IUsers interface contains methods for dealing with users.
+     */
     public users: IUsers = {
+        /**
+         * Retrieves a user's information by a string identifier.
+         * @param identifier: A userID, hex string public key, or a username.
+         *
+         * @returns - The user's IUser object, or null if the user does not exist.
+         */
         retrieve: this.retrieveUserDBEntry.bind(this),
+        /**
+         * Retrieves the currently logged in user's (you) information.
+         *
+         * @returns - The logged in user's IUser object.
+         */
         me: this.getUser.bind(this),
+        /**
+         * Retrieves the list of users you can currently access, or are already familiar with.
+         *
+         * @returns - The list of IUser objects.
+         */
+        familiars: this.getFamiliars.bind(this),
     };
 
-    public familiars: IFamiliars = {
-        retrieve: this.getFamiliars.bind(this),
+    public permissions: IPermissions = {
+        retrieve: this.getPermissions.bind(this),
+        create: this.createPermission.bind(this),
     };
 
+    /**
+     * The IMessages interface contains methods for dealing with messages.
+     */
     public messages: IMessages = {
+        /**
+         * Send a direct message.
+         * @param userID: The userID of the user to send a message to.
+         * @param message: The message to send.
+         */
         send: this.sendMessage.bind(this),
+        /**
+         * Send a group message to a channel.
+         * @param channelID: The channelID of the channel to send a message to.
+         * @param message: The message to send.
+         */
+        group: this.sendGroupMessage.bind(this),
+        /**
+         * Gets the message history with a specific userID.
+         * @param userID: The userID of the user to retrieve message history for.
+         *
+         * @returns - The list of IMessage objects.
+         */
         retrieve: this.getMessageHistory.bind(this),
     };
 
+    /**
+     * The ISessions interface contains methods for dealing with encryption sessions.
+     */
     public sessions: ISessions = {
+        /**
+         * Gets all encryption sessions.
+         *
+         * @returns - The list of ISession encryption sessions.
+         */
         retrieve: this.getSessionList.bind(this),
+
+        /**
+         * Returns a mnemonic for the session, to verify with the other user.
+         * @param session the ISession object to get the mnemonic for.
+         *
+         * @returns - The mnemonic representation of the session.
+         */
         verify: Client.getMnemonic,
+
+        /**
+         * Marks a mnemonic verified, implying that the the user has confirmed
+         * that the session mnemonic matches with the other user.
+         * @param sessionID the sessionID of the session to mark.
+         * @param status Optionally, what to mark it as. Defaults to true.
+         */
         markVerified: this.markSessionVerified.bind(this),
     };
 
-    public conversations: IConversations = {
-        retrieve: this.getFingerprints.bind(this),
+    public servers: IServers = {
+        retrieve: this.getServerList.bind(this),
+        retrieveByID: this.getServerByID.bind(this),
+        create: this.createServer.bind(this),
     };
+
+    public channels: IChannels = {
+        retrieve: this.getChannelList.bind(this),
+        retrieveByID: this.getChannelByID.bind(this),
+        create: this.createChannel.bind(this),
+    };
+
+    /**
+     * This is true if the client has ever been initialized. You can only initialize
+     * a client once.
+     */
+    public hasInit: boolean = false;
+    /**
+     * This is true if the client has ever logged in before. You can only login a client once.
+     */
+    public hasLoggedIn: boolean = false;
+
+    private wsOpen = false;
 
     private database: Database;
     private dbPath: string;
     private conn: WebSocket;
     private host: string;
+
+    // these are created from one set of sign keys
     private signKeys: nacl.SignKeyPair;
+    private idKeys: nacl.BoxKeyPair | null;
+
     private xKeyRing?: XTypes.CRYPTO.IXKeyRing;
 
     private user?: XTypes.SQL.IUser;
     private isAlive: boolean = true;
+    private failCount: number = 0;
     private reading: boolean = false;
     private getting: boolean = false;
 
-    private hasInit: boolean = false;
-    private hasLoggedIn: boolean = false;
+    private log: winston.Logger;
 
     private pingInterval?: NodeJS.Timeout;
     private mailInterval?: NodeJS.Timeout;
 
+    private manuallyClosing: boolean = false;
+
     constructor(privateKey?: string, options?: IClientOptions) {
         super();
-        this.setLogLevel(options?.logLevel || "error");
+
+        this.log = createLogger("client", options);
 
         this.signKeys = privateKey
             ? nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(privateKey))
             : nacl.sign.keyPair();
+        this.idKeys = XKeyConvert.convertKeyPair(this.signKeys);
+
+        if (!this.idKeys) {
+            throw new Error("Could not convert key to X25519!");
+        }
 
         this.host = options?.host || "api.vex.chat";
 
@@ -176,7 +509,12 @@ export class Client extends EventEmitter {
             ? options?.dbFolder + "/" + dbFileName
             : dbFileName;
 
-        this.database = new Database(this.dbPath);
+        this.database = new Database(this.dbPath, this.idKeys, options);
+
+        this.database.on("error", (error) => {
+            this.close(true);
+            this.emit("disconnect");
+        });
 
         // we want to initialize this later with login()
         this.conn = new WebSocket("ws://localhost:1234");
@@ -185,8 +523,9 @@ export class Client extends EventEmitter {
         this.conn.onerror = () => {};
     }
 
-    /* initialize the client. run this first and listen for
-    the ready event. */
+    /**
+     * Initializes the keyring. This must be called before anything else.
+     */
     public async init() {
         if (this.hasInit) {
             return new Error("You should only call init() once.");
@@ -208,8 +547,12 @@ export class Client extends EventEmitter {
         this.emit("ready");
     }
 
-    public async close(): Promise<void> {
-        log.info("Manually closing client.");
+    /**
+     * Manually closes the client. Emits the closed event on successful shutdown.
+     */
+    public async close(muteEvent = false): Promise<void> {
+        this.manuallyClosing = true;
+        this.log.info("Manually closing client.");
 
         if (this.pingInterval) {
             clearInterval(this.pingInterval);
@@ -222,16 +565,15 @@ export class Client extends EventEmitter {
         await this.database.close();
         delete this.xKeyRing;
 
-        this.emit("closed");
+        if (!muteEvent) {
+            this.emit("closed");
+        }
         return;
     }
 
-    /* sets the log level. */
-    public setLogLevel(logLevel: "error" | "warn" | "info" | "debug") {
-        log.transports.console.level = logLevel;
-    }
-
-    /* gets the public and private keys. */
+    /**
+     * Gets the hex string representations of the public and private keys.
+     */
     public getKeys(): IKeys {
         return {
             public: XUtils.encodeHex(this.signKeys.publicKey),
@@ -239,7 +581,10 @@ export class Client extends EventEmitter {
         };
     }
 
-    /* logs in to the server. you must have already registered. */
+    /**
+     * Logs in to the server. You must have registered() before with your current
+     * private key.
+     */
     public async login(): Promise<Error | null> {
         if (this.hasLoggedIn) {
             return new Error("You should only call login() once.");
@@ -271,7 +616,14 @@ export class Client extends EventEmitter {
         return null;
     }
 
-    /* Registers a new account on the server. */
+    /**
+     * Registers a new account on the server.
+     * @param username The username to register. Must be unique.
+     *
+     * @returns The error, or the user object.
+     *
+     * @example [user, err] = await client.register("MyUsername");
+     */
     public async register(
         username: string
     ): Promise<[XTypes.SQL.IUser | null, Error | null]> {
@@ -283,7 +635,7 @@ export class Client extends EventEmitter {
             const signKey = XUtils.encodeHex(this.signKeys.publicKey);
             const signed = XUtils.encodeHex(
                 nacl.sign(
-                    Uint8Array.from(uuidParse(regKey.key)),
+                    Uint8Array.from(uuid.parse(regKey.key)),
                     this.signKeys.secretKey
                 )
             );
@@ -319,12 +671,89 @@ export class Client extends EventEmitter {
         }
     }
 
-    private async markSessionVerified(fingerprint: string) {
-        return this.database.markSessionVerified(fingerprint);
+    private createPermission(params: {
+        userID: string;
+        resourceType: string;
+        resourceID: string;
+    }): Promise<XTypes.SQL.IPermission> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "permissions",
+                action: "CREATE",
+                data: params,
+            };
+            this.send(outMsg);
+        });
     }
 
-    private async getFingerprints() {
-        return this.database.getFingerprints();
+    private getPermissions(): Promise<XTypes.SQL.IPermission[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "permissions",
+                action: "RETRIEVE",
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private getUserList(channelID: string): Promise<IUser[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "userlist",
+                action: "RETRIEVE",
+                data: channelID,
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private async markSessionVerified(sessionID: string, status = true) {
+        return this.database.markSessionVerified(sessionID, status);
     }
 
     private async getMessageHistory(userID: string): Promise<IMessage[]> {
@@ -336,57 +765,254 @@ export class Client extends EventEmitter {
     }
 
     /* A thin wrapper around sendMail for string inputs. */
-    private async sendMessage(userID: string, message: string) {
-        await this.sendMail(userID, XUtils.decodeUTF8(message));
+    private async sendMessage(userID: string, message: string): Promise<void> {
+        try {
+            await this.sendMail(userID, XUtils.decodeUTF8(message), null);
+        } catch (err) {
+            this.log.error(
+                "Message " + (err.message?.mailID || "") + " threw exception."
+            );
+            if (err.message?.mailID) {
+                await this.database.deleteMessage(err.message.mailID);
+            }
+            throw err;
+        }
+    }
+
+    private async sendGroupMessage(
+        channelID: string,
+        message: string
+    ): Promise<void[]> {
+        const userList = await this.getUserList(channelID);
+        const mailID = uuid.v4();
+        const promises: Array<Promise<void>> = [];
+        for (const user of userList) {
+            promises.push(
+                this.sendMail(
+                    user.userID,
+                    XUtils.decodeUTF8(message),
+                    uuidToUint8(channelID),
+                    mailID
+                )
+            );
+        }
+
+        return Promise.all(promises).catch(async (err) => {
+            this.log.error("Message " + mailID + " threw exception.");
+            await this.database.deleteMessage(mailID);
+            throw err;
+        });
+    }
+
+    private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "servers",
+                action: "CREATE",
+                data: name,
+            };
+            this.send(outMsg);
+        });
     }
 
     /* Sends encrypted mail to a user. */
-    private async sendMail(userID: string, msg: Uint8Array): Promise<void> {
-        log.info("Sending mail to", userID);
+    private async sendMail(
+        userID: string,
+        msg: Uint8Array,
+        group: Uint8Array | null,
+        mailID?: string
+    ): Promise<void> {
+        this.log.info("Sending mail to " + userID);
         const session = await this.database.getSession(userID);
         if (!session) {
-            log.info("Creating new session for", userID);
-            await this.createSession(userID, msg);
-        } else {
-            const nonce = xMakeNonce();
-            const cipher = nacl.secretbox(msg, nonce, session.SK);
-            const extra = session.publicKey;
-
-            const mail: XTypes.WS.IMail = {
-                mailType: XTypes.WS.MailType.subsequent,
-                recipient: userID,
-                cipher,
-                nonce,
-                extra,
-                sender: this.user!.userID,
-            };
-
-            const msgb: XTypes.WS.IResourceMsg = {
-                transmissionID: uuidv4(),
-                type: "resource",
-                resourceType: "mail",
-                action: "CREATE",
-                data: mail,
-            };
-
-            const hmac = xHMAC(mail, session.SK);
-
-            this.send(msgb, hmac);
-
-            const message: IMessage = {
-                sender: mail.sender,
-                recipient: mail.recipient,
-                nonce: XUtils.encodeHex(mail.nonce),
-                message: XUtils.encodeUTF8(msg),
-                direction: "outgoing",
-                timestamp: new Date(Date.now()),
-            };
-            this.emit("message", message);
+            this.log.info("Creating new session for " + userID);
+            await this.createSession(userID, msg, group, mailID);
+            return;
         }
+
+        const nonce = xMakeNonce();
+        const cipher = nacl.secretbox(msg, nonce, session.SK);
+        const extra = session.publicKey;
+
+        const mail: XTypes.WS.IMail = {
+            mailType: XTypes.WS.MailType.subsequent,
+            mailID: mailID || uuid.v4(),
+            recipient: userID,
+            cipher,
+            nonce,
+            extra,
+            sender: this.user!.userID,
+            group,
+        };
+
+        const msgb: XTypes.WS.IResourceMsg = {
+            transmissionID: uuid.v4(),
+            type: "resource",
+            resourceType: "mail",
+            action: "CREATE",
+            data: mail,
+        };
+
+        const hmac = xHMAC(mail, session.SK);
+
+        const outMsg: IMessage = {
+            mailID: mail.mailID,
+            sender: mail.sender,
+            recipient: mail.recipient,
+            nonce: XUtils.encodeHex(mail.nonce),
+            message: XUtils.encodeUTF8(msg),
+            direction: "outgoing",
+            timestamp: new Date(Date.now()),
+            decrypted: true,
+            group: mail.group ? uuid.stringify(mail.group) : null,
+        };
+        this.emit("message", outMsg);
+
+        await new Promise((res, rej) => {
+            const callback = async (packedMsg: Buffer) => {
+                const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
+                if (receivedMsg.transmissionID === msgb.transmissionID) {
+                    this.conn.off("message", callback);
+                    if (receivedMsg.type === "success") {
+                        res((receivedMsg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej({
+                            error: receivedMsg,
+                            message: outMsg,
+                        });
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            this.send(msgb, hmac);
+        });
     }
 
     private async getSessionList() {
         return this.database.getSessions();
+    }
+
+    private async getServerList(): Promise<XTypes.SQL.IServer[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "servers",
+                action: "RETRIEVE",
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private async createChannel(
+        name: string,
+        serverID: string
+    ): Promise<XTypes.SQL.IChannel> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "channels",
+                action: "CREATE",
+                data: { name, serverID },
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private async getServerByID(
+        serverID: string
+    ): Promise<XTypes.SQL.IServer | null> {
+        try {
+            const res = await ax.get(
+                "https://" + this.host + "/server/" + serverID
+            );
+            return res.data;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    private async getChannelByID(
+        channelID: string
+    ): Promise<XTypes.SQL.IChannel | null> {
+        try {
+            const res = await ax.get(
+                "https://" + this.host + "/channel/" + channelID
+            );
+            return res.data;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    private async getChannelList(
+        serverID: string
+    ): Promise<XTypes.SQL.IChannel[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "channels",
+                action: "RETRIEVE",
+                data: serverID,
+            };
+            this.send(outMsg);
+        });
     }
 
     /* Get the currently logged in user. You cannot call this until 
@@ -409,22 +1035,21 @@ export class Client extends EventEmitter {
     and finally falls back to username. */
     private async retrieveUserDBEntry(
         userIdentifier: string
-    ): Promise<XTypes.SQL.IUser | null> {
+    ): Promise<[XTypes.SQL.IUser | null, AxiosError | null]> {
         try {
             const res = await ax.get(
                 "https://" + this.host + "/user/" + userIdentifier
             );
-            return res.data;
+            return [res.data, null];
         } catch (err) {
-            console.error("Error retrieving user from server:", err.toString());
-            return null;
+            return [null, err];
         }
     }
 
     /* Retrieves the current list of users you have access to. */
     private getFamiliars(): Promise<XTypes.SQL.IUser[]> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -447,14 +1072,21 @@ export class Client extends EventEmitter {
         });
     }
 
-    private async createSession(userID: string, message: Uint8Array) {
+    private async createSession(
+        userID: string,
+        message: Uint8Array,
+        group: Uint8Array | null,
+        /* this is passed through if the first message is 
+        part of a group message */
+        mailID?: string
+    ): Promise<void> {
         let keyBundle: XTypes.WS.IKeyBundle;
 
-        log.info("Requesting key bundle.");
+        this.log.info("Requesting key bundle.");
         try {
             keyBundle = await this.retrieveKeyBundle(userID);
         } catch (err) {
-            log.warn("Couldn't get key bundle:", err);
+            this.log.warn("Couldn't get key bundle:", err);
             return;
         }
 
@@ -484,7 +1116,7 @@ export class Client extends EventEmitter {
 
         // shared secret key
         const SK = xKDF(IKM);
-        log.info("Obtained SK.");
+        this.log.info("Obtained SK.");
 
         const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
 
@@ -496,7 +1128,7 @@ export class Client extends EventEmitter {
         const nonce = xMakeNonce();
         const cipher = nacl.secretbox(message, nonce, SK);
 
-        log.info("Encrypted ciphertext.");
+        this.log.info("Encrypted ciphertext.");
 
         /* 32 bytes for signkey, 32 bytes for ephemeral key, 
         68 bytes for AD, 6 bytes for otk index (empty for no otk) */
@@ -510,47 +1142,34 @@ export class Client extends EventEmitter {
 
         const mail: XTypes.WS.IMail = {
             mailType: XTypes.WS.MailType.initial,
+            mailID: mailID || uuid.v4(),
             recipient: userID,
             cipher,
             nonce,
             extra,
             sender: this.user!.userID,
+            group,
         };
 
         const hmac = xHMAC(mail, SK);
-        log.info("Generated hmac:", XUtils.encodeHex(hmac));
+        this.log.info("Generated hmac: " + XUtils.encodeHex(hmac));
 
         const msg: XTypes.WS.IResourceMsg = {
-            transmissionID: uuidv4(),
+            transmissionID: uuid.v4(),
             type: "resource",
             resourceType: "mail",
             action: "CREATE",
             data: mail,
         };
 
-        // emit the message
-        const emitMsg: IMessage = {
-            nonce: XUtils.encodeHex(mail.nonce),
-            sender: mail.sender,
-            recipient: mail.recipient,
-            message: XUtils.encodeUTF8(message),
-            direction: "outgoing",
-            timestamp: new Date(Date.now()),
-        };
-        this.emit("message", emitMsg);
-
         // discard the ephemeral keys
         this.newEphemeralKeys();
 
-        // send the message
-        this.send(msg, hmac);
-        log.info("Mail sent.");
-
         // save the encryption session
-        log.info("Saving new session.");
+        this.log.info("Saving new session.");
         const sessionEntry: XTypes.SQL.ISession = {
             verified: false,
-            sessionID: uuidv4(),
+            sessionID: uuid.v4(),
             userID,
             mode: "initiator",
             SK: XUtils.encodeHex(SK),
@@ -561,20 +1180,58 @@ export class Client extends EventEmitter {
 
         await this.database.saveSession(sessionEntry);
 
-        const user = await this.retrieveUserDBEntry(userID);
+        let [user, err] = await this.retrieveUserDBEntry(userID);
 
         if (user) {
-            const conversation: IConversation = {
-                userID,
-                fingerprint: XUtils.encodeHex(AD),
-                user,
-            };
-            this.emit("conversation", conversation);
+            this.emit("session", sessionEntry, user);
         } else {
-            throw new Error(
-                "We saved a session, but we didn't get it back from the db!"
-            );
+            let failed = 1;
+            // retry a couple times
+            while (!user) {
+                [user, err] = await this.retrieveUserDBEntry(userID);
+                failed++;
+                if (failed > 3) {
+                    throw new Error(
+                        "We saved a session, but we didn't get it back from the db!"
+                    );
+                }
+            }
         }
+
+        // emit the message
+        const emitMsg: IMessage = {
+            nonce: XUtils.encodeHex(mail.nonce),
+            mailID: mail.mailID,
+            sender: mail.sender,
+            recipient: mail.recipient,
+            message: XUtils.encodeUTF8(message),
+            direction: "outgoing",
+            timestamp: new Date(Date.now()),
+            decrypted: true,
+            group: mail.group ? uuid.stringify(mail.group) : null,
+        };
+        this.emit("message", emitMsg);
+
+        // send mail and wait for response
+        return new Promise((res, rej) => {
+            const callback = (packedMsg: Buffer) => {
+                const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
+                if (receivedMsg.transmissionID === msg.transmissionID) {
+                    this.conn.off("message", callback);
+                    if (receivedMsg.type === "success") {
+                        res((receivedMsg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej({
+                            error: receivedMsg,
+                            message: emitMsg,
+                        });
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            this.send(msg, hmac);
+            this.log.info("Mail sent.");
+        });
     }
 
     private sendReceipt(nonce: Uint8Array, transmissionID: string) {
@@ -595,7 +1252,7 @@ export class Client extends EventEmitter {
             await sleep(100);
         }
         this.reading = true;
-        log.info("Received mail from " + mail.sender);
+        this.log.info("Received mail from " + mail.sender);
         switch (mail.mailType) {
             case XTypes.WS.MailType.subsequent:
                 const [publicKey] = Client.deserializeExtra(
@@ -606,21 +1263,36 @@ export class Client extends EventEmitter {
                     publicKey
                 );
                 if (!session) {
-                    log.warn(
+                    this.log.warn(
                         `Invalid session public key ${XUtils.encodeHex(
                             publicKey
                         )} Decryption failed.`
                     );
+
+                    // emit the message
+                    const message: IMessage = {
+                        nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
+                        sender: mail.sender,
+                        recipient: mail.recipient,
+                        message: "",
+                        direction: "incoming",
+                        timestamp: new Date(Date.now()),
+                        decrypted: false,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
+                    };
+                    this.emit("message", message);
+
                     await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
-                log.info("Session found for", mail.sender);
-                log.info("Mail nonce", XUtils.encodeHex(mail.nonce));
+                this.log.info("Session found for " + mail.sender);
+                this.log.info("Mail nonce " + XUtils.encodeHex(mail.nonce));
 
                 const HMAC = xHMAC(mail, session.SK);
 
                 if (!XUtils.bytesEqual(HMAC, header)) {
-                    log.warn(
+                    this.log.warn(
                         "Message authentication failed (HMAC does not match."
                     );
                 }
@@ -632,31 +1304,49 @@ export class Client extends EventEmitter {
                 );
 
                 if (decrypted) {
-                    log.info(
-                        "Decryption successful:",
-                        XUtils.encodeUTF8(decrypted)
+                    this.log.info(
+                        "Decryption successful: " + XUtils.encodeUTF8(decrypted)
                     );
 
                     // emit the message
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
                         sender: mail.sender,
-                        recipient: this.getUser().userID,
+                        recipient: mail.recipient,
                         message: XUtils.encodeUTF8(decrypted),
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
+                        decrypted: true,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
                     };
+
                     this.emit("message", message);
 
                     await this.database.markSessionUsed(session.sessionID);
                     await this.sendReceipt(mail.nonce, transmissionID);
                 } else {
-                    log.info("Decryption failed.");
+                    this.log.info("Decryption failed.");
+
+                    // emit the message
+                    const message: IMessage = {
+                        nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
+                        sender: mail.sender,
+                        recipient: mail.recipient,
+                        message: "",
+                        direction: "incoming",
+                        timestamp: new Date(Date.now()),
+                        decrypted: false,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
+                    };
+                    this.emit("message", message);
+
                     await this.sendReceipt(mail.nonce, transmissionID);
                 }
                 break;
             case XTypes.WS.MailType.initial:
-                log.info("Initiating new session.");
+                this.log.info("Initiating new session.");
                 const [
                     signKey,
                     ephKey,
@@ -693,13 +1383,13 @@ export class Client extends EventEmitter {
 
                 // shared secret key
                 const SK = xKDF(IKM);
-                log.info("Obtained SK.");
+                this.log.info("Obtained SK.");
 
                 // shared public key
                 const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
 
                 const hmac = xHMAC(mail, SK);
-                log.info("Calculated hmac:", XUtils.encodeHex(hmac));
+                this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
 
                 // associated data
                 const AD = xConcat(
@@ -708,12 +1398,12 @@ export class Client extends EventEmitter {
                 );
 
                 if (!XUtils.bytesEqual(hmac, header)) {
-                    log.warn(
+                    this.log.warn(
                         "Mail authentication failed (HMAC did not match)."
                     );
                     return;
                 }
-                log.info("Mail authenticated successfully.");
+                this.log.info("Mail authenticated successfully.");
 
                 const unsealed = nacl.secretbox.open(
                     mail.cipher,
@@ -721,19 +1411,21 @@ export class Client extends EventEmitter {
                     SK
                 );
                 if (unsealed) {
-                    log.info(
-                        "Decryption successful:",
-                        XUtils.encodeUTF8(unsealed)
+                    this.log.info(
+                        "Decryption successful " + XUtils.encodeUTF8(unsealed)
                     );
 
                     // emit the message
                     const message: IMessage = {
                         nonce: XUtils.encodeHex(mail.nonce),
+                        mailID: mail.mailID,
                         sender: mail.sender,
-                        recipient: this.getUser().userID,
+                        recipient: mail.recipient,
                         message: XUtils.encodeUTF8(unsealed),
                         direction: "incoming",
                         timestamp: new Date(Date.now()),
+                        decrypted: true,
+                        group: mail.group ? uuid.stringify(mail.group) : null,
                     };
                     this.emit("message", message);
 
@@ -743,7 +1435,7 @@ export class Client extends EventEmitter {
                     // save session
                     const newSession: XTypes.SQL.ISession = {
                         verified: false,
-                        sessionID: uuidv4(),
+                        sessionID: uuid.v4(),
                         userID: mail.sender,
                         mode: "receiver",
                         SK: XUtils.encodeHex(SK),
@@ -751,35 +1443,38 @@ export class Client extends EventEmitter {
                         lastUsed: new Date(Date.now()),
                         fingerprint: XUtils.encodeHex(AD),
                     };
-                    // for testing so i can create messages with myself
                     if (newSession.userID !== this.user!.userID) {
                         await this.database.saveSession(newSession);
 
-                        const user = await this.retrieveUserDBEntry(
+                        let [user, err] = await this.retrieveUserDBEntry(
                             newSession.userID
                         );
 
                         if (user) {
-                            const conversation: IConversation = {
-                                userID: newSession.userID,
-                                fingerprint: XUtils.encodeHex(AD),
-                                user,
-                            };
-
-                            this.emit("conversation", conversation);
+                            this.emit("session", newSession, user);
                         } else {
-                            throw new Error(
-                                "Saved session but got nothing back from db!"
-                            );
+                            let failed = 1;
+                            // retry a couple times
+                            while (!user) {
+                                [user, err] = await this.retrieveUserDBEntry(
+                                    newSession.userID
+                                );
+                                failed++;
+                                if (failed > 3) {
+                                    throw new Error(
+                                        "We saved a session, but we didn't get it back from the db!"
+                                    );
+                                }
+                            }
                         }
                     }
                     await this.sendReceipt(mail.nonce, transmissionID);
                 } else {
-                    log.warn("Mail decryption failed.");
+                    this.log.warn("Mail decryption failed.");
                 }
                 break;
             default:
-                log.warn("Unsupported MailType:", mail.mailType);
+                this.log.warn("Unsupported MailType:", mail.mailType);
                 break;
         }
         this.reading = false;
@@ -804,38 +1499,21 @@ export class Client extends EventEmitter {
     private async handleNotify(msg: XTypes.WS.INotifyMsg) {
         switch (msg.event) {
             case "mail":
-                log.info("Server has informed us of new mail.");
+                this.log.info("Server has informed us of new mail.");
                 this.getMail();
                 break;
+            case "permission":
+                this.emit("permission", msg.data as IPermission);
+                break;
             default:
-                log.info("Unsupported notification event", msg.event);
+                this.log.info("Unsupported notification event " + msg.event);
                 break;
         }
     }
 
     private async populateKeyRing() {
-        let identityKeys = await this.database.getIdentityKeys();
-
-        const providedKeys = XKeyConvert.convertKeyPair(this.signKeys);
-        if (!providedKeys) {
-            throw new Error("Could not convert ed25519 key to X25519!");
-        }
-
-        if (!identityKeys) {
-            await this.database.saveIdentityKeys(providedKeys!);
-            identityKeys = providedKeys;
-        } else {
-            if (
-                !XUtils.bytesEqual(
-                    identityKeys.secretKey,
-                    providedKeys.secretKey
-                )
-            ) {
-                throw new Error(
-                    "Private key changed. Please delete or move the database file."
-                );
-            }
-        }
+        // we've checked in the constructor that these exist
+        const identityKeys = this.idKeys!;
 
         let preKeys = await this.database.getPreKeys();
         if (!preKeys) {
@@ -851,9 +1529,9 @@ export class Client extends EventEmitter {
             ephemeralKeys,
         };
 
-        log.info(
-            "Keyring populated, public key:",
-            XUtils.encodeHex(this.signKeys.publicKey)
+        this.log.info(
+            "Keyring populated, public key: " +
+                XUtils.encodeHex(this.signKeys.publicKey)
         );
     }
 
@@ -861,12 +1539,16 @@ export class Client extends EventEmitter {
         try {
             this.conn = new WebSocket("wss://" + this.host + "/socket");
             this.conn.on("open", () => {
-                log.info("Connection opened.");
+                this.log.info("Connection opened.");
                 this.pingInterval = setInterval(this.ping.bind(this), 5000);
+                this.wsOpen = true;
             });
 
             this.conn.on("close", () => {
-                log.info("Connection closed.");
+                this.log.info("Connection closed.");
+                if (!this.manuallyClosing) {
+                    this.emit("disconnect");
+                }
             });
 
             this.conn.on("error", (error) => {
@@ -876,8 +1558,12 @@ export class Client extends EventEmitter {
             this.conn.on("message", async (message: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(message);
 
-                log.debug(chalk.red.bold("INH"), header.toString());
-                log.debug(chalk.red.bold("IN"), msg);
+                this.log.debug(
+                    chalk.red.bold("INH ") + XUtils.encodeHex(header)
+                );
+                this.log.debug(
+                    chalk.red.bold("IN ") + JSON.stringify(msg, null, 4)
+                );
 
                 switch (msg.type) {
                     case "ping":
@@ -887,24 +1573,26 @@ export class Client extends EventEmitter {
                         this.setAlive(true);
                         break;
                     case "challenge":
-                        log.info("Received challenge from server.");
+                        this.log.info("Received challenge from server.");
                         this.respond(msg as XTypes.WS.IChallMsg);
                         break;
                     case "authorized":
-                        log.info(
-                            "Authenticated with userID",
-                            this.user!.userID
+                        this.log.info(
+                            "Authenticated with userID " + this.user!.userID
                         );
                         this.emit("authed");
                         this.postAuth();
                         break;
                     case "success":
                         break;
+                    case "error":
+                        this.log.warn(JSON.stringify(msg));
+                        break;
                     case "notify":
                         this.handleNotify(msg as XTypes.WS.INotifyMsg);
                         break;
                     default:
-                        log.info("Unsupported message", msg.type);
+                        this.log.info("Unsupported message " + msg.type);
                         break;
                 }
             });
@@ -923,13 +1611,13 @@ export class Client extends EventEmitter {
         try {
             await this.negotiateOTK();
         } catch (err) {
-            log.warn("error negotiating OTKs:", err.toString());
+            this.log.warn("error negotiating OTKs:", err.toString());
         }
 
         try {
             await this.getMail();
         } catch (err) {
-            log.warn("Problem getting mail", err.toString());
+            this.log.warn("Problem getting mail", err.toString());
         }
 
         this.mailInterval = setInterval(this.getMail.bind(this), 5000);
@@ -941,7 +1629,7 @@ export class Client extends EventEmitter {
         }
         this.getting = true;
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -959,7 +1647,10 @@ export class Client extends EventEmitter {
                                 transmissionID
                             );
                         } catch (err) {
-                            log.warn("error reading mail:", err.toString());
+                            this.log.warn(
+                                "error reading mail:",
+                                err.toString()
+                            );
                         }
                     } else {
                         rej(msg);
@@ -981,11 +1672,22 @@ export class Client extends EventEmitter {
     or contains an HMAC of the message with
     a derived SK */
     private async send(msg: any, header?: Uint8Array) {
-        log.debug(
-            chalk.red.bold("OUTH"),
-            header?.toString() || XUtils.emptyHeader().toString()
+        let i = 0;
+        while (!this.wsOpen) {
+            await sleep(i);
+            i *= 2;
+
+            if (i > 500) {
+                this.close(true);
+                this.emit("disconnect");
+            }
+        }
+
+        this.log.debug(
+            chalk.red.bold("OUTH ") +
+                XUtils.encodeHex(header || XUtils.emptyHeader())
         );
-        log.debug(chalk.red.bold("OUT"), msg);
+        this.log.debug(chalk.red.bold("OUT ") + JSON.stringify(msg, null, 4));
 
         this.conn.send(XUtils.packMessage(msg, header));
     }
@@ -994,7 +1696,7 @@ export class Client extends EventEmitter {
         userID: string
     ): Promise<XTypes.WS.IKeyBundle> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -1020,7 +1722,7 @@ export class Client extends EventEmitter {
 
     private async getOTKCount(): Promise<number> {
         return new Promise((res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
@@ -1044,7 +1746,7 @@ export class Client extends EventEmitter {
 
     private async submitOTK(): Promise<void> {
         return new Promise(async (res, rej) => {
-            const transmissionID = uuidv4();
+            const transmissionID = uuid.v4();
             const callback = (packedMessage: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMessage);
                 if (msg.transmissionID === transmissionID) {
@@ -1078,17 +1780,17 @@ export class Client extends EventEmitter {
 
     private async negotiateOTK() {
         let otkCount = await this.getOTKCount();
-        log.info("Server reported OTK: ", otkCount);
+        this.log.info("Server reported OTK: " + otkCount.toString());
         const needs = xConstants.MIN_OTK_SUPPLY - otkCount;
         if (needs > 0) {
-            log.info("Filling server OTK supply.");
+            this.log.info("Filling server OTK supply.");
         }
 
         for (let i = 0; i < needs; i++) {
             await this.submitOTK();
             otkCount++;
         }
-        log.info("Server OTK supply is full.");
+        this.log.info("Server OTK supply is full.");
     }
 
     private respond(msg: XTypes.WS.IChallMsg) {
@@ -1107,7 +1809,7 @@ export class Client extends EventEmitter {
             const res = await ax.post("https://" + this.host + "/register/key");
             return res.data;
         } catch (err) {
-            log.warn("error getting regkey:", err.toString());
+            this.log.warn("error getting regkey:", err.toString());
             return null;
         }
     }
@@ -1127,11 +1829,16 @@ export class Client extends EventEmitter {
         this.send({ transmissionID, type: "pong" });
     }
 
-    private ping() {
+    private async ping() {
         if (!this.isAlive) {
-            log.warn("Connection might be down.");
+            this.log.warn("Ping failed.");
+            this.failCount++;
+            if (this.failCount === 2) {
+                await this.close(true);
+                this.emit("disconnect");
+            }
         }
         this.setAlive(false);
-        this.send({ transmissionID: uuidv4(), type: "ping" });
+        this.send({ transmissionID: uuid.v4(), type: "ping" });
     }
 }

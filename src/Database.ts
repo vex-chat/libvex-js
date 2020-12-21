@@ -1,18 +1,35 @@
 import { sleep } from "@extrahash/sleep";
 import { XUtils } from "@vex-chat/crypto-js";
 import { XTypes } from "@vex-chat/types-js";
-import log from "electron-log";
+import { EventEmitter } from "events";
 import knex from "knex";
 import nacl from "tweetnacl";
-import { IMessage } from ".";
+import winston from "winston";
+import { IClientOptions, IMessage } from ".";
+import { createLogger } from "./utils/createLogger";
 
-export class Database {
+/**
+ * @hidden
+ */
+export class Database extends EventEmitter {
     public ready: boolean = false;
     private dbPath: string;
     private db: knex<any, unknown[]>;
+    private log: winston.Logger;
+    private idKeys: nacl.BoxKeyPair;
 
-    constructor(dbPath: string) {
+    constructor(
+        dbPath: string,
+        idKeys: nacl.BoxKeyPair,
+        options?: IClientOptions
+    ) {
+        super();
+        this.log = createLogger("db", options);
+
+        this.idKeys = idKeys;
         this.dbPath = dbPath;
+
+        this.log.info("Opening database file at " + this.dbPath);
         this.db = knex({
             client: "sqlite3",
             connection: {
@@ -20,21 +37,42 @@ export class Database {
             },
             useNullAsDefault: true,
         });
+
         this.init();
     }
 
     public async close() {
+        this.log.info("Closing database.");
         await this.db.destroy();
     }
 
     public async saveMessage(message: IMessage) {
-        await this.db("messages").insert(message);
+        const copy = { ...message };
+
+        // encrypt plaintext with our idkey before it gets saved to disk
+        copy.message = XUtils.encodeHex(
+            nacl.secretbox(
+                XUtils.decodeUTF8(message.message),
+                XUtils.decodeHex(message.nonce),
+                this.idKeys.secretKey
+            )
+        );
+
+        await this.db("messages").insert(copy);
     }
 
-    public async markSessionVerified(fingerprint: string) {
+    public async deleteMessage(mailID: string) {
+        this.log.info("deleteMessage(): deleting mailid " + mailID);
+        await this.db
+            .from("messages")
+            .where({ mailID })
+            .del();
+    }
+
+    public async markSessionVerified(sessionID: string, status = true) {
         await this.db("sessions")
-            .where({ fingerprint })
-            .update({ verified: true });
+            .where({ sessionID })
+            .update({ verified: status });
     }
 
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
@@ -42,34 +80,28 @@ export class Database {
             .select()
             .where({ sender: userID })
             .orWhere({ recipient: userID })
-            .orderBy("timestamp", "asc")
+            .orderBy("timestamp", "desc")
             .limit(100);
 
-        // i'm not sure why i have to do this, these are
-        // coming through as strings
-        return messages.map((row) => {
-            row.timestamp = new Date(row.timestamp);
-            return row;
-        });
-    }
+        return messages.reverse().map((message) => {
+            // some cleanup because of how knex serializes the data
+            message.timestamp = new Date(message.timestamp);
+            // decrypt
+            message.decrypted = Boolean(message.decrypted);
 
-    public async getIdentityKeys(): Promise<nacl.BoxKeyPair | null> {
-        await this.untilReady();
-        const rows = await this.db.from("identityKeys").select();
-        if (rows.length === 0) {
-            return null;
-        }
-        const [keys] = rows;
-        return nacl.box.keyPair.fromSecretKey(
-            XUtils.decodeHex(keys.privateKey)
-        );
-    }
+            const decrypted = nacl.secretbox.open(
+                XUtils.decodeHex(message.message),
+                XUtils.decodeHex(message.nonce),
+                this.idKeys!.secretKey
+            );
 
-    public async saveIdentityKeys(idKeys: nacl.BoxKeyPair) {
-        await this.untilReady();
-        await this.db("identityKeys").insert({
-            privateKey: XUtils.encodeHex(idKeys.secretKey),
-            publicKey: XUtils.encodeHex(idKeys.publicKey),
+            if (decrypted) {
+                message.message = XUtils.encodeUTF8(decrypted);
+            } else {
+                throw new Error("Couldn't decrypt messages on disk!");
+            }
+
+            return message;
         });
     }
 
@@ -121,35 +153,18 @@ export class Database {
             .where({ sessionID });
     }
 
-    public async getFingerprints(): Promise<
-        Record<string, Record<string, XTypes.SQL.ISession>>
-    > {
-        const rows: XTypes.SQL.ISession[] = await this.db
-            .from("sessions")
-            .select();
-
-        const sessionsObj: Record<
-            string,
-            Record<string, XTypes.SQL.ISession>
-        > = {};
-
-        for (const sess of rows) {
-            if (sessionsObj[sess.userID] === undefined) {
-                sessionsObj[sess.userID] = {};
-            }
-            sessionsObj[sess.userID][sess.fingerprint] = sess;
-        }
-
-        return sessionsObj;
-    }
-
     public async getSessions(): Promise<XTypes.SQL.ISession[]> {
         const rows: XTypes.SQL.ISession[] = await this.db
             .from("sessions")
             .select()
             .orderBy("lastUsed", "desc");
 
-        return rows;
+        const fixedRows = rows.map((session) => {
+            session.verified = Boolean(session.verified);
+            return session;
+        });
+
+        return fixedRows;
     }
 
     public async getSession(
@@ -233,12 +248,6 @@ export class Database {
         await this.db("sessions").insert(session);
     }
 
-    public async retrieveMessageHistory(userID: string) {
-        return this.db("messages")
-            .select()
-            .where({});
-    }
-
     private async untilReady() {
         let timeout = 1;
         while (!this.ready) {
@@ -248,55 +257,61 @@ export class Database {
     }
 
     private async init() {
-        if (!(await this.db.schema.hasTable("messages"))) {
-            await this.db.schema.createTable("messages", (table) => {
-                table.string("nonce").primary();
-                table.string("sender").index();
-                table.string("recipient").index();
-                table.string("message");
-                table.string("direction");
-                table.date("timestamp");
-            });
-        }
+        this.log.info("Initializing database tables.");
+        try {
+            if (!(await this.db.schema.hasTable("messages"))) {
+                await this.db.schema.createTable("messages", (table) => {
+                    table.string("nonce").primary();
+                    table.string("sender").index();
+                    table.string("recipient").index();
+                    table.string("group").index();
+                    table.string("mailID");
+                    table.string("message");
+                    table.string("direction");
+                    table.date("timestamp");
+                    table.boolean("decrypted");
+                });
+            }
+            if (!(await this.db.schema.hasTable("sessions"))) {
+                await this.db.schema.createTable("sessions", (table) => {
+                    table.string("sessionID").primary();
+                    table.string("userID");
+                    table.string("SK").unique();
+                    table.string("publicKey");
+                    table.string("fingerprint");
+                    table.string("mode");
+                    table.date("lastUsed");
+                    table.boolean("verified");
+                });
+            }
+            if (!(await this.db.schema.hasTable("preKeys"))) {
+                await this.db.schema.createTable("preKeys", (table) => {
+                    table.increments("index");
+                    table.string("keyID").unique();
+                    table.string("userID");
+                    table.string("privateKey");
+                    table.string("publicKey");
+                    table.string("signature");
+                });
+            }
+            if (!(await this.db.schema.hasTable("oneTimeKeys"))) {
+                await this.db.schema.createTable("oneTimeKeys", (table) => {
+                    table.increments("index");
+                    table.string("keyID").unique();
+                    table.string("userID");
+                    table.string("privateKey");
+                    table.string("publicKey");
+                    table.string("signature");
+                });
+            }
 
-        if (!(await this.db.schema.hasTable("identityKeys"))) {
-            await this.db.schema.createTable("identityKeys", (table) => {
-                table.string("privateKey").primary();
-                table.string("publicKey");
-            });
+            // make test read
+            await this.db.from("preKeys").select();
+
+            this.ready = true;
+            this.emit("ready");
+        } catch (err) {
+            this.emit("error", err);
         }
-        if (!(await this.db.schema.hasTable("sessions"))) {
-            await this.db.schema.createTable("sessions", (table) => {
-                table.string("sessionID").primary();
-                table.string("userID");
-                table.string("SK").unique();
-                table.string("publicKey");
-                table.string("fingerprint");
-                table.string("mode");
-                table.date("lastUsed");
-                table.boolean("verified");
-            });
-        }
-        if (!(await this.db.schema.hasTable("preKeys"))) {
-            await this.db.schema.createTable("preKeys", (table) => {
-                table.increments("index");
-                table.string("keyID").unique();
-                table.string("userID");
-                table.string("privateKey");
-                table.string("publicKey");
-                table.string("signature");
-            });
-        }
-        if (!(await this.db.schema.hasTable("oneTimeKeys"))) {
-            await this.db.schema.createTable("oneTimeKeys", (table) => {
-                table.increments("index");
-                table.string("keyID").unique();
-                table.string("userID");
-                table.string("privateKey");
-                table.string("publicKey");
-                table.string("signature");
-            });
-        }
-        this.ready = true;
     }
 }
