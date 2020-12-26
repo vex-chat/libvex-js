@@ -1,6 +1,6 @@
 import { sleep } from "@extrahash/sleep";
-import { XUtils } from "@vex-chat/crypto-js";
-import { XTypes } from "@vex-chat/types-js";
+import { XUtils } from "@vex-chat/crypto";
+import { XTypes } from "@vex-chat/types";
 import { EventEmitter } from "events";
 import knex from "knex";
 import nacl from "tweetnacl";
