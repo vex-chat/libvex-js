@@ -137,8 +137,11 @@ interface ISessions {
  * @ignore
  */
 interface IFiles {
-    create: (file: Buffer) => Promise<XTypes.SQL.IFile>;
-    retrieve: (fileID: string) => Promise<XTypes.HTTP.IFileResponse | null>;
+    create: (file: Buffer) => Promise<[XTypes.SQL.IFile, string]>;
+    retrieve: (
+        fileID: string,
+        key: string
+    ) => Promise<XTypes.HTTP.IFileResponse | null>;
 }
 
 /**

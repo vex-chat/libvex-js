@@ -50,8 +50,7 @@ async function main() {
 
         const file = await client.files.create(fs.readFileSync("package.json"));
 
-        const retrieved = await client.files.retrieve(file.fileID);
-        console.log(retrieved);
+        // const retrieved = await client.files.retrieve(file.fileID);
     });
 
     // listen for new messages
