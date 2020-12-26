@@ -47,6 +47,7 @@ export class Database extends EventEmitter {
     }
 
     public async saveMessage(message: IMessage) {
+        // copy the message so we don't mutate it
         const copy = { ...message };
 
         // encrypt plaintext with our idkey before it gets saved to disk
@@ -75,11 +76,40 @@ export class Database extends EventEmitter {
             .update({ verified: status });
     }
 
+    public async getGroupHistory(channelID: string): Promise<IMessage[]> {
+        const messages = await this.db("messages")
+            .select()
+            .where({ group: channelID })
+            .orderBy("timestamp", "desc")
+            .limit(100);
+
+        return messages.reverse().map((message) => {
+            // some cleanup because of how knex serializes the data
+            message.timestamp = new Date(message.timestamp);
+            // decrypt
+            message.decrypted = Boolean(message.decrypted);
+
+            const decrypted = nacl.secretbox.open(
+                XUtils.decodeHex(message.message),
+                XUtils.decodeHex(message.nonce),
+                this.idKeys!.secretKey
+            );
+
+            if (decrypted) {
+                message.message = XUtils.encodeUTF8(decrypted);
+            } else {
+                throw new Error("Couldn't decrypt messages on disk!");
+            }
+
+            return message;
+        });
+    }
+
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
         const messages = await this.db("messages")
             .select()
-            .where({ sender: userID })
-            .orWhere({ recipient: userID })
+            .where({ sender: userID, group: null })
+            .orWhere({ recipient: userID, group: null })
             .orderBy("timestamp", "desc")
             .limit(100);
 

@@ -91,6 +91,7 @@ interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
     group: (channelID: string, message: string) => Promise<void[]>;
     retrieve: (userID: string) => Promise<IMessage[]>;
+    retrieveGroup: (channelID: string) => Promise<IMessage[]>;
 }
 
 /**
@@ -422,6 +423,13 @@ export class Client extends EventEmitter {
          * @returns - The list of IMessage objects.
          */
         retrieve: this.getMessageHistory.bind(this),
+        /**
+         * Gets the group message history with a specific channelID.
+         * @param chqnnelID: The channelID of the channel to retrieve message history for.
+         *
+         * @returns - The list of IMessage objects.
+         */
+        retrieveGroup: this.getGroupHistory.bind(this),
     };
 
     /**
@@ -809,6 +817,14 @@ export class Client extends EventEmitter {
 
     private async markSessionVerified(sessionID: string, status = true) {
         return this.database.markSessionVerified(sessionID, status);
+    }
+
+    private async getGroupHistory(channelID: string): Promise<IMessage[]> {
+        const messages: IMessage[] = await this.database.getGroupHistory(
+            channelID
+        );
+
+        return messages;
     }
 
     private async getMessageHistory(userID: string): Promise<IMessage[]> {
