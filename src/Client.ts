@@ -12,8 +12,8 @@ import {
     xMakeNonce,
     xMnemonic,
     XUtils,
-} from "@vex-chat/crypto-js";
-import { XTypes } from "@vex-chat/types-js";
+} from "@vex-chat/crypto";
+import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
