@@ -133,6 +133,14 @@ interface ISessions {
 }
 
 /**
+ * @ignore
+ */
+interface IFiles {
+    create: (file: Buffer) => Promise<XTypes.SQL.IFile>;
+    retrieve: (fileID: string) => Promise<XTypes.HTTP.IFileResponse | null>;
+}
+
+/**
  * IClientOptions are the options you can pass into the client.
  */
 export interface IClientOptions {
@@ -379,6 +387,11 @@ export class Client extends EventEmitter {
          * @returns - The list of IUser objects.
          */
         familiars: this.getFamiliars.bind(this),
+    };
+
+    public files: IFiles = {
+        create: this.createFile.bind(this),
+        retrieve: this.retrieveFile.bind(this),
     };
 
     public permissions: IPermissions = {
@@ -724,6 +737,48 @@ export class Client extends EventEmitter {
             };
             this.send(outMsg);
         });
+    }
+
+    private async retrieveFile(
+        fileID: string,
+        key: string
+    ): Promise<XTypes.HTTP.IFileResponse | null> {
+        try {
+            const res = await ax.get(
+                "https://" + this.host + "/file/" + fileID
+            );
+            const resp: XTypes.HTTP.IFileResponse = res.data;
+            return res.data;
+        } catch (err) {
+            console.warn(err);
+            return null;
+        }
+    }
+
+    // returns the file details and the encryption key
+    private async createFile(
+        file: Buffer
+    ): Promise<[XTypes.SQL.IFile, string]> {
+        const nonce = xMakeNonce();
+        const key = nacl.box.keyPair();
+        const box = nacl.secretbox(
+            Uint8Array.from(file),
+            nonce,
+            this.signKeys.publicKey
+        );
+
+        const signed = nacl.sign(box, this.signKeys.secretKey);
+
+        const payload: XTypes.HTTP.IFilePayload = {
+            owner: this.getUser().userID,
+            signed: XUtils.encodeHex(signed),
+            nonce: XUtils.encodeHex(nonce),
+        };
+
+        const res = await ax.post("https://" + this.host + "/file", payload);
+        const createdFile: XTypes.SQL.IFile = res.data;
+
+        return [createdFile, XUtils.encodeHex(key.secretKey)];
     }
 
     private getUserList(channelID: string): Promise<IUser[]> {
