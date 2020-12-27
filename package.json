@@ -4,7 +4,7 @@
     "description": "Library for communicating with xchat server.",
     "main": "./dist/index.js",
     "author": "Extra <extrahash@protonmail.com>",
-    "license": "UNLICENSED",
+    "license": "AGPL-3.0-or-later",
     "scripts": {
         "start": "node ./dist/test/test.js",
         "build": "rm -rf ./dist/*; node ./node_modules/typescript/bin/tsc",
@@ -52,5 +52,16 @@
         "uuid": "^8.3.1",
         "winston": "^3.3.3",
         "ws": "^7.4.0"
-    }
+    },
+    "directories": {
+        "doc": "docs"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vex-chat/vex-js.git"
+    },
+    "bugs": {
+        "url": "https://github.com/vex-chat/vex-js/issues"
+    },
+    "homepage": "https://github.com/vex-chat/vex-js#readme"
 }
