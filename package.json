@@ -1,5 +1,5 @@
 {
-    "name": "@vex-chat/vex",
+    "name": "@vex-chat/libvex",
     "version": "0.11.9",
     "description": "Library for communicating with xchat server.",
     "main": "./dist/index.js",
