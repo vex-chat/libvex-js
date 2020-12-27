@@ -1,0 +1,178 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>@vex-chat/vex</title>
+	<meta name="description" content="Documentation for @vex-chat/vex">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="assets/js/search.json" data-base=".">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="index.html" class="title">@vex-chat/vex</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<ul class="tsd-breadcrumb">
+				<li>
+					<a href="globals.html">Globals</a>
+				</li>
+			</ul>
+			<h1>@vex-chat/vex</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<div class="tsd-panel tsd-typography">
+				<a href="#vex-js" id="vex-js" style="color: inherit; text-decoration: none;">
+					<h1>vex-js</h1>
+				</a>
+				<p>nodejs for interfacing with xchat server.</p>
+				<a href="#quickstart" id="quickstart" style="color: inherit; text-decoration: none;">
+					<h2>Quickstart</h2>
+				</a>
+				<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">initClient</span>(<span class="hljs-params"></span>): <span class="hljs-title">void</span> </span>{
+    <span class="hljs-keyword">const</span> PK = Client.generateSecretKey();
+    client = <span class="hljs-keyword">new</span> Client(PK, {
+        <span class="hljs-attr">dbFolder</span>: progFolder,
+        <span class="hljs-attr">logLevel</span>: <span class="hljs-string">&quot;info&quot;</span>,
+    });
+    client.on(<span class="hljs-string">&quot;ready&quot;</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-comment">// you can retrieve users before you login</span>
+        <span class="hljs-keyword">const</span> registeredUser = <span class="hljs-keyword">await</span> client.users.retrieve(
+            client.getKeys().public
+        );
+        <span class="hljs-keyword">if</span> (registeredUser) {
+            <span class="hljs-keyword">await</span> client.login();
+        } <span class="hljs-keyword">else</span> {
+            <span class="hljs-keyword">await</span> client.register(<span class="hljs-string">&quot;MyUsername&quot;</span>);
+            <span class="hljs-keyword">await</span> client.login();
+        }
+    });
+    client.on(<span class="hljs-string">&quot;authed&quot;</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-keyword">const</span> familiars = <span class="hljs-keyword">await</span> client.users.familiars();
+        <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> user <span class="hljs-keyword">of</span> familiars) {
+            client.messages.send(user.userID, <span class="hljs-string">&quot;Hello world!&quot;</span>);
+        }
+    });
+    client.init();
+}
+
+initClient();</code></pre>
+			</div>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class="globals  ">
+						<a href="globals.html"><em>Globals</em></a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+					<li class=" tsd-kind-class">
+						<a href="classes/client.html" class="tsd-kind-icon">Client</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/ichannel.html" class="tsd-kind-icon">IChannel</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/iclientoptions.html" class="tsd-kind-icon">IClient<wbr>Options</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/ikeys.html" class="tsd-kind-icon">IKeys</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/imessage.html" class="tsd-kind-icon">IMessage</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/ipermission.html" class="tsd-kind-icon">IPermission</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/iserver.html" class="tsd-kind-icon">IServer</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/isession.html" class="tsd-kind-icon">ISession</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/iuser.html" class="tsd-kind-icon">IUser</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#words" class="tsd-kind-icon">words</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="globals.html#createlogger" class="tsd-kind-icon">create<wbr>Logger</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="globals.html#createuint8uuid" class="tsd-kind-icon">create<wbr>Uint8UUID</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="globals.html#uuidtouint8" class="tsd-kind-icon">uuid<wbr>ToUint8</a>
+					</li>
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-constructor tsd-parent-kind-class"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class"><span class="tsd-kind-icon">Method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-interface"><span class="tsd-kind-icon">Property</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static method</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
