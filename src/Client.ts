@@ -393,13 +393,36 @@ export class Client extends EventEmitter {
         familiars: this.getFamiliars.bind(this),
     };
 
+    /**
+     * The IMessages interface contains methods for dealing with messages.
+     */
     public files: IFiles = {
+        /**
+         * Uploads an encrypted file and returns the details and the secret key.
+         * @param file: The file as a Buffer.
+         *
+         * @returns Details of the file uploaded and the key to encrypt in the form [details, key].
+         */
         create: this.createFile.bind(this),
         retrieve: this.retrieveFile.bind(this),
     };
 
+    /**
+     * The IPermissions object contains all methods for dealing with permissions.
+     */
     public permissions: IPermissions = {
+        /**
+         * Gets all permissions for the logged in user.
+         *
+         * @returns - The list of IPermissions objects.
+         */
         retrieve: this.getPermissions.bind(this),
+        /**
+         * Creates a new permission for the givern resourceID and userID.
+         * @param params: The new permission details.
+         *
+         * @returns - The list of IPermissions objects.
+         */
         create: this.createPermission.bind(this),
     };
 
@@ -464,14 +487,47 @@ export class Client extends EventEmitter {
     };
 
     public servers: IServers = {
+        /**
+         * Retrieves all servers the logged in user has access to.
+         *
+         * @returns - The list of IServer objects.
+         */
         retrieve: this.getServerList.bind(this),
+        /**
+         * Retrieves server details by its unique serverID.
+         *
+         * @returns - The requested IServer object, or null if the id does not exist.
+         */
         retrieveByID: this.getServerByID.bind(this),
+        /**
+         * Creates a new server.
+         * @param name: The server name.
+         *
+         * @returns - The created IServer object.
+         */
         create: this.createServer.bind(this),
     };
 
     public channels: IChannels = {
+        /**
+         * Retrieves all channels in a server.
+         *
+         * @returns - The list of IChannel objects.
+         */
         retrieve: this.getChannelList.bind(this),
+        /**
+         * Retrieves channel details by its unique channelID.
+         *
+         * @returns - The list of IChannel objects.
+         */
         retrieveByID: this.getChannelByID.bind(this),
+        /**
+         * Creates a new channel in a server.
+         * @param name: The channel name.
+         * @param serverID: The unique serverID to create the channel in.
+         *
+         * @returns - The created IChannel object.
+         */
         create: this.createChannel.bind(this),
     };
 
