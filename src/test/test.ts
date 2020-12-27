@@ -1,8 +1,8 @@
 // tslint:disable: prefer-const
 import { sleep } from "@extrahash/sleep";
+import fs from "fs";
 import { Client, IMessage } from "..";
 import { loadEnv } from "./loadEnv";
-import { words } from "./words";
 
 main();
 
@@ -45,11 +45,11 @@ async function main() {
 
     client.on("authed", async () => {
         const me = await client.users.me();
-        const server = await client.servers.create("My Gay Server");
-
         console.log(me);
 
-        await client.messages.send(me.userID, "Hello fren");
+        const file = await client.files.create(fs.readFileSync("package.json"));
+
+        // const retrieved = await client.files.retrieve(file.fileID);
     });
 
     // listen for new messages

@@ -1,6 +1,9 @@
 import winston from "winston";
 import { IClientOptions } from "..";
 
+/**
+ * @ignore
+ */
 export function createLogger(logName: string, options?: IClientOptions) {
     const logger = winston.createLogger({
         level: options?.logLevel || "error",
