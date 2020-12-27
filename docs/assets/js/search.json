@@ -1,7 +1,6 @@
 {
     "kinds": {
         "32": "Variable",
-        "64": "Function",
         "128": "Class",
         "256": "Interface",
         "512": "Constructor",
@@ -13,34 +12,13 @@
     "rows": [
         {
             "id": 0,
-            "kind": 64,
-            "name": "createLogger",
-            "url": "globals.html#createlogger",
-            "classes": "tsd-kind-function"
-        },
-        {
-            "id": 1,
-            "kind": 64,
-            "name": "createUint8UUID",
-            "url": "globals.html#createuint8uuid",
-            "classes": "tsd-kind-function"
-        },
-        {
-            "id": 2,
-            "kind": 64,
-            "name": "uuidToUint8",
-            "url": "globals.html#uuidtouint8",
-            "classes": "tsd-kind-function"
-        },
-        {
-            "id": 3,
             "kind": 256,
             "name": "IMessage",
             "url": "interfaces/imessage.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 4,
+            "id": 1,
             "kind": 1024,
             "name": "nonce",
             "url": "interfaces/imessage.html#nonce",
@@ -48,7 +26,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 5,
+            "id": 2,
             "kind": 1024,
             "name": "mailID",
             "url": "interfaces/imessage.html#mailid",
@@ -56,7 +34,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 6,
+            "id": 3,
             "kind": 1024,
             "name": "sender",
             "url": "interfaces/imessage.html#sender",
@@ -64,7 +42,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 7,
+            "id": 4,
             "kind": 1024,
             "name": "recipient",
             "url": "interfaces/imessage.html#recipient",
@@ -72,7 +50,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 8,
+            "id": 5,
             "kind": 1024,
             "name": "message",
             "url": "interfaces/imessage.html#message",
@@ -80,7 +58,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 9,
+            "id": 6,
             "kind": 1024,
             "name": "direction",
             "url": "interfaces/imessage.html#direction",
@@ -88,7 +66,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 10,
+            "id": 7,
             "kind": 1024,
             "name": "timestamp",
             "url": "interfaces/imessage.html#timestamp",
@@ -96,7 +74,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 11,
+            "id": 8,
             "kind": 1024,
             "name": "decrypted",
             "url": "interfaces/imessage.html#decrypted",
@@ -104,7 +82,7 @@
             "parent": "IMessage"
         },
         {
-            "id": 12,
+            "id": 9,
             "kind": 1024,
             "name": "group",
             "url": "interfaces/imessage.html#group",
@@ -112,14 +90,14 @@
             "parent": "IMessage"
         },
         {
-            "id": 13,
+            "id": 10,
             "kind": 256,
             "name": "IPermission",
             "url": "interfaces/ipermission.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 14,
+            "id": 11,
             "kind": 1024,
             "name": "permissionID",
             "url": "interfaces/ipermission.html#permissionid",
@@ -127,7 +105,7 @@
             "parent": "IPermission"
         },
         {
-            "id": 15,
+            "id": 12,
             "kind": 1024,
             "name": "userID",
             "url": "interfaces/ipermission.html#userid",
@@ -135,7 +113,7 @@
             "parent": "IPermission"
         },
         {
-            "id": 16,
+            "id": 13,
             "kind": 1024,
             "name": "resourceID",
             "url": "interfaces/ipermission.html#resourceid",
@@ -143,7 +121,7 @@
             "parent": "IPermission"
         },
         {
-            "id": 17,
+            "id": 14,
             "kind": 1024,
             "name": "resourceType",
             "url": "interfaces/ipermission.html#resourcetype",
@@ -151,7 +129,7 @@
             "parent": "IPermission"
         },
         {
-            "id": 18,
+            "id": 15,
             "kind": 1024,
             "name": "powerLevel",
             "url": "interfaces/ipermission.html#powerlevel",
@@ -159,14 +137,14 @@
             "parent": "IPermission"
         },
         {
-            "id": 19,
+            "id": 16,
             "kind": 256,
             "name": "IKeys",
             "url": "interfaces/ikeys.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 20,
+            "id": 17,
             "kind": 1024,
             "name": "public",
             "url": "interfaces/ikeys.html#public",
@@ -174,7 +152,7 @@
             "parent": "IKeys"
         },
         {
-            "id": 21,
+            "id": 18,
             "kind": 1024,
             "name": "private",
             "url": "interfaces/ikeys.html#private",
@@ -182,14 +160,14 @@
             "parent": "IKeys"
         },
         {
-            "id": 22,
+            "id": 19,
             "kind": 256,
             "name": "IUser",
             "url": "interfaces/iuser.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 23,
+            "id": 20,
             "kind": 1024,
             "name": "userID",
             "url": "interfaces/iuser.html#userid",
@@ -197,7 +175,7 @@
             "parent": "IUser"
         },
         {
-            "id": 24,
+            "id": 21,
             "kind": 1024,
             "name": "signKey",
             "url": "interfaces/iuser.html#signkey",
@@ -205,7 +183,7 @@
             "parent": "IUser"
         },
         {
-            "id": 25,
+            "id": 22,
             "kind": 1024,
             "name": "username",
             "url": "interfaces/iuser.html#username",
@@ -213,7 +191,7 @@
             "parent": "IUser"
         },
         {
-            "id": 26,
+            "id": 23,
             "kind": 1024,
             "name": "lastSeen",
             "url": "interfaces/iuser.html#lastseen",
@@ -221,7 +199,7 @@
             "parent": "IUser"
         },
         {
-            "id": 27,
+            "id": 24,
             "kind": 1024,
             "name": "avatar",
             "url": "interfaces/iuser.html#avatar",
@@ -229,14 +207,14 @@
             "parent": "IUser"
         },
         {
-            "id": 28,
+            "id": 25,
             "kind": 256,
             "name": "ISession",
             "url": "interfaces/isession.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 29,
+            "id": 26,
             "kind": 1024,
             "name": "sessionID",
             "url": "interfaces/isession.html#sessionid",
@@ -244,7 +222,7 @@
             "parent": "ISession"
         },
         {
-            "id": 30,
+            "id": 27,
             "kind": 1024,
             "name": "userID",
             "url": "interfaces/isession.html#userid",
@@ -252,7 +230,7 @@
             "parent": "ISession"
         },
         {
-            "id": 31,
+            "id": 28,
             "kind": 1024,
             "name": "mode",
             "url": "interfaces/isession.html#mode",
@@ -260,7 +238,7 @@
             "parent": "ISession"
         },
         {
-            "id": 32,
+            "id": 29,
             "kind": 1024,
             "name": "SK",
             "url": "interfaces/isession.html#sk",
@@ -268,7 +246,7 @@
             "parent": "ISession"
         },
         {
-            "id": 33,
+            "id": 30,
             "kind": 1024,
             "name": "publicKey",
             "url": "interfaces/isession.html#publickey",
@@ -276,7 +254,7 @@
             "parent": "ISession"
         },
         {
-            "id": 34,
+            "id": 31,
             "kind": 1024,
             "name": "fingerprint",
             "url": "interfaces/isession.html#fingerprint",
@@ -284,7 +262,7 @@
             "parent": "ISession"
         },
         {
-            "id": 35,
+            "id": 32,
             "kind": 1024,
             "name": "lastUsed",
             "url": "interfaces/isession.html#lastused",
@@ -292,7 +270,7 @@
             "parent": "ISession"
         },
         {
-            "id": 36,
+            "id": 33,
             "kind": 1024,
             "name": "verified",
             "url": "interfaces/isession.html#verified",
@@ -300,14 +278,14 @@
             "parent": "ISession"
         },
         {
-            "id": 37,
+            "id": 34,
             "kind": 256,
             "name": "IChannel",
             "url": "interfaces/ichannel.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 38,
+            "id": 35,
             "kind": 1024,
             "name": "channelID",
             "url": "interfaces/ichannel.html#channelid",
@@ -315,7 +293,7 @@
             "parent": "IChannel"
         },
         {
-            "id": 39,
+            "id": 36,
             "kind": 1024,
             "name": "serverID",
             "url": "interfaces/ichannel.html#serverid",
@@ -323,7 +301,7 @@
             "parent": "IChannel"
         },
         {
-            "id": 40,
+            "id": 37,
             "kind": 1024,
             "name": "name",
             "url": "interfaces/ichannel.html#name",
@@ -331,14 +309,14 @@
             "parent": "IChannel"
         },
         {
-            "id": 41,
+            "id": 38,
             "kind": 256,
             "name": "IServer",
             "url": "interfaces/iserver.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 42,
+            "id": 39,
             "kind": 1024,
             "name": "serverID",
             "url": "interfaces/iserver.html#serverid",
@@ -346,7 +324,7 @@
             "parent": "IServer"
         },
         {
-            "id": 43,
+            "id": 40,
             "kind": 1024,
             "name": "name",
             "url": "interfaces/iserver.html#name",
@@ -354,7 +332,7 @@
             "parent": "IServer"
         },
         {
-            "id": 44,
+            "id": 41,
             "kind": 1024,
             "name": "icon",
             "url": "interfaces/iserver.html#icon",
@@ -362,14 +340,14 @@
             "parent": "IServer"
         },
         {
-            "id": 45,
+            "id": 42,
             "kind": 256,
             "name": "IClientOptions",
             "url": "interfaces/iclientoptions.html",
             "classes": "tsd-kind-interface"
         },
         {
-            "id": 46,
+            "id": 43,
             "kind": 1024,
             "name": "logLevel",
             "url": "interfaces/iclientoptions.html#loglevel",
@@ -377,7 +355,7 @@
             "parent": "IClientOptions"
         },
         {
-            "id": 47,
+            "id": 44,
             "kind": 1024,
             "name": "host",
             "url": "interfaces/iclientoptions.html#host",
@@ -385,7 +363,7 @@
             "parent": "IClientOptions"
         },
         {
-            "id": 48,
+            "id": 45,
             "kind": 1024,
             "name": "dbFolder",
             "url": "interfaces/iclientoptions.html#dbfolder",
@@ -393,14 +371,14 @@
             "parent": "IClientOptions"
         },
         {
-            "id": 49,
+            "id": 46,
             "kind": 128,
             "name": "Client",
             "url": "classes/client.html",
             "classes": "tsd-kind-class"
         },
         {
-            "id": 50,
+            "id": 47,
             "kind": 8388608,
             "name": "on",
             "url": "classes/client.html#on",
@@ -408,7 +386,7 @@
             "parent": "Client"
         },
         {
-            "id": 51,
+            "id": 48,
             "kind": 2048,
             "name": "generateSecretKey",
             "url": "classes/client.html#generatesecretkey",
@@ -416,7 +394,7 @@
             "parent": "Client"
         },
         {
-            "id": 52,
+            "id": 49,
             "kind": 2048,
             "name": "randomUsername",
             "url": "classes/client.html#randomusername",
@@ -424,7 +402,7 @@
             "parent": "Client"
         },
         {
-            "id": 53,
+            "id": 50,
             "kind": 2097152,
             "name": "users",
             "url": "classes/client.html#users",
@@ -432,7 +410,7 @@
             "parent": "Client"
         },
         {
-            "id": 54,
+            "id": 51,
             "kind": 32,
             "name": "retrieve",
             "url": "classes/client.html#users.retrieve-6",
@@ -440,7 +418,7 @@
             "parent": "Client.users"
         },
         {
-            "id": 55,
+            "id": 52,
             "kind": 32,
             "name": "me",
             "url": "classes/client.html#users.me",
@@ -448,7 +426,7 @@
             "parent": "Client.users"
         },
         {
-            "id": 56,
+            "id": 53,
             "kind": 32,
             "name": "familiars",
             "url": "classes/client.html#users.familiars",
@@ -456,7 +434,7 @@
             "parent": "Client.users"
         },
         {
-            "id": 57,
+            "id": 54,
             "kind": 2097152,
             "name": "files",
             "url": "classes/client.html#files",
@@ -464,7 +442,7 @@
             "parent": "Client"
         },
         {
-            "id": 58,
+            "id": 55,
             "kind": 32,
             "name": "create",
             "url": "classes/client.html#files.create-1",
@@ -472,7 +450,7 @@
             "parent": "Client.files"
         },
         {
-            "id": 59,
+            "id": 56,
             "kind": 32,
             "name": "retrieve",
             "url": "classes/client.html#files.retrieve-1",
@@ -480,7 +458,7 @@
             "parent": "Client.files"
         },
         {
-            "id": 60,
+            "id": 57,
             "kind": 2097152,
             "name": "permissions",
             "url": "classes/client.html#permissions",
@@ -488,7 +466,7 @@
             "parent": "Client"
         },
         {
-            "id": 61,
+            "id": 58,
             "kind": 32,
             "name": "retrieve",
             "url": "classes/client.html#permissions.retrieve-3",
@@ -496,7 +474,7 @@
             "parent": "Client.permissions"
         },
         {
-            "id": 62,
+            "id": 59,
             "kind": 32,
             "name": "create",
             "url": "classes/client.html#permissions.create-2",
@@ -504,7 +482,7 @@
             "parent": "Client.permissions"
         },
         {
-            "id": 63,
+            "id": 60,
             "kind": 2097152,
             "name": "messages",
             "url": "classes/client.html#messages",
@@ -512,7 +490,7 @@
             "parent": "Client"
         },
         {
-            "id": 64,
+            "id": 61,
             "kind": 32,
             "name": "send",
             "url": "classes/client.html#messages.send",
@@ -520,7 +498,7 @@
             "parent": "Client.messages"
         },
         {
-            "id": 65,
+            "id": 62,
             "kind": 32,
             "name": "group",
             "url": "classes/client.html#messages.group",
@@ -528,7 +506,7 @@
             "parent": "Client.messages"
         },
         {
-            "id": 66,
+            "id": 63,
             "kind": 32,
             "name": "retrieve",
             "url": "classes/client.html#messages.retrieve-2",
@@ -536,7 +514,7 @@
             "parent": "Client.messages"
         },
         {
-            "id": 67,
+            "id": 64,
             "kind": 32,
             "name": "retrieveGroup",
             "url": "classes/client.html#messages.retrievegroup",
@@ -544,7 +522,7 @@
             "parent": "Client.messages"
         },
         {
-            "id": 68,
+            "id": 65,
             "kind": 2097152,
             "name": "sessions",
             "url": "classes/client.html#sessions",
@@ -552,7 +530,7 @@
             "parent": "Client"
         },
         {
-            "id": 69,
+            "id": 66,
             "kind": 32,
             "name": "retrieve",
             "url": "classes/client.html#sessions.retrieve-5",
@@ -560,7 +538,7 @@
             "parent": "Client.sessions"
         },
         {
-            "id": 70,
+            "id": 67,
             "kind": 32,
             "name": "verify",
             "url": "classes/client.html#sessions.verify",
@@ -568,7 +546,7 @@
             "parent": "Client.sessions"
         },
         {
-            "id": 71,
+            "id": 68,
             "kind": 32,
             "name": "markVerified",
             "url": "classes/client.html#sessions.markverified",
@@ -576,7 +554,7 @@
             "parent": "Client.sessions"
         },
         {
-            "id": 72,
+            "id": 69,
             "kind": 2097152,
             "name": "servers",
             "url": "classes/client.html#servers",
@@ -584,7 +562,7 @@
             "parent": "Client"
         },
         {
-            "id": 73,
+            "id": 70,
             "kind": 32,
             "name": "retrieve",
             "url": "classes/client.html#servers.retrieve-4",
@@ -592,7 +570,7 @@
             "parent": "Client.servers"
         },
         {
-            "id": 74,
+            "id": 71,
             "kind": 32,
             "name": "retrieveByID",
             "url": "classes/client.html#servers.retrievebyid-1",
@@ -600,7 +578,7 @@
             "parent": "Client.servers"
         },
         {
-            "id": 75,
+            "id": 72,
             "kind": 32,
             "name": "create",
             "url": "classes/client.html#servers.create-3",
@@ -608,7 +586,7 @@
             "parent": "Client.servers"
         },
         {
-            "id": 76,
+            "id": 73,
             "kind": 2097152,
             "name": "channels",
             "url": "classes/client.html#channels",
@@ -616,7 +594,7 @@
             "parent": "Client"
         },
         {
-            "id": 77,
+            "id": 74,
             "kind": 32,
             "name": "retrieve",
             "url": "classes/client.html#channels.retrieve",
@@ -624,7 +602,7 @@
             "parent": "Client.channels"
         },
         {
-            "id": 78,
+            "id": 75,
             "kind": 32,
             "name": "retrieveByID",
             "url": "classes/client.html#channels.retrievebyid",
@@ -632,7 +610,7 @@
             "parent": "Client.channels"
         },
         {
-            "id": 79,
+            "id": 76,
             "kind": 32,
             "name": "create",
             "url": "classes/client.html#channels.create",
@@ -640,7 +618,7 @@
             "parent": "Client.channels"
         },
         {
-            "id": 80,
+            "id": 77,
             "kind": 1024,
             "name": "hasInit",
             "url": "classes/client.html#hasinit",
@@ -648,7 +626,7 @@
             "parent": "Client"
         },
         {
-            "id": 81,
+            "id": 78,
             "kind": 1024,
             "name": "hasLoggedIn",
             "url": "classes/client.html#hasloggedin",
@@ -656,7 +634,7 @@
             "parent": "Client"
         },
         {
-            "id": 82,
+            "id": 79,
             "kind": 512,
             "name": "constructor",
             "url": "classes/client.html#constructor",
@@ -664,7 +642,7 @@
             "parent": "Client"
         },
         {
-            "id": 83,
+            "id": 80,
             "kind": 2048,
             "name": "init",
             "url": "classes/client.html#init",
@@ -672,7 +650,7 @@
             "parent": "Client"
         },
         {
-            "id": 84,
+            "id": 81,
             "kind": 2048,
             "name": "close",
             "url": "classes/client.html#close",
@@ -680,7 +658,7 @@
             "parent": "Client"
         },
         {
-            "id": 85,
+            "id": 82,
             "kind": 2048,
             "name": "getKeys",
             "url": "classes/client.html#getkeys",
@@ -688,7 +666,7 @@
             "parent": "Client"
         },
         {
-            "id": 86,
+            "id": 83,
             "kind": 2048,
             "name": "login",
             "url": "classes/client.html#login",
@@ -696,523 +674,498 @@
             "parent": "Client"
         },
         {
-            "id": 87,
+            "id": 84,
             "kind": 2048,
             "name": "register",
             "url": "classes/client.html#register",
             "classes": "tsd-kind-method tsd-parent-kind-class",
             "parent": "Client"
-        },
-        {
-            "id": 88,
-            "kind": 32,
-            "name": "words",
-            "url": "globals.html#words",
-            "classes": "tsd-kind-variable"
         }
     ],
     "index": {
         "version": "2.3.9",
         "fields": ["name", "parent"],
         "fieldVectors": [
-            ["name/0", [0, 40.943]],
+            ["name/0", [0, 21.03]],
             ["parent/0", []],
-            ["name/1", [1, 40.943]],
-            ["parent/1", []],
-            ["name/2", [2, 40.943]],
-            ["parent/2", []],
-            ["name/3", [3, 21.484]],
-            ["parent/3", []],
-            ["name/4", [4, 40.943]],
-            ["parent/4", [3, 2.008]],
-            ["name/5", [5, 40.943]],
-            ["parent/5", [3, 2.008]],
-            ["name/6", [6, 40.943]],
-            ["parent/6", [3, 2.008]],
-            ["name/7", [7, 40.943]],
-            ["parent/7", [3, 2.008]],
-            ["name/8", [8, 40.943]],
-            ["parent/8", [3, 2.008]],
-            ["name/9", [9, 40.943]],
-            ["parent/9", [3, 2.008]],
-            ["name/10", [10, 40.943]],
-            ["parent/10", [3, 2.008]],
-            ["name/11", [11, 40.943]],
-            ["parent/11", [3, 2.008]],
-            ["name/12", [12, 35.835]],
-            ["parent/12", [3, 2.008]],
-            ["name/13", [13, 26.28]],
-            ["parent/13", []],
-            ["name/14", [14, 40.943]],
-            ["parent/14", [13, 2.456]],
-            ["name/15", [15, 32.47]],
-            ["parent/15", [13, 2.456]],
-            ["name/16", [16, 40.943]],
-            ["parent/16", [13, 2.456]],
-            ["name/17", [17, 40.943]],
-            ["parent/17", [13, 2.456]],
-            ["name/18", [18, 40.943]],
-            ["parent/18", [13, 2.456]],
-            ["name/19", [19, 32.47]],
+            ["name/1", [1, 40.489]],
+            ["parent/1", [0, 2.006]],
+            ["name/2", [2, 40.489]],
+            ["parent/2", [0, 2.006]],
+            ["name/3", [3, 40.489]],
+            ["parent/3", [0, 2.006]],
+            ["name/4", [4, 40.489]],
+            ["parent/4", [0, 2.006]],
+            ["name/5", [5, 40.489]],
+            ["parent/5", [0, 2.006]],
+            ["name/6", [6, 40.489]],
+            ["parent/6", [0, 2.006]],
+            ["name/7", [7, 40.489]],
+            ["parent/7", [0, 2.006]],
+            ["name/8", [8, 40.489]],
+            ["parent/8", [0, 2.006]],
+            ["name/9", [9, 35.381]],
+            ["parent/9", [0, 2.006]],
+            ["name/10", [10, 25.825]],
+            ["parent/10", []],
+            ["name/11", [11, 40.489]],
+            ["parent/11", [10, 2.463]],
+            ["name/12", [12, 32.016]],
+            ["parent/12", [10, 2.463]],
+            ["name/13", [13, 40.489]],
+            ["parent/13", [10, 2.463]],
+            ["name/14", [14, 40.489]],
+            ["parent/14", [10, 2.463]],
+            ["name/15", [15, 40.489]],
+            ["parent/15", [10, 2.463]],
+            ["name/16", [16, 32.016]],
+            ["parent/16", []],
+            ["name/17", [17, 40.489]],
+            ["parent/17", [16, 3.054]],
+            ["name/18", [18, 40.489]],
+            ["parent/18", [16, 3.054]],
+            ["name/19", [19, 25.825]],
             ["parent/19", []],
-            ["name/20", [20, 40.943]],
-            ["parent/20", [19, 3.035]],
-            ["name/21", [21, 40.943]],
-            ["parent/21", [19, 3.035]],
-            ["name/22", [22, 26.28]],
-            ["parent/22", []],
-            ["name/23", [15, 32.47]],
-            ["parent/23", [22, 2.456]],
-            ["name/24", [23, 40.943]],
-            ["parent/24", [22, 2.456]],
-            ["name/25", [24, 40.943]],
-            ["parent/25", [22, 2.456]],
-            ["name/26", [25, 40.943]],
-            ["parent/26", [22, 2.456]],
-            ["name/27", [26, 40.943]],
-            ["parent/27", [22, 2.456]],
-            ["name/28", [27, 22.485]],
-            ["parent/28", []],
-            ["name/29", [28, 40.943]],
-            ["parent/29", [27, 2.101]],
-            ["name/30", [15, 32.47]],
-            ["parent/30", [27, 2.101]],
-            ["name/31", [29, 40.943]],
-            ["parent/31", [27, 2.101]],
-            ["name/32", [30, 40.943]],
-            ["parent/32", [27, 2.101]],
-            ["name/33", [31, 40.943]],
-            ["parent/33", [27, 2.101]],
-            ["name/34", [32, 40.943]],
-            ["parent/34", [27, 2.101]],
-            ["name/35", [33, 40.943]],
-            ["parent/35", [27, 2.101]],
-            ["name/36", [34, 40.943]],
-            ["parent/36", [27, 2.101]],
-            ["name/37", [35, 29.957]],
-            ["parent/37", []],
-            ["name/38", [36, 40.943]],
-            ["parent/38", [35, 2.8]],
-            ["name/39", [37, 35.835]],
-            ["parent/39", [35, 2.8]],
-            ["name/40", [38, 35.835]],
-            ["parent/40", [35, 2.8]],
-            ["name/41", [39, 29.957]],
-            ["parent/41", []],
-            ["name/42", [37, 35.835]],
-            ["parent/42", [39, 2.8]],
-            ["name/43", [38, 35.835]],
-            ["parent/43", [39, 2.8]],
-            ["name/44", [40, 40.943]],
-            ["parent/44", [39, 2.8]],
-            ["name/45", [41, 29.957]],
-            ["parent/45", []],
-            ["name/46", [42, 40.943]],
-            ["parent/46", [41, 2.8]],
-            ["name/47", [43, 40.943]],
-            ["parent/47", [41, 2.8]],
-            ["name/48", [44, 40.943]],
-            ["parent/48", [41, 2.8]],
-            ["name/49", [45, 15.294]],
-            ["parent/49", []],
-            ["name/50", [46, 40.943]],
-            ["parent/50", [45, 1.429]],
-            ["name/51", [47, 40.943]],
-            ["parent/51", [45, 1.429]],
-            ["name/52", [48, 40.943]],
-            ["parent/52", [45, 1.429]],
-            ["name/53", [49, 40.943]],
-            ["parent/53", [45, 1.429]],
-            ["name/54", [50, 24.849]],
-            ["parent/54", [51, 3.035]],
-            ["name/55", [52, 40.943]],
-            ["parent/55", [51, 3.035]],
-            ["name/56", [53, 40.943]],
-            ["parent/56", [51, 3.035]],
-            ["name/57", [54, 40.943]],
-            ["parent/57", [45, 1.429]],
-            ["name/58", [55, 29.957]],
-            ["parent/58", [56, 3.349]],
-            ["name/59", [50, 24.849]],
-            ["parent/59", [56, 3.349]],
-            ["name/60", [57, 40.943]],
-            ["parent/60", [45, 1.429]],
-            ["name/61", [50, 24.849]],
-            ["parent/61", [58, 3.349]],
-            ["name/62", [55, 29.957]],
-            ["parent/62", [58, 3.349]],
-            ["name/63", [59, 40.943]],
-            ["parent/63", [45, 1.429]],
-            ["name/64", [60, 40.943]],
-            ["parent/64", [61, 2.8]],
-            ["name/65", [12, 35.835]],
-            ["parent/65", [61, 2.8]],
-            ["name/66", [50, 24.849]],
-            ["parent/66", [61, 2.8]],
-            ["name/67", [62, 40.943]],
-            ["parent/67", [61, 2.8]],
-            ["name/68", [63, 40.943]],
-            ["parent/68", [45, 1.429]],
-            ["name/69", [50, 24.849]],
-            ["parent/69", [64, 3.035]],
-            ["name/70", [65, 40.943]],
-            ["parent/70", [64, 3.035]],
-            ["name/71", [66, 40.943]],
-            ["parent/71", [64, 3.035]],
-            ["name/72", [67, 40.943]],
-            ["parent/72", [45, 1.429]],
-            ["name/73", [50, 24.849]],
-            ["parent/73", [68, 3.035]],
-            ["name/74", [69, 35.835]],
-            ["parent/74", [68, 3.035]],
-            ["name/75", [55, 29.957]],
-            ["parent/75", [68, 3.035]],
-            ["name/76", [70, 40.943]],
-            ["parent/76", [45, 1.429]],
-            ["name/77", [50, 24.849]],
-            ["parent/77", [71, 3.035]],
-            ["name/78", [69, 35.835]],
-            ["parent/78", [71, 3.035]],
-            ["name/79", [55, 29.957]],
-            ["parent/79", [71, 3.035]],
-            ["name/80", [72, 40.943]],
-            ["parent/80", [45, 1.429]],
-            ["name/81", [73, 40.943]],
-            ["parent/81", [45, 1.429]],
-            ["name/82", [74, 40.943]],
-            ["parent/82", [45, 1.429]],
-            ["name/83", [75, 40.943]],
-            ["parent/83", [45, 1.429]],
-            ["name/84", [76, 40.943]],
-            ["parent/84", [45, 1.429]],
-            ["name/85", [77, 40.943]],
-            ["parent/85", [45, 1.429]],
-            ["name/86", [78, 40.943]],
-            ["parent/86", [45, 1.429]],
-            ["name/87", [79, 40.943]],
-            ["parent/87", [45, 1.429]],
-            ["name/88", [80, 40.943]],
-            ["parent/88", []]
+            ["name/20", [12, 32.016]],
+            ["parent/20", [19, 2.463]],
+            ["name/21", [20, 40.489]],
+            ["parent/21", [19, 2.463]],
+            ["name/22", [21, 40.489]],
+            ["parent/22", [19, 2.463]],
+            ["name/23", [22, 40.489]],
+            ["parent/23", [19, 2.463]],
+            ["name/24", [23, 40.489]],
+            ["parent/24", [19, 2.463]],
+            ["name/25", [24, 22.031]],
+            ["parent/25", []],
+            ["name/26", [25, 40.489]],
+            ["parent/26", [24, 2.101]],
+            ["name/27", [12, 32.016]],
+            ["parent/27", [24, 2.101]],
+            ["name/28", [26, 40.489]],
+            ["parent/28", [24, 2.101]],
+            ["name/29", [27, 40.489]],
+            ["parent/29", [24, 2.101]],
+            ["name/30", [28, 40.489]],
+            ["parent/30", [24, 2.101]],
+            ["name/31", [29, 40.489]],
+            ["parent/31", [24, 2.101]],
+            ["name/32", [30, 40.489]],
+            ["parent/32", [24, 2.101]],
+            ["name/33", [31, 40.489]],
+            ["parent/33", [24, 2.101]],
+            ["name/34", [32, 29.503]],
+            ["parent/34", []],
+            ["name/35", [33, 40.489]],
+            ["parent/35", [32, 2.814]],
+            ["name/36", [34, 35.381]],
+            ["parent/36", [32, 2.814]],
+            ["name/37", [35, 35.381]],
+            ["parent/37", [32, 2.814]],
+            ["name/38", [36, 29.503]],
+            ["parent/38", []],
+            ["name/39", [34, 35.381]],
+            ["parent/39", [36, 2.814]],
+            ["name/40", [35, 35.381]],
+            ["parent/40", [36, 2.814]],
+            ["name/41", [37, 40.489]],
+            ["parent/41", [36, 2.814]],
+            ["name/42", [38, 29.503]],
+            ["parent/42", []],
+            ["name/43", [39, 40.489]],
+            ["parent/43", [38, 2.814]],
+            ["name/44", [40, 40.489]],
+            ["parent/44", [38, 2.814]],
+            ["name/45", [41, 40.489]],
+            ["parent/45", [38, 2.814]],
+            ["name/46", [42, 14.839]],
+            ["parent/46", []],
+            ["name/47", [43, 40.489]],
+            ["parent/47", [42, 1.415]],
+            ["name/48", [44, 40.489]],
+            ["parent/48", [42, 1.415]],
+            ["name/49", [45, 40.489]],
+            ["parent/49", [42, 1.415]],
+            ["name/50", [46, 40.489]],
+            ["parent/50", [42, 1.415]],
+            ["name/51", [47, 24.394]],
+            ["parent/51", [48, 3.054]],
+            ["name/52", [49, 40.489]],
+            ["parent/52", [48, 3.054]],
+            ["name/53", [50, 40.489]],
+            ["parent/53", [48, 3.054]],
+            ["name/54", [51, 40.489]],
+            ["parent/54", [42, 1.415]],
+            ["name/55", [52, 29.503]],
+            ["parent/55", [53, 3.375]],
+            ["name/56", [47, 24.394]],
+            ["parent/56", [53, 3.375]],
+            ["name/57", [54, 40.489]],
+            ["parent/57", [42, 1.415]],
+            ["name/58", [47, 24.394]],
+            ["parent/58", [55, 3.375]],
+            ["name/59", [52, 29.503]],
+            ["parent/59", [55, 3.375]],
+            ["name/60", [56, 40.489]],
+            ["parent/60", [42, 1.415]],
+            ["name/61", [57, 40.489]],
+            ["parent/61", [58, 2.814]],
+            ["name/62", [9, 35.381]],
+            ["parent/62", [58, 2.814]],
+            ["name/63", [47, 24.394]],
+            ["parent/63", [58, 2.814]],
+            ["name/64", [59, 40.489]],
+            ["parent/64", [58, 2.814]],
+            ["name/65", [60, 40.489]],
+            ["parent/65", [42, 1.415]],
+            ["name/66", [47, 24.394]],
+            ["parent/66", [61, 3.054]],
+            ["name/67", [62, 40.489]],
+            ["parent/67", [61, 3.054]],
+            ["name/68", [63, 40.489]],
+            ["parent/68", [61, 3.054]],
+            ["name/69", [64, 40.489]],
+            ["parent/69", [42, 1.415]],
+            ["name/70", [47, 24.394]],
+            ["parent/70", [65, 3.054]],
+            ["name/71", [66, 35.381]],
+            ["parent/71", [65, 3.054]],
+            ["name/72", [52, 29.503]],
+            ["parent/72", [65, 3.054]],
+            ["name/73", [67, 40.489]],
+            ["parent/73", [42, 1.415]],
+            ["name/74", [47, 24.394]],
+            ["parent/74", [68, 3.054]],
+            ["name/75", [66, 35.381]],
+            ["parent/75", [68, 3.054]],
+            ["name/76", [52, 29.503]],
+            ["parent/76", [68, 3.054]],
+            ["name/77", [69, 40.489]],
+            ["parent/77", [42, 1.415]],
+            ["name/78", [70, 40.489]],
+            ["parent/78", [42, 1.415]],
+            ["name/79", [71, 40.489]],
+            ["parent/79", [42, 1.415]],
+            ["name/80", [72, 40.489]],
+            ["parent/80", [42, 1.415]],
+            ["name/81", [73, 40.489]],
+            ["parent/81", [42, 1.415]],
+            ["name/82", [74, 40.489]],
+            ["parent/82", [42, 1.415]],
+            ["name/83", [75, 40.489]],
+            ["parent/83", [42, 1.415]],
+            ["name/84", [76, 40.489]],
+            ["parent/84", [42, 1.415]]
         ],
         "invertedIndex": [
-            ["avatar", { "_index": 26, "name": { "27": {} }, "parent": {} }],
-            ["channelid", { "_index": 36, "name": { "38": {} }, "parent": {} }],
-            ["channels", { "_index": 70, "name": { "76": {} }, "parent": {} }],
+            ["avatar", { "_index": 23, "name": { "24": {} }, "parent": {} }],
+            ["channelid", { "_index": 33, "name": { "35": {} }, "parent": {} }],
+            ["channels", { "_index": 67, "name": { "73": {} }, "parent": {} }],
             [
                 "client",
                 {
-                    "_index": 45,
-                    "name": { "49": {} },
+                    "_index": 42,
+                    "name": { "46": {} },
                     "parent": {
+                        "47": {},
+                        "48": {},
+                        "49": {},
                         "50": {},
-                        "51": {},
-                        "52": {},
-                        "53": {},
+                        "54": {},
                         "57": {},
                         "60": {},
-                        "63": {},
-                        "68": {},
-                        "72": {},
-                        "76": {},
+                        "65": {},
+                        "69": {},
+                        "73": {},
+                        "77": {},
+                        "78": {},
+                        "79": {},
                         "80": {},
                         "81": {},
                         "82": {},
                         "83": {},
-                        "84": {},
-                        "85": {},
-                        "86": {},
-                        "87": {}
+                        "84": {}
                     }
                 }
             ],
             [
                 "client.channels",
                 {
-                    "_index": 71,
+                    "_index": 68,
                     "name": {},
-                    "parent": { "77": {}, "78": {}, "79": {} }
+                    "parent": { "74": {}, "75": {}, "76": {} }
                 }
             ],
             [
                 "client.files",
-                { "_index": 56, "name": {}, "parent": { "58": {}, "59": {} } }
+                { "_index": 53, "name": {}, "parent": { "55": {}, "56": {} } }
             ],
             [
                 "client.messages",
                 {
-                    "_index": 61,
+                    "_index": 58,
                     "name": {},
-                    "parent": { "64": {}, "65": {}, "66": {}, "67": {} }
+                    "parent": { "61": {}, "62": {}, "63": {}, "64": {} }
                 }
             ],
             [
                 "client.permissions",
-                { "_index": 58, "name": {}, "parent": { "61": {}, "62": {} } }
+                { "_index": 55, "name": {}, "parent": { "58": {}, "59": {} } }
             ],
             [
                 "client.servers",
                 {
-                    "_index": 68,
+                    "_index": 65,
                     "name": {},
-                    "parent": { "73": {}, "74": {}, "75": {} }
+                    "parent": { "70": {}, "71": {}, "72": {} }
                 }
             ],
             [
                 "client.sessions",
                 {
-                    "_index": 64,
+                    "_index": 61,
                     "name": {},
-                    "parent": { "69": {}, "70": {}, "71": {} }
+                    "parent": { "66": {}, "67": {}, "68": {} }
                 }
             ],
             [
                 "client.users",
                 {
-                    "_index": 51,
+                    "_index": 48,
                     "name": {},
-                    "parent": { "54": {}, "55": {}, "56": {} }
+                    "parent": { "51": {}, "52": {}, "53": {} }
                 }
             ],
-            ["close", { "_index": 76, "name": { "84": {} }, "parent": {} }],
+            ["close", { "_index": 73, "name": { "81": {} }, "parent": {} }],
             [
                 "constructor",
-                { "_index": 74, "name": { "82": {} }, "parent": {} }
+                { "_index": 71, "name": { "79": {} }, "parent": {} }
             ],
             [
                 "create",
                 {
-                    "_index": 55,
-                    "name": { "58": {}, "62": {}, "75": {}, "79": {} },
+                    "_index": 52,
+                    "name": { "55": {}, "59": {}, "72": {}, "76": {} },
                     "parent": {}
                 }
             ],
-            [
-                "createlogger",
-                { "_index": 0, "name": { "0": {} }, "parent": {} }
-            ],
-            [
-                "createuint8uuid",
-                { "_index": 1, "name": { "1": {} }, "parent": {} }
-            ],
-            ["dbfolder", { "_index": 44, "name": { "48": {} }, "parent": {} }],
-            ["decrypted", { "_index": 11, "name": { "11": {} }, "parent": {} }],
-            ["direction", { "_index": 9, "name": { "9": {} }, "parent": {} }],
-            ["familiars", { "_index": 53, "name": { "56": {} }, "parent": {} }],
-            ["files", { "_index": 54, "name": { "57": {} }, "parent": {} }],
+            ["dbfolder", { "_index": 41, "name": { "45": {} }, "parent": {} }],
+            ["decrypted", { "_index": 8, "name": { "8": {} }, "parent": {} }],
+            ["direction", { "_index": 6, "name": { "6": {} }, "parent": {} }],
+            ["familiars", { "_index": 50, "name": { "53": {} }, "parent": {} }],
+            ["files", { "_index": 51, "name": { "54": {} }, "parent": {} }],
             [
                 "fingerprint",
-                { "_index": 32, "name": { "34": {} }, "parent": {} }
+                { "_index": 29, "name": { "31": {} }, "parent": {} }
             ],
             [
                 "generatesecretkey",
-                { "_index": 47, "name": { "51": {} }, "parent": {} }
+                { "_index": 44, "name": { "48": {} }, "parent": {} }
             ],
-            ["getkeys", { "_index": 77, "name": { "85": {} }, "parent": {} }],
+            ["getkeys", { "_index": 74, "name": { "82": {} }, "parent": {} }],
             [
                 "group",
-                { "_index": 12, "name": { "12": {}, "65": {} }, "parent": {} }
+                { "_index": 9, "name": { "9": {}, "62": {} }, "parent": {} }
             ],
-            ["hasinit", { "_index": 72, "name": { "80": {} }, "parent": {} }],
+            ["hasinit", { "_index": 69, "name": { "77": {} }, "parent": {} }],
             [
                 "hasloggedin",
-                { "_index": 73, "name": { "81": {} }, "parent": {} }
+                { "_index": 70, "name": { "78": {} }, "parent": {} }
             ],
-            ["host", { "_index": 43, "name": { "47": {} }, "parent": {} }],
+            ["host", { "_index": 40, "name": { "44": {} }, "parent": {} }],
             [
                 "ichannel",
                 {
-                    "_index": 35,
-                    "name": { "37": {} },
-                    "parent": { "38": {}, "39": {}, "40": {} }
+                    "_index": 32,
+                    "name": { "34": {} },
+                    "parent": { "35": {}, "36": {}, "37": {} }
                 }
             ],
             [
                 "iclientoptions",
                 {
-                    "_index": 41,
-                    "name": { "45": {} },
-                    "parent": { "46": {}, "47": {}, "48": {} }
+                    "_index": 38,
+                    "name": { "42": {} },
+                    "parent": { "43": {}, "44": {}, "45": {} }
                 }
             ],
-            ["icon", { "_index": 40, "name": { "44": {} }, "parent": {} }],
+            ["icon", { "_index": 37, "name": { "41": {} }, "parent": {} }],
             [
                 "ikeys",
                 {
-                    "_index": 19,
-                    "name": { "19": {} },
-                    "parent": { "20": {}, "21": {} }
+                    "_index": 16,
+                    "name": { "16": {} },
+                    "parent": { "17": {}, "18": {} }
                 }
             ],
             [
                 "imessage",
                 {
-                    "_index": 3,
-                    "name": { "3": {} },
+                    "_index": 0,
+                    "name": { "0": {} },
                     "parent": {
+                        "1": {},
+                        "2": {},
+                        "3": {},
                         "4": {},
                         "5": {},
                         "6": {},
                         "7": {},
                         "8": {},
-                        "9": {},
-                        "10": {},
-                        "11": {},
-                        "12": {}
+                        "9": {}
                     }
                 }
             ],
-            ["init", { "_index": 75, "name": { "83": {} }, "parent": {} }],
+            ["init", { "_index": 72, "name": { "80": {} }, "parent": {} }],
             [
                 "ipermission",
                 {
-                    "_index": 13,
-                    "name": { "13": {} },
+                    "_index": 10,
+                    "name": { "10": {} },
                     "parent": {
+                        "11": {},
+                        "12": {},
+                        "13": {},
                         "14": {},
-                        "15": {},
-                        "16": {},
-                        "17": {},
-                        "18": {}
+                        "15": {}
                     }
                 }
             ],
             [
                 "iserver",
                 {
-                    "_index": 39,
-                    "name": { "41": {} },
-                    "parent": { "42": {}, "43": {}, "44": {} }
+                    "_index": 36,
+                    "name": { "38": {} },
+                    "parent": { "39": {}, "40": {}, "41": {} }
                 }
             ],
             [
                 "isession",
                 {
-                    "_index": 27,
-                    "name": { "28": {} },
+                    "_index": 24,
+                    "name": { "25": {} },
                     "parent": {
+                        "26": {},
+                        "27": {},
+                        "28": {},
                         "29": {},
                         "30": {},
                         "31": {},
                         "32": {},
-                        "33": {},
-                        "34": {},
-                        "35": {},
-                        "36": {}
+                        "33": {}
                     }
                 }
             ],
             [
                 "iuser",
                 {
-                    "_index": 22,
-                    "name": { "22": {} },
+                    "_index": 19,
+                    "name": { "19": {} },
                     "parent": {
+                        "20": {},
+                        "21": {},
+                        "22": {},
                         "23": {},
-                        "24": {},
-                        "25": {},
-                        "26": {},
-                        "27": {}
+                        "24": {}
                     }
                 }
             ],
-            ["lastseen", { "_index": 25, "name": { "26": {} }, "parent": {} }],
-            ["lastused", { "_index": 33, "name": { "35": {} }, "parent": {} }],
-            ["login", { "_index": 78, "name": { "86": {} }, "parent": {} }],
-            ["loglevel", { "_index": 42, "name": { "46": {} }, "parent": {} }],
-            ["mailid", { "_index": 5, "name": { "5": {} }, "parent": {} }],
+            ["lastseen", { "_index": 22, "name": { "23": {} }, "parent": {} }],
+            ["lastused", { "_index": 30, "name": { "32": {} }, "parent": {} }],
+            ["login", { "_index": 75, "name": { "83": {} }, "parent": {} }],
+            ["loglevel", { "_index": 39, "name": { "43": {} }, "parent": {} }],
+            ["mailid", { "_index": 2, "name": { "2": {} }, "parent": {} }],
             [
                 "markverified",
-                { "_index": 66, "name": { "71": {} }, "parent": {} }
+                { "_index": 63, "name": { "68": {} }, "parent": {} }
             ],
-            ["me", { "_index": 52, "name": { "55": {} }, "parent": {} }],
-            ["message", { "_index": 8, "name": { "8": {} }, "parent": {} }],
-            ["messages", { "_index": 59, "name": { "63": {} }, "parent": {} }],
-            ["mode", { "_index": 29, "name": { "31": {} }, "parent": {} }],
+            ["me", { "_index": 49, "name": { "52": {} }, "parent": {} }],
+            ["message", { "_index": 5, "name": { "5": {} }, "parent": {} }],
+            ["messages", { "_index": 56, "name": { "60": {} }, "parent": {} }],
+            ["mode", { "_index": 26, "name": { "28": {} }, "parent": {} }],
             [
                 "name",
-                { "_index": 38, "name": { "40": {}, "43": {} }, "parent": {} }
+                { "_index": 35, "name": { "37": {}, "40": {} }, "parent": {} }
             ],
-            ["nonce", { "_index": 4, "name": { "4": {} }, "parent": {} }],
-            ["on", { "_index": 46, "name": { "50": {} }, "parent": {} }],
+            ["nonce", { "_index": 1, "name": { "1": {} }, "parent": {} }],
+            ["on", { "_index": 43, "name": { "47": {} }, "parent": {} }],
             [
                 "permissionid",
-                { "_index": 14, "name": { "14": {} }, "parent": {} }
+                { "_index": 11, "name": { "11": {} }, "parent": {} }
             ],
             [
                 "permissions",
-                { "_index": 57, "name": { "60": {} }, "parent": {} }
+                { "_index": 54, "name": { "57": {} }, "parent": {} }
             ],
             [
                 "powerlevel",
-                { "_index": 18, "name": { "18": {} }, "parent": {} }
+                { "_index": 15, "name": { "15": {} }, "parent": {} }
             ],
-            ["private", { "_index": 21, "name": { "21": {} }, "parent": {} }],
-            ["public", { "_index": 20, "name": { "20": {} }, "parent": {} }],
-            ["publickey", { "_index": 31, "name": { "33": {} }, "parent": {} }],
+            ["private", { "_index": 18, "name": { "18": {} }, "parent": {} }],
+            ["public", { "_index": 17, "name": { "17": {} }, "parent": {} }],
+            ["publickey", { "_index": 28, "name": { "30": {} }, "parent": {} }],
             [
                 "randomusername",
-                { "_index": 48, "name": { "52": {} }, "parent": {} }
+                { "_index": 45, "name": { "49": {} }, "parent": {} }
             ],
-            ["recipient", { "_index": 7, "name": { "7": {} }, "parent": {} }],
-            ["register", { "_index": 79, "name": { "87": {} }, "parent": {} }],
+            ["recipient", { "_index": 4, "name": { "4": {} }, "parent": {} }],
+            ["register", { "_index": 76, "name": { "84": {} }, "parent": {} }],
             [
                 "resourceid",
-                { "_index": 16, "name": { "16": {} }, "parent": {} }
+                { "_index": 13, "name": { "13": {} }, "parent": {} }
             ],
             [
                 "resourcetype",
-                { "_index": 17, "name": { "17": {} }, "parent": {} }
+                { "_index": 14, "name": { "14": {} }, "parent": {} }
             ],
             [
                 "retrieve",
                 {
-                    "_index": 50,
+                    "_index": 47,
                     "name": {
-                        "54": {},
-                        "59": {},
-                        "61": {},
+                        "51": {},
+                        "56": {},
+                        "58": {},
+                        "63": {},
                         "66": {},
-                        "69": {},
-                        "73": {},
-                        "77": {}
+                        "70": {},
+                        "74": {}
                     },
                     "parent": {}
                 }
             ],
             [
                 "retrievebyid",
-                { "_index": 69, "name": { "74": {}, "78": {} }, "parent": {} }
+                { "_index": 66, "name": { "71": {}, "75": {} }, "parent": {} }
             ],
             [
                 "retrievegroup",
-                { "_index": 62, "name": { "67": {} }, "parent": {} }
+                { "_index": 59, "name": { "64": {} }, "parent": {} }
             ],
-            ["send", { "_index": 60, "name": { "64": {} }, "parent": {} }],
-            ["sender", { "_index": 6, "name": { "6": {} }, "parent": {} }],
+            ["send", { "_index": 57, "name": { "61": {} }, "parent": {} }],
+            ["sender", { "_index": 3, "name": { "3": {} }, "parent": {} }],
             [
                 "serverid",
-                { "_index": 37, "name": { "39": {}, "42": {} }, "parent": {} }
+                { "_index": 34, "name": { "36": {}, "39": {} }, "parent": {} }
             ],
-            ["servers", { "_index": 67, "name": { "72": {} }, "parent": {} }],
-            ["sessionid", { "_index": 28, "name": { "29": {} }, "parent": {} }],
-            ["sessions", { "_index": 63, "name": { "68": {} }, "parent": {} }],
-            ["signkey", { "_index": 23, "name": { "24": {} }, "parent": {} }],
-            ["sk", { "_index": 30, "name": { "32": {} }, "parent": {} }],
-            ["timestamp", { "_index": 10, "name": { "10": {} }, "parent": {} }],
+            ["servers", { "_index": 64, "name": { "69": {} }, "parent": {} }],
+            ["sessionid", { "_index": 25, "name": { "26": {} }, "parent": {} }],
+            ["sessions", { "_index": 60, "name": { "65": {} }, "parent": {} }],
+            ["signkey", { "_index": 20, "name": { "21": {} }, "parent": {} }],
+            ["sk", { "_index": 27, "name": { "29": {} }, "parent": {} }],
+            ["timestamp", { "_index": 7, "name": { "7": {} }, "parent": {} }],
             [
                 "userid",
                 {
-                    "_index": 15,
-                    "name": { "15": {}, "23": {}, "30": {} },
+                    "_index": 12,
+                    "name": { "12": {}, "20": {}, "27": {} },
                     "parent": {}
                 }
             ],
-            ["username", { "_index": 24, "name": { "25": {} }, "parent": {} }],
-            ["users", { "_index": 49, "name": { "53": {} }, "parent": {} }],
-            ["uuidtouint8", { "_index": 2, "name": { "2": {} }, "parent": {} }],
-            ["verified", { "_index": 34, "name": { "36": {} }, "parent": {} }],
-            ["verify", { "_index": 65, "name": { "70": {} }, "parent": {} }],
-            ["words", { "_index": 80, "name": { "88": {} }, "parent": {} }]
+            ["username", { "_index": 21, "name": { "22": {} }, "parent": {} }],
+            ["users", { "_index": 46, "name": { "50": {} }, "parent": {} }],
+            ["verified", { "_index": 31, "name": { "33": {} }, "parent": {} }],
+            ["verify", { "_index": 62, "name": { "67": {} }, "parent": {} }]
         ],
         "pipeline": []
     }

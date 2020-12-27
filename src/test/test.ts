@@ -3,7 +3,6 @@ import { sleep } from "@extrahash/sleep";
 import fs from "fs";
 import { Client, IMessage } from "..";
 import { loadEnv } from "./loadEnv";
-import { words } from "./words";
 
 main();
 
