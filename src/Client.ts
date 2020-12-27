@@ -592,6 +592,7 @@ export class Client extends EventEmitter {
         this.database = new Database(this.dbPath, this.idKeys, options);
 
         this.database.on("error", (error) => {
+            this.log.error(error);
             this.close(true);
             this.emit("disconnect");
         });
@@ -815,7 +816,18 @@ export class Client extends EventEmitter {
                 "https://" + this.host + "/file/" + fileID
             );
             const resp: XTypes.HTTP.IFileResponse = res.data;
-            return res.data;
+
+            const decrypted = nacl.secretbox.open(
+                Uint8Array.from(Buffer.from(resp.data)),
+                XUtils.decodeHex(resp.details.nonce),
+                XUtils.decodeHex(key)
+            );
+
+            if (decrypted) {
+                resp.data = Buffer.from(decrypted);
+                return resp;
+            }
+            throw new Error("Decryption failed.");
         } catch (err) {
             console.warn(err);
             return null;
@@ -828,11 +840,12 @@ export class Client extends EventEmitter {
     ): Promise<[XTypes.SQL.IFile, string]> {
         const nonce = xMakeNonce();
         const key = nacl.box.keyPair();
-        const box = nacl.secretbox(
-            Uint8Array.from(file),
-            nonce,
-            this.signKeys.publicKey
-        );
+        const box = nacl.secretbox(Uint8Array.from(file), nonce, key.secretKey);
+
+        const decrypted = nacl.secretbox.open(box, nonce, key.secretKey);
+        if (!decrypted) {
+            throw new Error("decryption test failed!");
+        }
 
         const signed = nacl.sign(box, this.signKeys.secretKey);
 

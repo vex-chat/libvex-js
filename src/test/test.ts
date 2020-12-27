@@ -6,6 +6,10 @@ import { loadEnv } from "./loadEnv";
 
 main();
 
+if (!fs.existsSync("databases")) {
+    fs.mkdirSync("databases");
+}
+
 /**
  * @ignore
  */
@@ -47,9 +51,12 @@ async function main() {
         const me = await client.users.me();
         console.log(me);
 
-        const file = await client.files.create(fs.readFileSync("package.json"));
+        const [file, key] = await client.files.create(
+            fs.readFileSync("package.json")
+        );
+        const retrieved = await client.files.retrieve(file.fileID, key);
 
-        // const retrieved = await client.files.retrieve(file.fileID);
+        console.log(retrieved);
     });
 
     // listen for new messages
