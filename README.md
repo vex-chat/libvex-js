@@ -2,7 +2,7 @@
 
 nodejs for interfacing with xchat server. Use it for a client, a bot, whatever you'd like to conncet to vex.
 
-<a href="https://vex-chat.github.io/vex-js/">Documentation</a>
+<a href="https://vex-chat.github.io/libvex-js/">Documentation</a>
 
 ## Quickstart
 
