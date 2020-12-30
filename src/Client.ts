@@ -321,6 +321,9 @@ export declare interface Client {
  * @noInheritDoc
  */
 export class Client extends EventEmitter {
+    public static loadKeyFile = XUtils.loadKeyFile;
+
+    public static saveKeyFile = XUtils.saveKeyFile;
     /**
      * Generates an ed25519 secret key as a hex string.
      *
