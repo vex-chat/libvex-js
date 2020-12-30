@@ -101,6 +101,7 @@ interface IServers {
     retrieve: () => Promise<XTypes.SQL.IServer[]>;
     retrieveByID: (serverID: string) => Promise<XTypes.SQL.IServer | null>;
     create: (name: string) => Promise<XTypes.SQL.IServer>;
+    delete: (serverID: string) => Promise<void>;
 }
 
 /**
@@ -122,6 +123,7 @@ interface IChannels {
     retrieve: (serverID: string) => Promise<XTypes.SQL.IChannel[]>;
     retrieveByID: (channelID: string) => Promise<XTypes.SQL.IChannel | null>;
     create: (name: string, serverID: string) => Promise<XTypes.SQL.IChannel>;
+    delete: (channelID: string) => Promise<void>;
 }
 
 /**
@@ -411,11 +413,6 @@ export class Client extends EventEmitter {
      * The IPermissions object contains all methods for dealing with permissions.
      */
     public permissions: IPermissions = {
-        /**
-         * Gets all permissions for the logged in user.
-         *
-         * @returns - The list of IPermissions objects.
-         */
         retrieve: this.getPermissions.bind(this),
         /**
          * Creates a new permission for the givern resourceID and userID.
@@ -506,6 +503,11 @@ export class Client extends EventEmitter {
          * @returns - The created IServer object.
          */
         create: this.createServer.bind(this),
+        /**
+         * Deletes a server.
+         * @param serverID: The unique serverID to delete.
+         */
+        delete: this.deleteServer.bind(this),
     };
 
     public channels: IChannels = {
@@ -529,6 +531,11 @@ export class Client extends EventEmitter {
          * @returns - The created IChannel object.
          */
         create: this.createChannel.bind(this),
+        /**
+         * Deletes a channel.
+         * @param channelID: The unique channelID to delete.
+         */
+        delete: this.deleteChannel.bind(this),
     };
 
     /**
@@ -782,6 +789,11 @@ export class Client extends EventEmitter {
         });
     }
 
+    /**
+     * Gets all permissions for the logged in user.
+     *
+     * @returns - The list of IPermissions objects.
+     */
     private getPermissions(): Promise<XTypes.SQL.IPermission[]> {
         return new Promise((res, rej) => {
             const transmissionID = uuid.v4();
@@ -832,6 +844,58 @@ export class Client extends EventEmitter {
             console.warn(err);
             return null;
         }
+    }
+
+    private async deleteServer(serverID: string): Promise<void> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "servers",
+                action: "DELETE",
+                data: serverID,
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private async deleteChannel(channelID: string): Promise<void> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "channels",
+                action: "DELETE",
+                data: channelID,
+            };
+            this.send(outMsg);
+        });
     }
 
     // returns the file details and the encryption key
@@ -1438,6 +1502,8 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match."
                     );
+                    await this.sendReceipt(mail.nonce, transmissionID);
+                    return;
                 }
 
                 const decrypted = nacl.secretbox.open(
