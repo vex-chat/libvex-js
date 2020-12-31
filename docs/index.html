@@ -83,7 +83,7 @@
         <span class="hljs-comment">// you must register once before you can log in</span>
         <span class="hljs-keyword">await</span> client.register(Client.randomUsername());
         <span class="hljs-keyword">await</span> client.login();
-    })
+    });
 
     <span class="hljs-comment">/* The authed event fires when login() successfully completes
     and the server indicates you are authorized. You must wait to
@@ -94,20 +94,19 @@
 
         <span class="hljs-comment">// send a message</span>
         <span class="hljs-keyword">await</span> client.messages.send(me.userID, <span class="hljs-string">&quot;Hello world!&quot;</span>);
-    })
+    });
 
     <span class="hljs-comment">/* Outgoing and incoming messages are emitted here. */</span>
     client.on(<span class="hljs-string">&quot;message&quot;</span>, <span class="hljs-function">(<span class="hljs-params">message</span>) =&gt;</span> {
         <span class="hljs-built_in">console</span>.log(<span class="hljs-string">&quot;message:&quot;</span>, message);
-    })
+    });
 
     <span class="hljs-comment">/* you must call init() to initialize the keyring and 
     start the client. */</span>
     client.init();
 }
 
-main();
-</code></pre>
+main();</code></pre>
 				<a href="#cryptography-notice" id="cryptography-notice" style="color: inherit; text-decoration: none;">
 					<h2>Cryptography Notice</h2>
 				</a>

@@ -68,42 +68,49 @@
 						<p>Client provides an interface for you to use a vex chat server and
 						send end to end encrypted messages to other users.</p>
 					</div>
-					<p>import { Client } from &quot;@vex-chat/libvex&quot;;</p>
-					<p>async function main() {
-						// generate a secret key to use, save this somewhere permanent
-					const privateKey = Client.generateSecretKey();</p>
-					<pre><code>const client = <span class="hljs-built_in">new</span> Client(privateKey);
+					<dl class="tsd-comment-tags">
+						<dt>example</dt>
+						<dd><pre><code class="language-ts"><span class="hljs-keyword">import</span> { Client } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;@vex-chat/libvex&quot;</span>;
 
-// the ready event <span class="hljs-keyword">is</span> emitted <span class="hljs-keyword">when</span> init() <span class="hljs-keyword">is</span> finished.
-// you must wait <span class="hljs-keyword">until</span> this event fires <span class="hljs-keyword">to</span> <span class="hljs-keyword">perform</span>
-// registration <span class="hljs-keyword">or</span> <span class="hljs-keyword">login</span>.
-client.<span class="hljs-keyword">on</span>(&quot;ready&quot;, async () =&gt; {
-    // you must register once <span class="hljs-keyword">before</span> you can <span class="hljs-keyword">log</span> <span class="hljs-keyword">in</span>
-    await client.register(Client.randomUsername());
-    await client.<span class="hljs-keyword">login</span>();
-})
+<span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">main</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-comment">// generate a secret key to use, save this somewhere permanent</span>
+    <span class="hljs-keyword">const</span> privateKey = Client.generateSecretKey();
 
-// The authed event fires <span class="hljs-keyword">when</span> <span class="hljs-keyword">login</span>() successfully completes
-// <span class="hljs-keyword">and</span> the <span class="hljs-keyword">server</span> indicates you are authorized. You must wait <span class="hljs-keyword">to</span>
-// <span class="hljs-keyword">perform</span> <span class="hljs-keyword">any</span> operations besides register() <span class="hljs-keyword">and</span> <span class="hljs-keyword">login</span>() <span class="hljs-keyword">until</span>
-// this occurs.
-client.<span class="hljs-keyword">on</span>(&quot;authed&quot;, async () =&gt; {
-    const me = await client.users.me();
+    <span class="hljs-keyword">const</span> client = <span class="hljs-keyword">new</span> Client(privateKey);
 
-    // send a message
-    await client.messages.send(me.userID, &quot;Hello world!&quot;);
-})
+    <span class="hljs-comment">// the ready event is emitted when init() is finished.</span>
+    <span class="hljs-comment">// you must wait until this event fires to perform</span>
+    <span class="hljs-comment">// registration or login.</span>
+    client.on(<span class="hljs-string">&quot;ready&quot;</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-comment">// you must register once before you can log in</span>
+        <span class="hljs-keyword">await</span> client.register(Client.randomUsername());
+        <span class="hljs-keyword">await</span> client.login();
+    })
 
-// Outgoing <span class="hljs-keyword">and</span> incoming messages are emitted here.
-client.<span class="hljs-keyword">on</span>(&quot;message&quot;, (message) =&gt; {
-    console.log(&quot;message:&quot;, message);
-})
+    <span class="hljs-comment">// The authed event fires when login() successfully completes</span>
+    <span class="hljs-comment">// and the server indicates you are authorized. You must wait to</span>
+    <span class="hljs-comment">// perform any operations besides register() and login() until</span>
+    <span class="hljs-comment">// this occurs.</span>
+    client.on(<span class="hljs-string">&quot;authed&quot;</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-keyword">const</span> me = <span class="hljs-keyword">await</span> client.users.me();
 
-// you must <span class="hljs-keyword">call</span> init() <span class="hljs-keyword">to</span> initialize the keyring <span class="hljs-keyword">and</span>
-// <span class="hljs-keyword">start</span> the client.
-client.init();</code></pre>
-					<p>}</p>
-					<p>main();</p>
+        <span class="hljs-comment">// send a message</span>
+        <span class="hljs-keyword">await</span> client.messages.send(me.userID, <span class="hljs-string">&quot;Hello world!&quot;</span>);
+    })
+
+    <span class="hljs-comment">// Outgoing and incoming messages are emitted here.</span>
+    client.on(<span class="hljs-string">&quot;message&quot;</span>, <span class="hljs-function">(<span class="hljs-params">message</span>) =&gt;</span> {
+        <span class="hljs-built_in">console</span>.log(<span class="hljs-string">&quot;message:&quot;</span>, message);
+    })
+
+    <span class="hljs-comment">// you must call init() to initialize the keyring and</span>
+    <span class="hljs-comment">// start the client.</span>
+    client.init();
+}
+
+main();</code></pre>
+						</dd>
+					</dl>
 				</div>
 			</section>
 			<section class="tsd-panel tsd-hierarchy">
@@ -184,7 +191,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides EventEmitter.__constructor</p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L585">src/Client.ts:585</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L588">src/Client.ts:588</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -220,7 +227,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides <a href="database.html">Database</a>.<a href="database.html#on">on</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L181">src/Client.ts:181</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L181">src/Client.ts:181</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -260,7 +267,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides <a href="database.html">Database</a>.<a href="database.html#on">on</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L197">src/Client.ts:197</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L197">src/Client.ts:197</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -299,7 +306,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides <a href="database.html">Database</a>.<a href="database.html#on">on</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L212">src/Client.ts:212</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L212">src/Client.ts:212</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -345,7 +352,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides <a href="database.html">Database</a>.<a href="database.html#on">on</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L227">src/Client.ts:227</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L227">src/Client.ts:227</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -391,7 +398,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides <a href="database.html">Database</a>.<a href="database.html#on">on</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L244">src/Client.ts:244</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L244">src/Client.ts:244</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -442,7 +449,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides <a href="database.html">Database</a>.<a href="database.html#on">on</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L263">src/Client.ts:263</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L263">src/Client.ts:263</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -483,7 +490,7 @@ client.init();</code></pre>
 							<aside class="tsd-sources">
 								<p>Overrides <a href="database.html">Database</a>.<a href="database.html#on">on</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L281">src/Client.ts:281</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L281">src/Client.ts:281</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -531,7 +538,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">has<wbr>Init<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L555">src/Client.ts:555</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L558">src/Client.ts:558</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -547,7 +554,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">has<wbr>Logged<wbr>In<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L559">src/Client.ts:559</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L562">src/Client.ts:562</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -562,7 +569,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">load<wbr>Key<wbr>File<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span>path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, password<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = XUtils.loadKeyFile</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L331">src/Client.ts:331</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L334">src/Client.ts:334</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -596,7 +603,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">save<wbr>Key<wbr>File<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span>path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, password<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, keyToSave<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol"> = XUtils.saveKeyFile</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L333">src/Client.ts:333</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L336">src/Client.ts:336</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -640,7 +647,7 @@ client.init();</code></pre>
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L651">src/Client.ts:651</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L654">src/Client.ts:654</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -668,7 +675,7 @@ client.init();</code></pre>
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L675">src/Client.ts:675</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L678">src/Client.ts:678</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -690,7 +697,7 @@ client.init();</code></pre>
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L627">src/Client.ts:627</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L630">src/Client.ts:630</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -712,7 +719,7 @@ client.init();</code></pre>
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L686">src/Client.ts:686</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L689">src/Client.ts:689</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -735,7 +742,7 @@ client.init();</code></pre>
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L725">src/Client.ts:725</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L728">src/Client.ts:728</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -772,7 +779,7 @@ client.init();</code></pre>
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L339">src/Client.ts:339</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L342">src/Client.ts:342</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -797,7 +804,7 @@ client.init();</code></pre>
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L348">src/Client.ts:348</a></li>
+									<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L351">src/Client.ts:351</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -821,7 +828,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">channels<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L523">src/Client.ts:523</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L526">src/Client.ts:526</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
@@ -830,7 +837,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">create<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">createChannel</span><span class="tsd-signature-symbol"> = this.createChannel.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L543">src/Client.ts:543</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L546">src/Client.ts:546</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -858,7 +865,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">delete<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">deleteChannel</span><span class="tsd-signature-symbol"> = this.deleteChannel.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L548">src/Client.ts:548</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L551">src/Client.ts:551</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -878,7 +885,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getChannelList</span><span class="tsd-signature-symbol"> = this.getChannelList.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L529">src/Client.ts:529</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L532">src/Client.ts:532</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -900,7 +907,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<wbr>ByID<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getChannelByID</span><span class="tsd-signature-symbol"> = this.getChannelByID.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L535">src/Client.ts:535</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L538">src/Client.ts:538</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -923,7 +930,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">files<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L411">src/Client.ts:411</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L414">src/Client.ts:414</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -937,7 +944,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">create<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">createFile</span><span class="tsd-signature-symbol"> = this.createFile.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L418">src/Client.ts:418</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L421">src/Client.ts:421</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -960,7 +967,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">retrieveFile</span><span class="tsd-signature-symbol"> = this.retrieveFile.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L419">src/Client.ts:419</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L422">src/Client.ts:422</a></li>
 							</ul>
 						</aside>
 					</section>
@@ -971,7 +978,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">messages<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L439">src/Client.ts:439</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L442">src/Client.ts:442</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -985,7 +992,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">group<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">sendGroupMessage</span><span class="tsd-signature-symbol"> = this.sendGroupMessage.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L451">src/Client.ts:451</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L454">src/Client.ts:454</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1008,7 +1015,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getMessageHistory</span><span class="tsd-signature-symbol"> = this.getMessageHistory.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L458">src/Client.ts:458</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L461">src/Client.ts:461</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1033,7 +1040,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<wbr>Group<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getGroupHistory</span><span class="tsd-signature-symbol"> = this.getGroupHistory.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L465">src/Client.ts:465</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L468">src/Client.ts:468</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1058,7 +1065,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">send<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">sendMessage</span><span class="tsd-signature-symbol"> = this.sendMessage.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L445">src/Client.ts:445</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L448">src/Client.ts:448</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1082,7 +1089,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">permissions<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L425">src/Client.ts:425</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L428">src/Client.ts:428</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -1096,7 +1103,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">create<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">createPermission</span><span class="tsd-signature-symbol"> = this.createPermission.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L433">src/Client.ts:433</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L436">src/Client.ts:436</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1121,7 +1128,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getPermissions</span><span class="tsd-signature-symbol"> = this.getPermissions.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L426">src/Client.ts:426</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L429">src/Client.ts:429</a></li>
 							</ul>
 						</aside>
 					</section>
@@ -1132,7 +1139,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">servers<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L496">src/Client.ts:496</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L499">src/Client.ts:499</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
@@ -1141,7 +1148,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">create<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">createServer</span><span class="tsd-signature-symbol"> = this.createServer.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L515">src/Client.ts:515</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L518">src/Client.ts:518</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1166,7 +1173,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">delete<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">deleteServer</span><span class="tsd-signature-symbol"> = this.deleteServer.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L520">src/Client.ts:520</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L523">src/Client.ts:523</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1186,7 +1193,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getServerList</span><span class="tsd-signature-symbol"> = this.getServerList.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L502">src/Client.ts:502</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L505">src/Client.ts:505</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1208,7 +1215,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<wbr>ByID<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getServerByID</span><span class="tsd-signature-symbol"> = this.getServerByID.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L508">src/Client.ts:508</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L511">src/Client.ts:511</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1231,7 +1238,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">sessions<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L471">src/Client.ts:471</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L474">src/Client.ts:474</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -1245,7 +1252,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">mark<wbr>Verified<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">markSessionVerified</span><span class="tsd-signature-symbol"> = this.markSessionVerified.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L493">src/Client.ts:493</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L496">src/Client.ts:496</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1269,7 +1276,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getSessionList</span><span class="tsd-signature-symbol"> = this.getSessionList.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L477">src/Client.ts:477</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L480">src/Client.ts:480</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1291,7 +1298,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">verify<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getMnemonic</span><span class="tsd-signature-symbol"> = Client.getMnemonic</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L485">src/Client.ts:485</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L488">src/Client.ts:488</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1317,7 +1324,7 @@ client.init();</code></pre>
 					<div class="tsd-signature tsd-kind-icon">users<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L386">src/Client.ts:386</a></li>
+							<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L389">src/Client.ts:389</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -1331,7 +1338,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">familiars<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getFamiliars</span><span class="tsd-signature-symbol"> = this.getFamiliars.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L405">src/Client.ts:405</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L408">src/Client.ts:408</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1353,7 +1360,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">me<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">getUser</span><span class="tsd-signature-symbol"> = this.getUser.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L399">src/Client.ts:399</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L402">src/Client.ts:402</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1375,7 +1382,7 @@ client.init();</code></pre>
 						<div class="tsd-signature tsd-kind-icon">retrieve<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">retrieveUserDBEntry</span><span class="tsd-signature-symbol"> = this.retrieveUserDBEntry.bind(this)</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/f1ce4f5/src/Client.ts#L393">src/Client.ts:393</a></li>
+								<li>Defined in <a href="https://github.com/vex-chat/libvex-js/blob/0cc14cb/src/Client.ts#L396">src/Client.ts:396</a></li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
