@@ -218,7 +218,7 @@ export class Database extends EventEmitter {
         this.log.info("getSessions(): called");
 
         const rows = (await this.sessions?.find(undefined, {
-            order: ["timestamp", "desc"],
+            order: ["lastUsed", "desc"],
         })) as XTypes.SQL.ISession[];
 
         if (!rows || rows.length === 0) {
