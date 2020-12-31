@@ -15,7 +15,7 @@ export function createLogger(logName: string, options?: IClientOptions) {
             winston.format.splat(),
             winston.format.json()
         ),
-        defaultMeta: { service: "vex-js" },
+        defaultMeta: { service: "vex-" + logName },
         transports: [
             //
             // - Write all logs with level `error` and below to `error.log`

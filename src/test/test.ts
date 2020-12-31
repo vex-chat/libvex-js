@@ -51,12 +51,12 @@ async function main() {
         const me = await client.users.me();
         console.log(me);
 
-        const [file, key] = await client.files.create(
-            fs.readFileSync("package.json")
-        );
-        const retrieved = await client.files.retrieve(file.fileID, key);
+        await client.messages.send(me.userID, "Hello friend.");
 
-        console.log(retrieved);
+        while (true) {
+            await sleep(5000);
+            await client.messages.send(me.userID, "Hello again friend.");
+        }
     });
 
     // listen for new messages
