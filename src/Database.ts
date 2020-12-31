@@ -166,14 +166,13 @@ export class Database extends EventEmitter {
 
         const model = oneTime ? this.oneTimeKeys : this.preKeys;
 
-        const index = await model?.create({
+        const preKey = (await model?.create({
             privateKey: XUtils.encodeHex(preKeys.keyPair.secretKey),
             publicKey: XUtils.encodeHex(preKeys.keyPair.publicKey),
             signature: XUtils.encodeHex(preKeys.signature),
-        });
+        })) as XTypes.WS.IPreKeys;
 
-        console.log("prekey index is " + index);
-        return index![0];
+        return preKey.index;
     }
 
     public async getSessionByPublicKey(publicKey: Uint8Array) {
