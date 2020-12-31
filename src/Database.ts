@@ -52,7 +52,7 @@ export class Database extends EventEmitter {
     }
 
     public async close() {
-        this.log.info("Closing database.");
+        this.log.debug("Closing database.");
         await this.db.close();
     }
 
@@ -72,7 +72,7 @@ export class Database extends EventEmitter {
     }
 
     public async deleteMessage(mailID: string): Promise<void> {
-        this.log.info("deleteMessage(): deleting mailid " + mailID);
+        this.log.debug("deleteMessage(): deleting mailid " + mailID);
         await this.messages?.remove({ mailID });
     }
 
@@ -80,7 +80,7 @@ export class Database extends EventEmitter {
         sessionID: string,
         status = true
     ): Promise<void> {
-        this.log.info(
+        this.log.debug(
             "markSessionVerified(): marking sessionID " +
                 sessionID +
                 " " +
@@ -91,7 +91,7 @@ export class Database extends EventEmitter {
 
     // TODO: Update this to trilogy api instead of using knex
     public async getGroupHistory(channelID: string): Promise<IMessage[]> {
-        this.log.info("getGroupHistory(): retrieving history " + channelID);
+        this.log.debug("getGroupHistory(): retrieving history " + channelID);
 
         const history = (await this.messages!.find(
             { group: channelID },
@@ -125,7 +125,7 @@ export class Database extends EventEmitter {
     }
 
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
-        this.log.info("getMessageHistory(): retrieving history " + userID);
+        this.log.debug("getMessageHistory(): retrieving history " + userID);
 
         const messages = (await this.messages?.find(
             { sender: userID, group: null },
@@ -162,7 +162,7 @@ export class Database extends EventEmitter {
         oneTime: boolean
     ): Promise<number> {
         await this.untilReady();
-        this.log.info("savePreKeys(): called");
+        this.log.debug("savePreKeys(): called");
 
         const model = oneTime ? this.oneTimeKeys : this.preKeys;
 
@@ -176,7 +176,7 @@ export class Database extends EventEmitter {
     }
 
     public async getSessionByPublicKey(publicKey: Uint8Array) {
-        this.log.info("getSessionByPublicKey(): called");
+        this.log.debug("getSessionByPublicKey(): called");
 
         const str = XUtils.encodeHex(publicKey);
 
@@ -205,7 +205,7 @@ export class Database extends EventEmitter {
     }
 
     public async markSessionUsed(sessionID: string) {
-        this.log.info("markSessionUsed(): called " + sessionID);
+        this.log.debug("markSessionUsed(): called " + sessionID);
 
         await this.sessions?.update(
             { lastUsed: new Date(Date.now()) },
@@ -214,7 +214,7 @@ export class Database extends EventEmitter {
     }
 
     public async getSessions(): Promise<XTypes.SQL.ISession[]> {
-        this.log.info("getSessions(): called");
+        this.log.debug("getSessions(): called");
 
         const rows = (await this.sessions?.find(undefined, {
             order: ["lastUsed", "desc"],
@@ -235,14 +235,13 @@ export class Database extends EventEmitter {
     public async getSession(
         userID: string
     ): Promise<XTypes.CRYPTO.ISession | null> {
-        this.log.info("getSession(): called " + userID);
+        this.log.debug("getSession(): called " + userID);
 
         const rows = (await this.sessions?.find(
             { userID },
             { order: ["lastUsed", "desc"] }
         )) as ISession[];
 
-        console.log("ROWS IS ", rows);
         if (!rows || rows.length === 0) {
             return null;
         }
@@ -264,10 +263,9 @@ export class Database extends EventEmitter {
 
     public async getPreKeys(): Promise<XTypes.CRYPTO.IPreKeys | null> {
         await this.untilReady();
-        this.log.info("getPreKeys(): called");
+        this.log.debug("getPreKeys(): called");
 
         const rows = (await this.preKeys?.find()) as XTypes.SQL.IPreKeys[];
-        console.log(rows === undefined, rows);
 
         if (!rows || rows.length === 0) {
             return null;
@@ -287,7 +285,7 @@ export class Database extends EventEmitter {
         index: number
     ): Promise<XTypes.CRYPTO.IPreKeys | null> {
         await this.untilReady();
-        this.log.info("getOneTimeKey(): called");
+        this.log.debug("getOneTimeKey(): called");
 
         const rows = (await this.oneTimeKeys?.find({
             index,
@@ -310,12 +308,12 @@ export class Database extends EventEmitter {
 
     public async deleteOneTimeKey(index: number) {
         // delete the otk
-        this.log.info("deleteOneTimeKey(): called");
+        this.log.debug("deleteOneTimeKey(): called");
         await this.oneTimeKeys?.remove({ index });
     }
 
     public async saveSession(session: XTypes.SQL.ISession) {
-        this.log.info("saveSession(): called");
+        this.log.debug("saveSession(): called");
         await this.sessions?.create(session);
     }
 
@@ -328,8 +326,8 @@ export class Database extends EventEmitter {
     }
 
     private async init() {
-        this.log.info("init(): called");
-        this.log.info("Initializing database tables.");
+        this.log.debug("init(): called");
+        this.log.debug("Initializing database tables.");
 
         try {
             this.messages = await this.db.model("messages", {
