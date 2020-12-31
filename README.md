@@ -7,34 +7,45 @@ nodejs for interfacing with xchat server. Use it for a client, a bot, whatever y
 ## Quickstart
 
 ```ts
-export function initClient(): void {
-    const PK = Client.generateSecretKey();
-    client = new Client(PK, {
-        dbFolder: progFolder,
-        logLevel: "info",
-    });
+import { Client } from "@vex-chat/libvex";
+
+async function main() {
+    // generate a secret key to use, save this somewhere permanent
+    const privateKey = Client.generateSecretKey();
+
+    const client = new Client(privateKey);
+
+    /* the ready event is emitted when init() is finished.
+    you must wait until this event fires to perform 
+    registration or login. */
     client.on("ready", async () => {
-        // you can retrieve users before you login
-        const registeredUser = await client.users.retrieve(
-            client.getKeys().public
-        );
-        if (registeredUser) {
-            await client.login();
-        } else {
-            await client.register("MyUsername");
-            await client.login();
-        }
+        // you must register once before you can log in
+        await client.register(Client.randomUsername());
+        await client.login();
     });
+
+    /* The authed event fires when login() successfully completes
+    and the server indicates you are authorized. You must wait to
+    perform any operations besides register() and login() until
+    this occurs. */
     client.on("authed", async () => {
-        const familiars = await client.users.familiars();
-        for (const user of familiars) {
-            client.messages.send(user.userID, "Hello world!");
-        }
+        const me = await client.users.me();
+
+        // send a message
+        await client.messages.send(me.userID, "Hello world!");
     });
+
+    /* Outgoing and incoming messages are emitted here. */
+    client.on("message", (message) => {
+        console.log("message:", message);
+    });
+
+    /* you must call init() to initialize the keyring and 
+    start the client. */
     client.init();
 }
 
-initClient();
+main();
 ```
 
 ## Cryptography Notice
