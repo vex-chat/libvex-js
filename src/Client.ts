@@ -285,6 +285,7 @@ export declare interface Client {
  * Client provides an interface for you to use a vex chat server and
  * send end to end encrypted messages to other users.
  *
+ * ```ts
  * import { Client } from "@vex-chat/libvex";
  *
  * async function main() {
@@ -324,6 +325,7 @@ export declare interface Client {
  * }
  *
  * main();
+ * ```
  *
  * @noInheritDoc
  */
