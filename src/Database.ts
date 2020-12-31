@@ -103,6 +103,10 @@ export class Database extends EventEmitter {
             this.db.raw(query).then((data) => res(data));
         });
 
+        if (!history) {
+            return [];
+        }
+
         return history.reverse().map((message) => {
             // some cleanup because of how knex serializes the data
             message.timestamp = new Date(message.timestamp);
@@ -138,6 +142,9 @@ export class Database extends EventEmitter {
         const messages: IMessage[] = await new Promise((res, rej) => {
             this.db.raw(query).then((data) => res(data));
         });
+        if (!messages) {
+            return [];
+        }
         return messages.reverse().map((message) => {
             // some cleanup because of how knex serializes the data
             message.timestamp = new Date(message.timestamp);
