@@ -235,6 +235,10 @@ export class Database extends EventEmitter {
             this.db.raw(query).then((data) => res(data));
         });
 
+        if (!rows) {
+            return [];
+        }
+
         const fixedRows = rows.map((session) => {
             session.verified = Boolean(session.verified);
             return session;
