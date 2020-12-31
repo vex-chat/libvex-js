@@ -16,6 +16,7 @@ export class Database extends EventEmitter {
     private db: Trilogy;
     private log: winston.Logger;
     private idKeys: nacl.BoxKeyPair;
+    private closing: boolean = false;
 
     private messages: Model<Record<string, ReturnType<any>>> | null;
     private sessions: Model<Record<string, ReturnType<any>>> | null;
@@ -52,11 +53,18 @@ export class Database extends EventEmitter {
     }
 
     public async close() {
+        this.closing = true;
         this.log.debug("Closing database.");
         await this.db.close();
     }
 
     public async saveMessage(message: IMessage): Promise<void> {
+        this.log.debug("saveMessage(): called");
+        if (this.closing) {
+            this.log.warn("Database closing, saveMessage() will not complete.");
+            return;
+        }
+
         const copy = { ...message };
 
         // encrypt plaintext with our idkey before it gets saved to disk
@@ -73,6 +81,12 @@ export class Database extends EventEmitter {
 
     public async deleteMessage(mailID: string): Promise<void> {
         this.log.debug("deleteMessage(): deleting mailid " + mailID);
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, deleteMessage() will not complete."
+            );
+            return;
+        }
         await this.messages?.remove({ mailID });
     }
 
@@ -86,13 +100,23 @@ export class Database extends EventEmitter {
                 " " +
                 status
         );
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, markSessionVerified() will not complete."
+            );
+        }
         await this.sessions?.update({ sessionID }, { verified: true });
     }
 
     // TODO: Update this to trilogy api instead of using knex
     public async getGroupHistory(channelID: string): Promise<IMessage[]> {
         this.log.debug("getGroupHistory(): retrieving history " + channelID);
-
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, getGroupHistory() will not complete."
+            );
+            return [];
+        }
         const history = (await this.messages!.find(
             { group: channelID },
             { order: ["timestamp", "desc"], limit: 100 }
@@ -126,7 +150,12 @@ export class Database extends EventEmitter {
 
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
         this.log.debug("getMessageHistory(): retrieving history " + userID);
-
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, getMessageHistory() will not complete."
+            );
+            return [];
+        }
         const messages = (await this.messages?.find(
             { sender: userID, group: null },
             { limit: 100, order: ["timestamp", "desc"] }
@@ -164,6 +193,11 @@ export class Database extends EventEmitter {
         await this.untilReady();
         this.log.debug("savePreKeys(): called");
 
+        if (this.closing) {
+            this.log.warn("Database closing, savePreKeys() will not complete.");
+            return -1;
+        }
+
         const model = oneTime ? this.oneTimeKeys : this.preKeys;
 
         const preKey = (await model?.create({
@@ -175,8 +209,17 @@ export class Database extends EventEmitter {
         return preKey.index;
     }
 
-    public async getSessionByPublicKey(publicKey: Uint8Array) {
+    public async getSessionByPublicKey(
+        publicKey: Uint8Array
+    ): Promise<XTypes.CRYPTO.ISession | null> {
         this.log.debug("getSessionByPublicKey(): called");
+
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, getSessionByPublicKey() will not complete."
+            );
+            return null;
+        }
 
         const str = XUtils.encodeHex(publicKey);
 
@@ -207,6 +250,13 @@ export class Database extends EventEmitter {
     public async markSessionUsed(sessionID: string) {
         this.log.debug("markSessionUsed(): called " + sessionID);
 
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, markSessionUsed() will not complete."
+            );
+            return null;
+        }
+
         await this.sessions?.update(
             { lastUsed: new Date(Date.now()) },
             { sessionID }
@@ -215,6 +265,11 @@ export class Database extends EventEmitter {
 
     public async getSessions(): Promise<XTypes.SQL.ISession[]> {
         this.log.debug("getSessions(): called");
+
+        if (this.closing) {
+            this.log.warn("Database closing, getSessions() will not complete.");
+            return [];
+        }
 
         const rows = (await this.sessions?.find(undefined, {
             order: ["lastUsed", "desc"],
@@ -236,6 +291,11 @@ export class Database extends EventEmitter {
         userID: string
     ): Promise<XTypes.CRYPTO.ISession | null> {
         this.log.debug("getSession(): called " + userID);
+
+        if (this.closing) {
+            this.log.warn("Database closing, getSession() will not complete.");
+            return null;
+        }
 
         const rows = (await this.sessions?.find(
             { userID },
@@ -265,6 +325,11 @@ export class Database extends EventEmitter {
         await this.untilReady();
         this.log.debug("getPreKeys(): called");
 
+        if (this.closing) {
+            this.log.warn("Database closing, getPreKeys() will not complete.");
+            return null;
+        }
+
         const rows = (await this.preKeys?.find()) as XTypes.SQL.IPreKeys[];
 
         if (!rows || rows.length === 0) {
@@ -286,6 +351,13 @@ export class Database extends EventEmitter {
     ): Promise<XTypes.CRYPTO.IPreKeys | null> {
         await this.untilReady();
         this.log.debug("getOneTimeKey(): called");
+
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, getOneTimeKey() will not complete."
+            );
+            return null;
+        }
 
         const rows = (await this.oneTimeKeys?.find({
             index,
@@ -309,11 +381,22 @@ export class Database extends EventEmitter {
     public async deleteOneTimeKey(index: number) {
         // delete the otk
         this.log.debug("deleteOneTimeKey(): called");
+
+        if (this.closing) {
+            this.log.warn(
+                "Database closing, deleteOneTimeKey() will not complete."
+            );
+            return null;
+        }
         await this.oneTimeKeys?.remove({ index });
     }
 
     public async saveSession(session: XTypes.SQL.ISession) {
         this.log.debug("saveSession(): called");
+        if (this.closing) {
+            this.log.warn("Database closing, saveSession() will not complete.");
+            return null;
+        }
         await this.sessions?.create(session);
     }
 

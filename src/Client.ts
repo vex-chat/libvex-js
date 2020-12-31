@@ -160,6 +160,7 @@ export interface IClientOptions {
         | "silly";
     host?: string;
     dbFolder?: string;
+    inMemoryDb?: boolean;
 }
 
 // tslint:disable-next-line: interface-name
@@ -603,8 +604,9 @@ export class Client extends EventEmitter {
 
         this.host = options?.host || "api.vex.chat";
 
-        const dbFileName =
-            XUtils.encodeHex(this.signKeys.publicKey) + ".sqlite";
+        const dbFileName = options?.inMemoryDb
+            ? ":memory:"
+            : XUtils.encodeHex(this.signKeys.publicKey) + ".sqlite";
         this.dbPath = options?.dbFolder
             ? options?.dbFolder + "/" + dbFileName
             : dbFileName;
