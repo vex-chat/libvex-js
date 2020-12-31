@@ -1505,6 +1505,7 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match."
                     );
+                    console.log(mail);
                     await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
@@ -1602,6 +1603,7 @@ export class Client extends EventEmitter {
 
                 const hmac = xHMAC(mail, SK);
                 this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
+                console.log(mail);
 
                 // associated data
                 const AD = xConcat(
