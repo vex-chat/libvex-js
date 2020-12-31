@@ -6,7 +6,7 @@ import { connect, Model, Trilogy } from "trilogy";
 import nacl from "tweetnacl";
 import { stringify } from "uuid";
 import winston from "winston";
-import { IClientOptions, IMessage } from ".";
+import { IClientOptions, IMessage, ISession } from ".";
 import { createLogger } from "./utils/createLogger";
 
 // tslint:disable-next-line: class-name
@@ -33,7 +33,7 @@ export class Database extends EventEmitter {
         this.idKeys = idKeys;
         this.dbPath = dbPath;
 
-        this.log.debug("Opening database file at " + this.dbPath);
+        this.log.info("Opening database file at " + this.dbPath);
         this.db = connect(this.dbPath, { client: "sql.js" });
         // this.db = knex({
         //     client: "sqlite3",
@@ -52,7 +52,7 @@ export class Database extends EventEmitter {
     }
 
     public async close() {
-        this.log.debug("Closing database.");
+        this.log.info("Closing database.");
         await this.db.close();
     }
 
@@ -72,7 +72,7 @@ export class Database extends EventEmitter {
     }
 
     public async deleteMessage(mailID: string): Promise<void> {
-        this.log.debug("deleteMessage(): deleting mailid " + mailID);
+        this.log.info("deleteMessage(): deleting mailid " + mailID);
         await this.messages?.remove({ mailID });
     }
 
@@ -80,7 +80,7 @@ export class Database extends EventEmitter {
         sessionID: string,
         status = true
     ): Promise<void> {
-        this.log.debug(
+        this.log.info(
             "markSessionVerified(): marking sessionID " +
                 sessionID +
                 " " +
@@ -91,17 +91,12 @@ export class Database extends EventEmitter {
 
     // TODO: Update this to trilogy api instead of using knex
     public async getGroupHistory(channelID: string): Promise<IMessage[]> {
-        this.log.debug("getGroupHistory(): retrieving history " + channelID);
+        this.log.info("getGroupHistory(): retrieving history " + channelID);
 
-        const query = this.db
-            .knex("messages")
-            .select()
-            .where({ group: channelID })
-            .orderBy("timestamp", "desc")
-            .limit(100);
-        const history: IMessage[] = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => res(data));
-        });
+        const history = (await this.messages!.find(
+            { group: channelID },
+            { order: ["timestamp", "desc"], limit: 100 }
+        )) as IMessage[];
 
         if (!history) {
             return [];
@@ -130,18 +125,13 @@ export class Database extends EventEmitter {
     }
 
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
-        this.log.debug("getMessageHistory(): retrieving history " + userID);
+        this.log.info("getMessageHistory(): retrieving history " + userID);
 
-        const query = this.db
-            .knex("messages")
-            .select()
-            .where({ sender: userID, group: null })
-            .orWhere({ recipient: userID, group: null })
-            .orderBy("timestamp", "desc")
-            .limit(100);
-        const messages: IMessage[] = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => res(data));
-        });
+        const messages = (await this.messages?.find(
+            { sender: userID, group: null },
+            { limit: 100, order: ["timestamp", "desc"] }
+        )) as IMessage[];
+
         if (!messages) {
             return [];
         }
@@ -172,38 +162,34 @@ export class Database extends EventEmitter {
         oneTime: boolean
     ): Promise<number> {
         await this.untilReady();
-        this.log.debug("savePreKeys(): called");
+        this.log.info("savePreKeys(): called");
 
-        const query = this.db.knex(oneTime ? "oneTimeKeys" : "preKeys").insert({
+        const model = oneTime ? this.oneTimeKeys : this.preKeys;
+
+        const index = await model?.create({
             privateKey: XUtils.encodeHex(preKeys.keyPair.secretKey),
             publicKey: XUtils.encodeHex(preKeys.keyPair.publicKey),
             signature: XUtils.encodeHex(preKeys.signature),
         });
 
-        const index: number = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => res(data));
-        });
-        return index;
+        console.log("prekey index is " + index);
+        return index![0];
     }
 
     public async getSessionByPublicKey(publicKey: Uint8Array) {
-        this.log.debug("getSessionByPublicKey(): called");
+        this.log.info("getSessionByPublicKey(): called");
 
         const str = XUtils.encodeHex(publicKey);
 
-        const query = this.db.knex
-            .from("sessions")
-            .select()
-            .where({ publicKey: str })
-            .limit(1);
+        const rows = (await this.sessions?.find(
+            { publicKey: str },
+            { limit: 1 }
+        )) as ISession[];
 
-        const rows: XTypes.SQL.ISession[] = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => res(data));
-        });
-
-        if (!rows) {
+        if (!rows || rows.length === 0) {
             return null;
         }
+
         const [session] = rows;
 
         const wsSession: XTypes.CRYPTO.ISession = {
@@ -220,29 +206,22 @@ export class Database extends EventEmitter {
     }
 
     public async markSessionUsed(sessionID: string) {
-        this.log.debug("markSessionUsed(): called " + sessionID);
+        this.log.info("markSessionUsed(): called " + sessionID);
 
-        const query = this.db.knex
-            .from("sessions")
-            .update({ lastUsed: new Date(Date.now()) })
-            .where({ sessionID });
-
-        await this.db.raw(query);
+        await this.sessions?.update(
+            { lastUsed: new Date(Date.now()) },
+            { sessionID }
+        );
     }
 
     public async getSessions(): Promise<XTypes.SQL.ISession[]> {
-        this.log.debug("getSessions(): called");
+        this.log.info("getSessions(): called");
 
-        const query = this.db.knex
-            .from("sessions")
-            .select()
-            .orderBy("lastUsed", "desc");
+        const rows = (await this.sessions?.find(undefined, {
+            order: ["timestamp", "desc"],
+        })) as XTypes.SQL.ISession[];
 
-        const rows: XTypes.SQL.ISession[] = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => res(data));
-        });
-
-        if (!rows) {
+        if (!rows || rows.length === 0) {
             return [];
         }
 
@@ -257,20 +236,18 @@ export class Database extends EventEmitter {
     public async getSession(
         userID: string
     ): Promise<XTypes.CRYPTO.ISession | null> {
-        this.log.debug("getSession(): called " + userID);
+        this.log.info("getSession(): called " + userID);
 
-        const query = this.db.knex
-            .from("sessions")
-            .select()
-            .where({ userID })
-            .limit(1)
-            .orderBy("lastUsed", "desc");
-        const rows: XTypes.SQL.ISession[] = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => res(data));
-        });
-        if (!rows) {
+        const rows = (await this.sessions?.find(
+            { userID },
+            { order: ["lastUsed", "desc"] }
+        )) as ISession[];
+
+        console.log("ROWS IS ", rows);
+        if (!rows || rows.length === 0) {
             return null;
         }
+
         const [session] = rows;
 
         const wsSession: XTypes.CRYPTO.ISession = {
@@ -288,17 +265,12 @@ export class Database extends EventEmitter {
 
     public async getPreKeys(): Promise<XTypes.CRYPTO.IPreKeys | null> {
         await this.untilReady();
-        this.log.debug("getPreKeys(): called");
+        this.log.info("getPreKeys(): called");
 
-        const query = this.db.knex.from("preKeys").select();
+        const rows = (await this.preKeys?.find()) as XTypes.SQL.IPreKeys[];
+        console.log(rows === undefined, rows);
 
-        const rows: XTypes.SQL.IPreKeys[] = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => {
-                res(data);
-            });
-        });
-
-        if (!rows) {
+        if (!rows || rows.length === 0) {
             return null;
         }
 
@@ -316,18 +288,13 @@ export class Database extends EventEmitter {
         index: number
     ): Promise<XTypes.CRYPTO.IPreKeys | null> {
         await this.untilReady();
-        this.log.debug("getOneTimeKey(): called");
+        this.log.info("getOneTimeKey(): called");
 
-        const query = this.db.knex
-            .from("oneTimeKeys")
-            .select()
-            .where({ index });
+        const rows = (await this.oneTimeKeys?.find({
+            index,
+        })) as XTypes.SQL.IPreKeys[];
 
-        const rows: XTypes.SQL.IPreKeys[] = await new Promise((res, rej) => {
-            this.db.raw(query).then((data) => res(data));
-        });
-
-        if (!rows) {
+        if (!rows || rows.length === 0) {
             return null;
         }
 
@@ -344,20 +311,13 @@ export class Database extends EventEmitter {
 
     public async deleteOneTimeKey(index: number) {
         // delete the otk
-        this.log.debug("deleteOneTimeKey(): called");
-
-        const query = this.db.knex
-            .from("oneTimeKeys")
-            .delete()
-            .where({ index });
-        await this.db.raw(query);
+        this.log.info("deleteOneTimeKey(): called");
+        await this.oneTimeKeys?.remove({ index });
     }
 
     public async saveSession(session: XTypes.SQL.ISession) {
-        this.log.debug("saveSession(): called");
-
-        const query = this.db.knex("sessions").insert(session);
-        await this.db.raw(query);
+        this.log.info("saveSession(): called");
+        await this.sessions?.create(session);
     }
 
     private async untilReady() {
@@ -369,8 +329,8 @@ export class Database extends EventEmitter {
     }
 
     private async init() {
-        this.log.debug("init(): called");
-        this.log.debug("Initializing database tables.");
+        this.log.info("init(): called");
+        this.log.info("Initializing database tables.");
 
         try {
             this.messages = await this.db.model("messages", {
