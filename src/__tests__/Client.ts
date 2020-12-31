@@ -1,4 +1,4 @@
-import { IClientOptions, Client } from "..";
+import { Client, IClientOptions } from "..";
 
 const options: IClientOptions = {
     inMemoryDb: true,
