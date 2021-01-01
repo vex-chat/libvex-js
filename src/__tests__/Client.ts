@@ -1,11 +1,11 @@
 import { Client, IClientOptions } from "..";
-
-const options: IClientOptions = {
-    inMemoryDb: true,
-};
+import fs from "fs";
 
 test("Register", async (done) => {
-    const client = new Client(undefined, options);
+    const SK = Client.generateSecretKey();
+    const client = new Client(SK);
+
+    Client.saveKeyFile("./test.key", "hunter2", client.getKeys().private);
 
     client.on("ready", async () => {
         const username = Client.randomUsername();
@@ -21,19 +21,14 @@ test("Register", async (done) => {
 });
 
 test("Login", async (done) => {
-    const client = new Client(undefined, options);
+    const SK = Client.loadKeyFile("test.key", "hunter2");
+    const client = new Client(SK);
 
     client.on("ready", async () => {
-        const username = Client.randomUsername();
-        const [user, err] = await client.register(username);
+        const err = await client.login();
         if (err) {
-            throw err;
-        }
-
-        const loginErr = await client.login();
-        if (loginErr) {
             await client.close();
-            throw new Error(loginErr.message);
+            throw new Error(err.message);
         }
     });
 
@@ -46,19 +41,14 @@ test("Login", async (done) => {
 });
 
 test("Direct messaging", async (done) => {
-    const client = new Client(undefined, options);
+    const SK = Client.loadKeyFile("test.key", "hunter2");
+    const client = new Client(SK);
 
     client.on("ready", async () => {
-        const username = Client.randomUsername();
-        const [user, err] = await client.register(username);
+        const err = await client.login();
         if (err) {
-            throw err;
-        }
-
-        const loginErr = await client.login();
-        if (loginErr) {
             await client.close();
-            throw new Error(loginErr.message);
+            throw new Error(err.message);
         }
     });
 
@@ -91,4 +81,12 @@ test("Direct messaging", async (done) => {
     });
 
     client.init();
+});
+
+test("cleanup", () => {
+    const SK = Client.loadKeyFile("test.key", "hunter2");
+    const client = new Client(SK);
+
+    fs.unlinkSync(client.getKeys().public + ".sqlite");
+    fs.unlinkSync("test.key");
 });

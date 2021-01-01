@@ -6,7 +6,6 @@
     "author": "Extra <extrahash@protonmail.com>",
     "license": "AGPL-3.0-or-later",
     "scripts": {
-        "start": "node ./dist/test/test.js",
         "build": "rm -rf ./dist/*; node ./node_modules/typescript/bin/tsc",
         "prettier": "node ./node_modules/prettier/bin-prettier.js '**/*.{ts,tsx,json,md}' --trailing-comma es5 --tab-width 4 --ignore-path .gitignore  --arrow-parens always --write",
         "lint": "./node_modules/tslint/bin/tslint src/**/*.ts{,x}",
