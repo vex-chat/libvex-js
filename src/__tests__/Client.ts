@@ -1,5 +1,5 @@
-import { Client, IClientOptions } from "..";
 import fs from "fs";
+import { Client, IClientOptions } from "..";
 
 test("Register", async (done) => {
     const SK = Client.generateSecretKey();
@@ -13,7 +13,7 @@ test("Register", async (done) => {
         if (err) {
             throw err;
         }
-        expect(user!.username === username);
+        expect(user!.username === username).toBe(true);
         done();
     });
 
