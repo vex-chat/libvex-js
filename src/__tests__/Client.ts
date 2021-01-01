@@ -4,7 +4,7 @@ const options: IClientOptions = {
     inMemoryDb: true,
 };
 
-test("Register", async (done) => {
+test("Client.register()", async (done) => {
     const client = new Client(undefined, options);
 
     client.on("ready", async () => {
@@ -20,7 +20,7 @@ test("Register", async (done) => {
     client.init();
 });
 
-test("Login", async (done) => {
+test("Client.login()", async (done) => {
     const client = new Client(undefined, options);
 
     client.on("ready", async () => {
@@ -45,7 +45,7 @@ test("Login", async (done) => {
     client.init();
 });
 
-test("Send and receive messages", async (done) => {
+test("Client.messages", async (done) => {
     const client = new Client(undefined, options);
 
     client.on("ready", async () => {
@@ -75,6 +75,12 @@ test("Send and receive messages", async (done) => {
         if (message.direction === "incoming" && message.decrypted) {
             received++;
             if (received === 5) {
+                const history = await client.messages.retrieve(
+                    client.users.me().userID
+                );
+                // check we received everything OK
+                expect(history.length === 5).toBe(true);
+
                 await client.close();
                 done();
             }

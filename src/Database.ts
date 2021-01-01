@@ -192,7 +192,6 @@ export class Database extends EventEmitter {
     ): Promise<number> {
         await this.untilReady();
         this.log.debug("savePreKeys(): called");
-
         if (this.closing) {
             this.log.warn("Database closing, savePreKeys() will not complete.");
             return -1;
