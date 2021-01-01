@@ -1,6 +1,6 @@
 import fs from "fs";
-import { Client, IClientOptions } from "..";
 import _ from "lodash";
+import { Client, IClientOptions } from "..";
 
 test("Register", async (done) => {
     const SK = Client.generateSecretKey();
