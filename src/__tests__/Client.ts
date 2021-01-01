@@ -1,3 +1,4 @@
+import { sleep } from "@extrahash/sleep";
 import fs from "fs";
 import _ from "lodash";
 import { Client, IClientOptions } from "..";
@@ -81,7 +82,7 @@ test("Direct messaging", async (done) => {
     client.init();
 });
 
-test("Servers", async (done) => {
+test("Server operations", async (done) => {
     const SK = Client.loadKeyFile("test.key", "hunter2");
     const client = new Client(SK);
 
@@ -105,6 +106,45 @@ test("Servers", async (done) => {
 
         // make another server to be used by channel tests
         await client.servers.create("Channel Test Server");
+        await client.close();
+    });
+
+    client.on("closed", () => {
+        done();
+    });
+
+    client.init();
+});
+
+test("Channel operations", async (done) => {
+    const SK = Client.loadKeyFile("test.key", "hunter2");
+    const client = new Client(SK);
+
+    client.on("ready", async () => {
+        login(client);
+    });
+
+    client.on("authed", async () => {
+        const servers = await client.servers.retrieve();
+        const [testServer] = servers;
+
+        const channel = await client.channels.create(
+            "Test Channel",
+            testServer.serverID
+        );
+
+        await client.channels.delete(channel.channelID);
+
+        const channels = await client.channels.retrieve(testServer.serverID);
+        expect(channels.length).toBe(1);
+
+        const retrievedByIDChannel = await client.channels.retrieveByID(
+            channels[0].channelID
+        );
+        expect(channels[0].channelID === retrievedByIDChannel?.channelID).toBe(
+            true
+        );
+
         await client.close();
     });
 
