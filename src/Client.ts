@@ -132,7 +132,7 @@ interface IChannels {
 interface ISessions {
     retrieve: () => Promise<XTypes.SQL.ISession[]>;
     verify: (session: XTypes.SQL.ISession) => string;
-    markVerified: (fingerprint: string) => void;
+    markVerified: (fingerprint: string) => Promise<void>;
 }
 
 /**
