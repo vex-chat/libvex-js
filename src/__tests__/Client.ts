@@ -4,7 +4,7 @@ const options: IClientOptions = {
     inMemoryDb: true,
 };
 
-test("Client.register()", async (done) => {
+test("Register", async (done) => {
     const client = new Client(undefined, options);
 
     client.on("ready", async () => {
@@ -20,7 +20,7 @@ test("Client.register()", async (done) => {
     client.init();
 });
 
-test("Client.login()", async (done) => {
+test("Login", async (done) => {
     const client = new Client(undefined, options);
 
     client.on("ready", async () => {
@@ -45,7 +45,7 @@ test("Client.login()", async (done) => {
     client.init();
 });
 
-test("Client.messages", async (done) => {
+test("Direct messaging", async (done) => {
     const client = new Client(undefined, options);
 
     client.on("ready", async () => {
