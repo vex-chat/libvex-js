@@ -12,7 +12,7 @@
         "lint-fix": "./node_modules/tslint/bin/tslint src/**/*.ts{,x} --fix",
         "prepack": "yarn build",
         "docs": "npx typedoc --options typedoc.json",
-        "test": "npx jest"
+        "test": "npx jest; rm -rf *.sqlite test.key"
     },
     "devDependencies": {
         "dotenv": "^8.2.0",
@@ -40,6 +40,7 @@
         "@extrahash/sleep": "^1.0.0",
         "@types/create-hmac": "^1.1.0",
         "@types/generic-pool": "^3.1.9",
+        "@types/lodash": "^4.14.166",
         "@types/msgpack-lite": "^0.1.7",
         "@types/sql.js": "^1.0.3",
         "@types/uuid": "^8.3.0",
@@ -49,6 +50,7 @@
         "axios": "^0.21.0",
         "chalk": "^4.1.0",
         "knex": "^0.21.12",
+        "lodash": "^4.17.20",
         "msgpack-lite": "^0.1.26",
         "sql.js": "^1.4.0",
         "trilogy": "^2.0.3",

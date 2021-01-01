@@ -657,6 +657,9 @@ export class Client extends EventEmitter {
         this.manuallyClosing = true;
         this.log.info("Manually closing client.");
 
+        this.conn.close();
+        await this.database.close();
+
         if (this.pingInterval) {
             clearInterval(this.pingInterval);
         }
@@ -664,8 +667,6 @@ export class Client extends EventEmitter {
         if (this.mailInterval) {
             clearInterval(this.mailInterval);
         }
-        this.conn.close();
-        await this.database.close();
         delete this.xKeyRing;
 
         if (!muteEvent) {
