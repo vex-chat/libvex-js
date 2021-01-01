@@ -55,7 +55,14 @@ export class Database extends EventEmitter {
     public async close() {
         this.closing = true;
         this.log.debug("Closing database.");
-        await this.db.close();
+
+        // give it a second to finish any pending writes
+        // hack, TODO: fix
+        return new Promise(async (res, rej) => {
+            await sleep(1000);
+            await this.db.close();
+            res({ closed: true });
+        });
     }
 
     public async saveMessage(message: IMessage): Promise<void> {
@@ -387,6 +394,7 @@ export class Database extends EventEmitter {
             );
             return null;
         }
+
         await this.oneTimeKeys?.remove({ index });
     }
 

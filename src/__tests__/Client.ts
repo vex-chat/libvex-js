@@ -40,47 +40,46 @@ test("Login", async (done) => {
     client.init();
 });
 
-// test("Direct messaging", async (done) => {
-//     const SK = Client.loadKeyFile("test.key", "hunter2");
-//     const client = new Client(SK);
+test("Direct messaging", async (done) => {
+    const SK = Client.loadKeyFile("test.key", "hunter2");
+    const client = new Client(SK);
 
-//     client.on("ready", async () => {
-//         login(client);
-//     });
+    client.on("ready", async () => {
+        login(client);
+    });
 
-//     client.on("authed", async () => {
-//         const me = client.users.me();
+    client.on("authed", async () => {
+        const me = client.users.me();
 
-//         for (let i = 0; i < 2; i++) {
-//             await client.messages.send(me.userID, i.toString());
-//         }
-//     });
+        for (let i = 0; i < 2; i++) {
+            await client.messages.send(me.userID, i.toString());
+        }
+    });
 
-//     let received = 0;
-//     client.on("message", async (message) => {
-//         if (!message.decrypted) {
-//             throw new Error("Message failed to decrypt.");
-//         }
-//         if (message.direction === "incoming" && message.decrypted) {
-//             received++;
-//             if (received === 5) {
-//                 const history = await client.messages.retrieve(
-//                     client.users.me().userID
-//                 );
-//                 // check we received everything OK
-//                 expect(history.length === 2).toBe(true);
-//                 await client.close();
-//             }
-//         }
-//     });
+    let received = 0;
+    client.on("message", async (message) => {
+        if (!message.decrypted) {
+            throw new Error("Message failed to decrypt.");
+        }
+        if (message.direction === "incoming" && message.decrypted) {
+            received++;
+            if (received === 2) {
+                const history = await client.messages.retrieve(
+                    client.users.me().userID
+                );
+                // check we received everything OK
+                expect(history.length === 2).toBe(true);
+                await client.close();
+            }
+        }
+    });
 
-//     client.on("closed", () => {
-//         console.log("reached closed");
-//         done();
-//     })
+    client.on("closed", () => {
+        done();
+    });
 
-//     client.init();
-// });
+    client.init();
+});
 
 test("Servers", async (done) => {
     const SK = Client.loadKeyFile("test.key", "hunter2");
