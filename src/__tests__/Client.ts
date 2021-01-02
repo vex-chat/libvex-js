@@ -161,6 +161,9 @@ describe("Perform client tests", () => {
     });
 });
 
+/**
+ * @hidden
+ */
 const login = async (client: Client) => {
     const err = await client.login();
     if (err) {
