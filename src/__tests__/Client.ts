@@ -2,7 +2,7 @@ import { sleep } from "@extrahash/sleep";
 import { XKeyConvert, XUtils } from "@vex-chat/crypto";
 import _ from "lodash";
 import nacl from "tweetnacl";
-import { Client, IChannel, IMessage, IServer } from "..";
+import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
 import { DatabaseTrilogy } from "../Databases/DatabaseTrilogy";
 
 describe("Perform client tests", () => {
@@ -15,24 +15,17 @@ describe("Perform client tests", () => {
         throw new Error("Can't convert SK!");
     }
 
-    const storage = new DatabaseTrilogy(":memory:", idKeys, {
+    const clientOptions: IClientOptions = {
         inMemoryDb: true,
         logLevel: "warn",
         dbLogLevel: "warn",
-    });
+    };
 
-    const client = new Client(
-        SK,
-        {
-            inMemoryDb: true,
-            logLevel: "warn",
-            dbLogLevel: "warn",
-        },
-        storage
-    );
+    const storage = new DatabaseTrilogy(":memory:", idKeys, clientOptions);
+    const client = new Client(SK, clientOptions, storage);
+
     let createdServer: IServer | null = null;
     let createdChannel: IChannel | null = null;
-
     test("Register", async (done) => {
         client.on("ready", async () => {
             const username = Client.randomUsername();
