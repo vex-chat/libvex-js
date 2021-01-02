@@ -1376,7 +1376,7 @@ export class Client extends EventEmitter {
 
         const hmac = xHMAC(mail, SK);
         this.log.info("Generated hmac: " + XUtils.encodeHex(hmac));
-        this.log.debug(JSON.stringify(mail, null, 4));
+        this.log.info(JSON.stringify(mail, null, 4));
 
         const msg: XTypes.WS.IResourceMsg = {
             transmissionID: uuid.v4(),
@@ -1519,7 +1519,7 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match."
                     );
-                    this.log.debug(JSON.stringify(mail, null, 4));
+                    this.log.info(JSON.stringify(mail, null, 4));
                     await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
@@ -1617,7 +1617,7 @@ export class Client extends EventEmitter {
 
                 const hmac = xHMAC(mail, SK);
                 this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
-                this.log.debug(JSON.stringify(mail, null, 4));
+                this.log.info(JSON.stringify(mail, null, 4));
 
                 // associated data
                 const AD = xConcat(

@@ -1,95 +1,36 @@
-import fs from "fs";
+import { sleep } from "@extrahash/sleep";
 import _ from "lodash";
-import { Client, IClientOptions } from "..";
+import { Client, IChannel, IMessage, IServer } from "..";
 
-test("Register", async (done) => {
+describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
-    const client = new Client(SK);
+    const client = new Client(SK, { inMemoryDb: true, logLevel: "info" });
+    let createdServer: IServer | null = null;
+    let createdChannel: IChannel | null = null;
 
-    Client.saveKeyFile("./test.key", "hunter2", client.getKeys().private);
-
-    client.on("ready", async () => {
-        const username = Client.randomUsername();
-        const [user, err] = await client.register(username);
-        if (err) {
-            throw err;
-        }
-        expect(user!.username === username).toBe(true);
-        done();
-    });
-
-    client.init();
-});
-
-test("Login", async (done) => {
-    const SK = Client.loadKeyFile("test.key", "hunter2");
-    const client = new Client(SK);
-
-    client.on("ready", async () => {
-        login(client);
-    });
-
-    client.on("authed", async () => {
-        await client.close();
-    });
-
-    client.on("closed", () => {
-        done();
-    });
-
-    client.init();
-});
-
-test("Direct messaging", async (done) => {
-    const SK = Client.loadKeyFile("test.key", "hunter2");
-    const client = new Client(SK);
-
-    client.on("ready", async () => {
-        login(client);
-    });
-
-    client.on("authed", async () => {
-        const me = client.users.me();
-
-        for (let i = 0; i < 2; i++) {
-            await client.messages.send(me.userID, i.toString());
-        }
-    });
-
-    let received = 0;
-    client.on("message", async (message) => {
-        if (!message.decrypted) {
-            throw new Error("Message failed to decrypt.");
-        }
-        if (message.direction === "incoming" && message.decrypted) {
-            received++;
-            if (received === 2) {
-                const history = await client.messages.retrieve(
-                    client.users.me().userID
-                );
-                // check we received everything OK
-                expect(history.length === 2).toBe(true);
-                await client.close();
+    test("Register", async (done) => {
+        client.on("ready", async () => {
+            const username = Client.randomUsername();
+            const [user, err] = await client.register(username);
+            if (err) {
+                throw err;
             }
-        }
+            expect(user!.username === username).toBe(true);
+            done();
+        });
+
+        client.init();
     });
 
-    client.on("closed", () => {
-        done();
-    });
-
-    client.init();
-});
-
-test("Servers", async (done) => {
-    const SK = Client.loadKeyFile("test.key", "hunter2");
-    const client = new Client(SK);
-
-    client.on("ready", async () => {
+    test("Login", async (done) => {
         login(client);
+
+        client.on("authed", async () => {
+            done();
+        });
     });
 
-    client.on("authed", async () => {
+    test("Server operations", async (done) => {
         const server = await client.servers.create("Test Server");
         const serverList = await client.servers.retrieve();
 
@@ -104,15 +45,98 @@ test("Servers", async (done) => {
         await client.servers.delete(server.serverID);
 
         // make another server to be used by channel tests
-        await client.servers.create("Channel Test Server");
-        await client.close();
-    });
-
-    client.on("closed", () => {
+        createdServer = await client.servers.create("Channel Test Server");
         done();
     });
 
-    client.init();
+    test("Channel operations", async (done) => {
+        const servers = await client.servers.retrieve();
+        const [testServer] = servers;
+
+        const channel = await client.channels.create(
+            "Test Channel",
+            testServer.serverID
+        );
+
+        await client.channels.delete(channel.channelID);
+
+        const channels = await client.channels.retrieve(testServer.serverID);
+        expect(channels.length).toBe(1);
+
+        createdChannel = channels[0];
+
+        const retrievedByIDChannel = await client.channels.retrieveByID(
+            channels[0].channelID
+        );
+        expect(channels[0].channelID === retrievedByIDChannel?.channelID).toBe(
+            true
+        );
+        done();
+    });
+
+    test("Direct messaging", async (done) => {
+        let received = 0;
+
+        const onMessage = (message: IMessage) => {
+            if (!message.decrypted) {
+                throw new Error("Message failed to decrypt.");
+            }
+            if (
+                message.direction === "incoming" &&
+                message.decrypted &&
+                message.group === null
+            ) {
+                received++;
+                if (received === 2) {
+                    client.off("message", onMessage);
+                    done();
+                }
+            }
+        };
+        client.on("message", onMessage);
+
+        const me = client.users.me();
+
+        await client.messages.send(me.userID, "initial");
+        await client.messages.send(me.userID, "subsequent");
+    });
+
+    test("Group messaging", async (done) => {
+        let received = 0;
+
+        const onGroupMessage = (message: IMessage) => {
+            if (!message.decrypted) {
+                throw new Error("Message failed to decrypt.");
+            }
+            if (
+                message.direction === "incoming" &&
+                message.decrypted &&
+                message.group !== null
+            ) {
+                received++;
+                if (received === 2) {
+                    client.off("message", onGroupMessage);
+                    done();
+                }
+            }
+        };
+
+        client.on("message", onGroupMessage);
+
+        // const userIDs = ["71ab7ca2-ad89-4de4-90d3-455b32c24fbd", "acbc01dc-0207-40f8-b7ca-cded77a93bdf", /* "17e059c2-37fc-471e-9f4c-6fb0027263da" */]
+        // for (const userID of userIDs) {
+        //     await client.permissions.create({ userID, resourceType: "server", resourceID: createdServer!.serverID  })
+        // }
+
+        await client.messages.group(createdChannel!.channelID, "initial");
+        await client.messages.group(createdChannel!.channelID, "subsequent");
+    });
+
+    test("Client close", async (done) => {
+        await sleep(100);
+        await client.close();
+        done();
+    });
 });
 
 const login = async (client: Client) => {
