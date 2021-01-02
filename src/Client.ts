@@ -21,7 +21,8 @@ import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
 import WebSocket from "ws";
-import { Database } from "./_Database";
+import { DatabaseKnex } from "./Databases/DatabaseKnex";
+import { IStorage } from "./IStorage";
 import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
 import { uuidToUint8 } from "./utils/uint8uuid";
@@ -572,7 +573,7 @@ export class Client extends EventEmitter {
 
     private wsOpen = false;
 
-    private database: Database;
+    private database: IStorage;
     private dbPath: string;
     private conn: WebSocket;
     private host: string;
@@ -598,7 +599,11 @@ export class Client extends EventEmitter {
 
     private manuallyClosing: boolean = false;
 
-    constructor(privateKey?: string, options?: IClientOptions) {
+    constructor(
+        privateKey?: string,
+        options?: IClientOptions,
+        storage?: IStorage
+    ) {
         super();
 
         this.log = createLogger("client", options?.logLevel);
@@ -621,7 +626,9 @@ export class Client extends EventEmitter {
             ? options?.dbFolder + "/" + dbFileName
             : dbFileName;
 
-        this.database = new Database(this.dbPath, this.idKeys, options);
+        this.database = storage
+            ? storage
+            : new DatabaseKnex(this.dbPath, this.idKeys, options);
 
         this.database.on("error", (error) => {
             this.log.error(error);
@@ -977,8 +984,8 @@ export class Client extends EventEmitter {
         });
     }
 
-    private async markSessionVerified(sessionID: string, status = true) {
-        return this.database.markSessionVerified(sessionID, status);
+    private async markSessionVerified(sessionID: string) {
+        return this.database.markSessionVerified(sessionID);
     }
 
     private async getGroupHistory(channelID: string): Promise<IMessage[]> {
@@ -1078,7 +1085,7 @@ export class Client extends EventEmitter {
     ): Promise<void> {
         this.log.info("Sending mail to " + userID);
 
-        const session = await this.database.getSession(userID);
+        const session = await this.database.getSessionByUserID(userID);
         if (!session) {
             this.log.info("Creating new session for " + userID);
             await this.createSession(userID, msg, group, mailID);
@@ -1144,7 +1151,7 @@ export class Client extends EventEmitter {
     }
 
     private async getSessionList() {
-        return this.database.getSessions();
+        return this.database.getAllSessions();
     }
 
     private async getServerList(): Promise<XTypes.SQL.IServer[]> {

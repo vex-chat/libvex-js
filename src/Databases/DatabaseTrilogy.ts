@@ -5,11 +5,14 @@ import { EventEmitter } from "events";
 import { connect, Model, Trilogy } from "trilogy";
 import nacl from "tweetnacl";
 import winston from "winston";
-import { IClientOptions, IMessage, ISession } from ".";
-import { createLogger } from "./utils/createLogger";
+import { IClientOptions, IMessage, ISession } from "..";
+import { IStorage } from "../IStorage";
+import { createLogger } from "../utils/createLogger";
 
-// tslint:disable-next-line: class-name
-export class Database extends EventEmitter {
+/**
+ * @hidden
+ */
+export class DatabaseTrilogy extends EventEmitter implements IStorage {
     public ready: boolean = false;
     private dbPath: string;
     private db: Trilogy;
@@ -44,7 +47,7 @@ export class Database extends EventEmitter {
         this.init();
     }
 
-    public async close() {
+    public async close(): Promise<void> {
         this.closing = true;
         this.log.debug("Closing database.");
 
@@ -53,7 +56,7 @@ export class Database extends EventEmitter {
         return new Promise(async (res, rej) => {
             await sleep(1000);
             await this.db.close();
-            res({ closed: true });
+            res();
         });
     }
 
@@ -88,8 +91,7 @@ export class Database extends EventEmitter {
     }
 
     public async markSessionVerified(
-        sessionID: string,
-        status = true
+        sessionID: string
     ): Promise<void> {
         if (this.closing) {
             this.log.warn(
@@ -265,12 +267,12 @@ export class Database extends EventEmitter {
         return wsSession;
     }
 
-    public async markSessionUsed(sessionID: string) {
+    public async markSessionUsed(sessionID: string): Promise<void> {
         if (this.closing) {
             this.log.warn(
                 "Database closing, markSessionUsed() will not complete."
             );
-            return null;
+            return;
         }
 
         await this.sessions?.update(
@@ -279,10 +281,10 @@ export class Database extends EventEmitter {
         );
     }
 
-    public async getSessions(): Promise<XTypes.SQL.ISession[]> {
+    public async getAllSessions(): Promise<XTypes.SQL.ISession[]> {
         if (this.closing) {
-            this.log.warn("Database closing, getSessions() will not complete.");
-            this.log.debug("getSessions() => " + JSON.stringify([], null, 4));
+            this.log.warn("Database closing, getAllSessions() will not complete.");
+            this.log.debug("getAllSessions() => " + JSON.stringify([], null, 4));
             return [];
         }
 
@@ -291,7 +293,7 @@ export class Database extends EventEmitter {
         })) as XTypes.SQL.ISession[];
 
         if (!rows || rows.length === 0) {
-            this.log.debug("getSessions() => " + JSON.stringify([], null, 4));
+            this.log.debug("getAllSessions() => " + JSON.stringify([], null, 4));
             return [];
         }
 
@@ -301,12 +303,12 @@ export class Database extends EventEmitter {
         });
 
         this.log.debug(
-            "getSessions() => " + JSON.stringify(fixedRows, null, 4)
+            "getAllSessions() => " + JSON.stringify(fixedRows, null, 4)
         );
         return fixedRows;
     }
 
-    public async getSession(
+    public async getSessionByUserID(
         userID: string
     ): Promise<XTypes.CRYPTO.ISession | null> {
         if (this.closing) {
@@ -401,7 +403,7 @@ export class Database extends EventEmitter {
         return otk;
     }
 
-    public async deleteOneTimeKey(index: number) {
+    public async deleteOneTimeKey(index: number): Promise<void> {
         // delete the otk
         if (this.closing) {
             this.log.warn(
@@ -413,23 +415,15 @@ export class Database extends EventEmitter {
         await this.oneTimeKeys?.remove({ index });
     }
 
-    public async saveSession(session: XTypes.SQL.ISession) {
+    public async saveSession(session: XTypes.SQL.ISession): Promise<void> {
         if (this.closing) {
             this.log.warn("Database closing, saveSession() will not complete.");
-            return null;
+            return;
         }
         await this.sessions?.create(session);
     }
 
-    private async untilReady() {
-        let timeout = 1;
-        while (!this.ready) {
-            await sleep(timeout);
-            timeout *= 2;
-        }
-    }
-
-    private async init() {
+    public async init() {
         this.log.debug("Initializing database tables.");
 
         try {
@@ -479,6 +473,14 @@ export class Database extends EventEmitter {
         } catch (err) {
             this.log.error(err);
             this.emit("error", err);
+        }
+    }
+
+    private async untilReady() {
+        let timeout = 1;
+        while (!this.ready) {
+            await sleep(timeout);
+            timeout *= 2;
         }
     }
 }
