@@ -1,7 +1,5 @@
 import { sleep } from "@extrahash/sleep";
-import { XKeyConvert, XUtils } from "@vex-chat/crypto";
 import _ from "lodash";
-import nacl from "tweetnacl";
 import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
 import { Storage } from "../Storage";
 
