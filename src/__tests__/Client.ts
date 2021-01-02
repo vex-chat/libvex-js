@@ -112,6 +112,16 @@ describe("Perform client tests", () => {
         await client.messages.send(me.userID, "subsequent");
     });
 
+    test("File operations", async (done) => {
+        const createdFile = Buffer.from("HELLO WORLD THIS IS A FILE");
+
+        const [file, key] = await client.files.create(createdFile);
+        const fetchedFile = await client.files.retrieve(file.fileID, key);
+
+        expect(_.isEqual(createdFile, fetchedFile));
+        done();
+    });
+
     test("Group messaging", async (done) => {
         let received = 0;
 
