@@ -4,7 +4,11 @@ import { Client, IChannel, IMessage, IServer } from "..";
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
-    const client = new Client(SK, { inMemoryDb: true, logLevel: "info" });
+    const client = new Client(SK, {
+        inMemoryDb: true,
+        logLevel: "warn",
+        dbLogLevel: "warn",
+    });
     let createdServer: IServer | null = null;
     let createdChannel: IChannel | null = null;
 
@@ -98,6 +102,7 @@ describe("Perform client tests", () => {
         const me = client.users.me();
 
         await client.messages.send(me.userID, "initial");
+        await sleep(500);
         await client.messages.send(me.userID, "subsequent");
     });
 
@@ -123,17 +128,26 @@ describe("Perform client tests", () => {
 
         client.on("message", onGroupMessage);
 
-        // const userIDs = ["71ab7ca2-ad89-4de4-90d3-455b32c24fbd", "acbc01dc-0207-40f8-b7ca-cded77a93bdf", /* "17e059c2-37fc-471e-9f4c-6fb0027263da" */]
-        // for (const userID of userIDs) {
-        //     await client.permissions.create({ userID, resourceType: "server", resourceID: createdServer!.serverID  })
-        // }
+        const userIDs = [
+            "71ab7ca2-ad89-4de4-90d3-455b32c24fbd",
+            "acbc01dc-0207-40f8-b7ca-cded77a93bdf",
+            "17e059c2-37fc-471e-9f4c-6fb0027263da",
+        ];
+        for (const userID of userIDs) {
+            await client.permissions.create({
+                userID,
+                resourceType: "server",
+                resourceID: createdServer!.serverID,
+            });
+        }
 
         await client.messages.group(createdChannel!.channelID, "initial");
+        await sleep(500);
         await client.messages.group(createdChannel!.channelID, "subsequent");
     });
 
     test("Client close", async (done) => {
-        await sleep(100);
+        await sleep(500);
         await client.close();
         done();
     });

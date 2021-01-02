@@ -4,9 +4,9 @@ import { IClientOptions } from "..";
 /**
  * @ignore
  */
-export function createLogger(logName: string, options?: IClientOptions) {
+export function createLogger(logName: string, logLevel?: string) {
     const logger = winston.createLogger({
-        level: options?.logLevel || "error",
+        level: logLevel || "error",
         format: winston.format.combine(
             winston.format.timestamp({
                 format: "YYYY-MM-DD HH:mm:ss",

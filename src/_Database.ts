@@ -24,7 +24,7 @@ export class Database extends EventEmitter {
         options?: IClientOptions
     ) {
         super();
-        this.log = createLogger("db", options);
+        this.log = createLogger("db", options?.dbLogLevel || options?.logLevel);
 
         this.idKeys = idKeys;
         this.dbPath = dbPath;
@@ -81,7 +81,7 @@ export class Database extends EventEmitter {
             .orderBy("timestamp", "desc")
             .limit(100);
 
-        return messages.reverse().map((message) => {
+        const fixedMessages = messages.reverse().map((message) => {
             // some cleanup because of how knex serializes the data
             message.timestamp = new Date(message.timestamp);
             // decrypt
@@ -101,6 +101,10 @@ export class Database extends EventEmitter {
 
             return message;
         });
+        this.log.debug(
+            "getMessageHistory() => " + JSON.stringify(fixedMessages, null, 4)
+        );
+        return fixedMessages;
     }
 
     public async getGroupHistory(channelID: string): Promise<IMessage[]> {
@@ -110,7 +114,7 @@ export class Database extends EventEmitter {
             .orderBy("timestamp", "desc")
             .limit(100);
 
-        return messages.reverse().map((message) => {
+        const fixedMessages = messages.reverse().map((message) => {
             // some cleanup because of how knex serializes the data
             message.timestamp = new Date(message.timestamp);
             // decrypt
@@ -130,6 +134,10 @@ export class Database extends EventEmitter {
 
             return message;
         });
+        this.log.debug(
+            "getGroupHistory() => " + JSON.stringify(fixedMessages, null, 4)
+        );
+        return fixedMessages;
     }
 
     public async savePreKeys(
@@ -144,6 +152,8 @@ export class Database extends EventEmitter {
                 signature: XUtils.encodeHex(preKeys.signature),
             }
         );
+        this.log.silly("savePreKeys() => " + JSON.stringify(index[0], null, 4));
+
         return index[0];
     }
 
@@ -156,6 +166,9 @@ export class Database extends EventEmitter {
             .where({ publicKey: str })
             .limit(1);
         if (rows.length === 0) {
+            this.log.debug(
+                "getSessionByPublicKey() => " + JSON.stringify(null, null, 4)
+            );
             return null;
         }
         const [session] = rows;
@@ -170,6 +183,9 @@ export class Database extends EventEmitter {
             fingerprint: XUtils.decodeHex(session.fingerprint),
         };
 
+        this.log.debug(
+            "getSessionByPublicKey() => " + JSON.stringify(wsSession, null, 4)
+        );
         return wsSession;
     }
 
@@ -190,7 +206,9 @@ export class Database extends EventEmitter {
             session.verified = Boolean(session.verified);
             return session;
         });
-
+        this.log.debug(
+            "getSessions() => " + JSON.stringify(fixedRows, null, 4)
+        );
         return fixedRows;
     }
 
@@ -204,6 +222,7 @@ export class Database extends EventEmitter {
             .limit(1)
             .orderBy("lastUsed", "desc");
         if (rows.length === 0) {
+            this.log.debug("getSession() => " + JSON.stringify(null, null, 4));
             return null;
         }
         const [session] = rows;
@@ -217,7 +236,7 @@ export class Database extends EventEmitter {
             lastUsed: session.lastUsed,
             fingerprint: XUtils.decodeHex(session.fingerprint),
         };
-
+        this.log.debug("getSession() => " + JSON.stringify(wsSession, null, 4));
         return wsSession;
     }
 
@@ -227,6 +246,7 @@ export class Database extends EventEmitter {
             .from("preKeys")
             .select();
         if (rows.length === 0) {
+            this.log.debug("getPreKeys() => " + JSON.stringify(null, null, 4));
             return null;
         }
         const [preKeyInfo] = rows;
@@ -236,6 +256,7 @@ export class Database extends EventEmitter {
             ),
             signature: XUtils.decodeHex(preKeyInfo.signature),
         };
+        this.log.debug("getPreKeys() => " + JSON.stringify(preKeys, null, 4));
         return preKeys;
     }
 
@@ -249,6 +270,9 @@ export class Database extends EventEmitter {
             .select()
             .where({ index });
         if (rows.length === 0) {
+            this.log.debug(
+                "getOneTimeKey() => " + JSON.stringify(null, null, 4)
+            );
             return null;
         }
 
@@ -260,6 +284,7 @@ export class Database extends EventEmitter {
             signature: XUtils.decodeHex(otkInfo.signature),
             index: otkInfo.index,
         };
+        this.log.debug("getOneTimeKey() => " + JSON.stringify(otk, null, 4));
         return otk;
     }
 

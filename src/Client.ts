@@ -21,7 +21,7 @@ import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
 import WebSocket from "ws";
-import { Database } from "./Database";
+import { Database } from "./_Database";
 import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
 import { uuidToUint8 } from "./utils/uint8uuid";
@@ -161,6 +161,14 @@ export interface IClientOptions {
     host?: string;
     dbFolder?: string;
     inMemoryDb?: boolean;
+    dbLogLevel?:
+        | "error"
+        | "warn"
+        | "info"
+        | "http"
+        | "verbose"
+        | "debug"
+        | "silly";
 }
 
 // tslint:disable-next-line: interface-name
@@ -581,6 +589,8 @@ export class Client extends EventEmitter {
     private reading: boolean = false;
     private getting: boolean = false;
 
+    private lockedUsers: string[] = [];
+
     private log: winston.Logger;
 
     private pingInterval?: NodeJS.Timeout;
@@ -591,7 +601,7 @@ export class Client extends EventEmitter {
     constructor(privateKey?: string, options?: IClientOptions) {
         super();
 
-        this.log = createLogger("client", options);
+        this.log = createLogger("client", options?.logLevel);
 
         this.signKeys = privateKey
             ? nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(privateKey))
@@ -990,7 +1000,13 @@ export class Client extends EventEmitter {
     /* A thin wrapper around sendMail for string inputs. */
     private async sendMessage(userID: string, message: string): Promise<void> {
         try {
+            while (this.lockedUsers.includes(userID)) {
+                this.log.warn("User locked, waiting.");
+                await sleep(500);
+            }
+            this.lockedUsers.push(userID);
             await this.sendMail(userID, XUtils.decodeUTF8(message), null);
+            this.lockedUsers.splice(this.lockedUsers.indexOf(userID), 1);
         } catch (err) {
             this.log.error(
                 "Message " + (err.message?.mailID || "") + " threw exception."
@@ -1061,6 +1077,7 @@ export class Client extends EventEmitter {
         mailID?: string
     ): Promise<void> {
         this.log.info("Sending mail to " + userID);
+
         const session = await this.database.getSession(userID);
         if (!session) {
             this.log.info("Creating new session for " + userID);
@@ -1585,6 +1602,9 @@ export class Client extends EventEmitter {
                 );
 
                 const preKeyIndex = XUtils.uint8ArrToNumber(indexBytes);
+
+                this.log.debug("otk #" + preKeyIndex + " indicated");
+
                 const otk = await this.database.getOneTimeKey(preKeyIndex);
 
                 // their public keys
@@ -1629,6 +1649,7 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Mail authentication failed (HMAC did not match)."
                     );
+                    await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
                 this.log.info("Mail authenticated successfully.");
