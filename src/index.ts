@@ -10,6 +10,8 @@ import {
     IUser,
 } from "./Client";
 
+import { IStorage } from "./IStorage";
+
 export {
     Client,
     IClientOptions,
@@ -20,4 +22,5 @@ export {
     IKeys,
     IChannel,
     IServer,
+    IStorage,
 };

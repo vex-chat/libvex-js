@@ -21,8 +21,8 @@ import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
 import WebSocket from "ws";
-import { DatabaseKnex } from "./Databases/DatabaseKnex";
 import { IStorage } from "./IStorage";
+import { Storage } from "./Storage";
 import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
 import { uuidToUint8 } from "./utils/uint8uuid";
@@ -628,7 +628,7 @@ export class Client extends EventEmitter {
 
         this.database = storage
             ? storage
-            : new DatabaseKnex(
+            : new Storage(
                   this.dbPath,
                   XUtils.encodeHex(this.signKeys.secretKey),
                   options

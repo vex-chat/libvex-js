@@ -3,8 +3,7 @@ import { XKeyConvert, XUtils } from "@vex-chat/crypto";
 import _ from "lodash";
 import nacl from "tweetnacl";
 import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
-import { DatabaseKnex } from "../Databases/DatabaseKnex";
-import { DatabaseTrilogy } from "../Databases/DatabaseTrilogy";
+import { Storage } from "../Storage";
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
@@ -15,8 +14,7 @@ describe("Perform client tests", () => {
         dbLogLevel: "warn",
     };
 
-    const storage = new DatabaseTrilogy(":memory:", SK, clientOptions);
-    // const storage = new DatabaseKnex(":memory:", SK, clientOptions);
+    const storage = new Storage(":memory:", SK, clientOptions);
 
     const client = new Client(SK, clientOptions, storage);
 

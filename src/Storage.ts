@@ -5,14 +5,16 @@ import { EventEmitter } from "events";
 import knex from "knex";
 import nacl from "tweetnacl";
 import winston from "winston";
-import { IClientOptions, IMessage } from "..";
-import { IStorage } from "../IStorage";
-import { createLogger } from "../utils/createLogger";
+import { IClientOptions, IMessage } from ".";
+import { IStorage } from "./IStorage";
+import { createLogger } from "./utils/createLogger";
 
 /**
+ * The default IStorage() implementation, using knex and sqlite3 driver
+ *
  * @hidden
  */
-export class DatabaseKnex extends EventEmitter implements IStorage {
+export class Storage extends EventEmitter implements IStorage {
     public ready: boolean = false;
     private closing: boolean = false;
     private dbPath: string;
@@ -20,11 +22,7 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
     private log: winston.Logger;
     private idKeys: nacl.BoxKeyPair;
 
-    constructor(
-        dbPath: string,
-        SK: string,
-        options?: IClientOptions
-    ) {
+    constructor(dbPath: string, SK: string, options?: IClientOptions) {
         super();
         this.log = createLogger("db", options?.dbLogLevel || options?.logLevel);
 
@@ -58,7 +56,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async saveMessage(message: IMessage): Promise<void> {
         if (this.closing) {
-            this.log.warn("Database is closing, saveMessage() will not complete.");
+            this.log.warn(
+                "Database is closing, saveMessage() will not complete."
+            );
             return;
         }
 
@@ -76,7 +76,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async deleteMessage(mailID: string) {
         if (this.closing) {
-            this.log.warn("Database is closing, saveMessage() will not complete.");
+            this.log.warn(
+                "Database is closing, saveMessage() will not complete."
+            );
             return;
         }
         await this.db
@@ -87,7 +89,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async markSessionVerified(sessionID: string, status = true) {
         if (this.closing) {
-            this.log.warn("Database is closing, markSessionVerified() will not complete.");
+            this.log.warn(
+                "Database is closing, markSessionVerified() will not complete."
+            );
             return;
         }
         await this.db("sessions")
@@ -97,7 +101,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async getMessageHistory(userID: string): Promise<IMessage[]> {
         if (this.closing) {
-            this.log.warn("Database is closing, getMessageHistory() will not complete.");
+            this.log.warn(
+                "Database is closing, getMessageHistory() will not complete."
+            );
             return [];
         }
         const messages = await this.db("messages")
@@ -135,7 +141,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async getGroupHistory(channelID: string): Promise<IMessage[]> {
         if (this.closing) {
-            this.log.warn("Database is closing, getGroupHistory() will not complete.");
+            this.log.warn(
+                "Database is closing, getGroupHistory() will not complete."
+            );
             return [];
         }
         const messages = await this.db("messages")
@@ -176,7 +184,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
     ): Promise<number> {
         await this.untilReady();
         if (this.closing) {
-            this.log.warn("Database is closing, getGroupHistory() will not complete.");
+            this.log.warn(
+                "Database is closing, getGroupHistory() will not complete."
+            );
             return -1;
         }
         const index = await this.db(oneTime ? "oneTimeKeys" : "preKeys").insert(
@@ -191,9 +201,13 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
         return index[0];
     }
 
-    public async getSessionByPublicKey(publicKey: Uint8Array): Promise<XTypes.CRYPTO.ISession | null> {
+    public async getSessionByPublicKey(
+        publicKey: Uint8Array
+    ): Promise<XTypes.CRYPTO.ISession | null> {
         if (this.closing) {
-            this.log.warn("Database is closing, getGroupHistory() will not complete.");
+            this.log.warn(
+                "Database is closing, getGroupHistory() will not complete."
+            );
             return null;
         }
         const str = XUtils.encodeHex(publicKey);
@@ -229,7 +243,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async markSessionUsed(sessionID: string): Promise<void> {
         if (this.closing) {
-            this.log.warn("Database is closing, markSessionUsed() will not complete.");
+            this.log.warn(
+                "Database is closing, markSessionUsed() will not complete."
+            );
             return;
         }
         await this.db
@@ -240,7 +256,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async getAllSessions(): Promise<XTypes.SQL.ISession[]> {
         if (this.closing) {
-            this.log.warn("Database is closing, getAllSessions() will not complete.");
+            this.log.warn(
+                "Database is closing, getAllSessions() will not complete."
+            );
             return [];
         }
         const rows: XTypes.SQL.ISession[] = await this.db
@@ -262,7 +280,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
         userID: string
     ): Promise<XTypes.CRYPTO.ISession | null> {
         if (this.closing) {
-            this.log.warn("Database is closing, getSessionByUserID() will not complete.");
+            this.log.warn(
+                "Database is closing, getSessionByUserID() will not complete."
+            );
             return null;
         }
         const rows: XTypes.SQL.ISession[] = await this.db
@@ -293,7 +313,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
     public async getPreKeys(): Promise<XTypes.CRYPTO.IPreKeys | null> {
         await this.untilReady();
         if (this.closing) {
-            this.log.warn("Database is closing, getPreKeys() will not complete.");
+            this.log.warn(
+                "Database is closing, getPreKeys() will not complete."
+            );
             return null;
         }
         const rows: XTypes.SQL.IPreKeys[] = await this.db
@@ -319,7 +341,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
     ): Promise<XTypes.CRYPTO.IPreKeys | null> {
         await this.untilReady();
         if (this.closing) {
-            this.log.warn("Database is closing, getOneTimeKey() will not complete.");
+            this.log.warn(
+                "Database is closing, getOneTimeKey() will not complete."
+            );
             return null;
         }
         const rows: XTypes.SQL.IPreKeys[] = await this.db
@@ -347,7 +371,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async deleteOneTimeKey(index: number) {
         if (this.closing) {
-            this.log.warn("Database is closing, deleteOneTimeKey() will not complete.");
+            this.log.warn(
+                "Database is closing, deleteOneTimeKey() will not complete."
+            );
             return;
         }
         // delete the otk
@@ -359,7 +385,9 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     public async saveSession(session: XTypes.SQL.ISession) {
         if (this.closing) {
-            this.log.warn("Database is closing, deleteOneTimeKey() will not complete.");
+            this.log.warn(
+                "Database is closing, deleteOneTimeKey() will not complete."
+            );
             return;
         }
         await this.db("sessions").insert(session);
