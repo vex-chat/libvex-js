@@ -10,4 +10,6 @@ module.exports = {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    "maxWorkers": 1,
+    "verbose": true,
   }
