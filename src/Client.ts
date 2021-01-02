@@ -628,7 +628,11 @@ export class Client extends EventEmitter {
 
         this.database = storage
             ? storage
-            : new DatabaseKnex(this.dbPath, this.idKeys, options);
+            : new DatabaseKnex(
+                  this.dbPath,
+                  XUtils.encodeHex(this.signKeys.secretKey),
+                  options
+              );
 
         this.database.on("error", (error) => {
             this.log.error(error);

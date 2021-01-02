@@ -1,5 +1,5 @@
 import { sleep } from "@extrahash/sleep";
-import { XUtils } from "@vex-chat/crypto";
+import { XKeyConvert, XUtils } from "@vex-chat/crypto";
 import { XTypes } from "@vex-chat/types";
 import { EventEmitter } from "events";
 import knex from "knex";
@@ -22,11 +22,18 @@ export class DatabaseKnex extends EventEmitter implements IStorage {
 
     constructor(
         dbPath: string,
-        idKeys: nacl.BoxKeyPair,
+        SK: string,
         options?: IClientOptions
     ) {
         super();
         this.log = createLogger("db", options?.dbLogLevel || options?.logLevel);
+
+        const idKeys = XKeyConvert.convertKeyPair(
+            nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(SK))
+        );
+        if (!idKeys) {
+            throw new Error("Can't convert SK!");
+        }
 
         this.idKeys = idKeys;
         this.dbPath = dbPath;

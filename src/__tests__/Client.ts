@@ -3,17 +3,11 @@ import { XKeyConvert, XUtils } from "@vex-chat/crypto";
 import _ from "lodash";
 import nacl from "tweetnacl";
 import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
+import { DatabaseKnex } from "../Databases/DatabaseKnex";
 import { DatabaseTrilogy } from "../Databases/DatabaseTrilogy";
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
-
-    const idKeys = XKeyConvert.convertKeyPair(
-        nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(SK))
-    );
-    if (!idKeys) {
-        throw new Error("Can't convert SK!");
-    }
 
     const clientOptions: IClientOptions = {
         inMemoryDb: true,
@@ -21,7 +15,9 @@ describe("Perform client tests", () => {
         dbLogLevel: "warn",
     };
 
-    const storage = new DatabaseTrilogy(":memory:", idKeys, clientOptions);
+    const storage = new DatabaseTrilogy(":memory:", SK, clientOptions);
+    // const storage = new DatabaseKnex(":memory:", SK, clientOptions);
+
     const client = new Client(SK, clientOptions, storage);
 
     let createdServer: IServer | null = null;
