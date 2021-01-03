@@ -29,10 +29,11 @@ jobs:
         scope: "@vex-chat"
 
     - name: Setup Cache
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
-        path: node_modules
-        key: ${{ matrix.os }}-deps
+        path: |
+          node_modules
+        key: ${{ runner.os }}-${{ hashFiles('yarn.lock') }}
 
     - name: Install Dependencies
       run: yarn --network-concurrency 1
