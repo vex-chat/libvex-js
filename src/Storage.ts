@@ -119,14 +119,14 @@ export class Storage extends EventEmitter implements IStorage {
             // decrypt
             message.decrypted = Boolean(message.decrypted);
 
-            if (message.message !== undefined) {
-                const decrypted = nacl.secretbox.open(
+            if (message.decrypted) {
+                const localDecrypt = nacl.secretbox.open(
                     XUtils.decodeHex(message.message),
                     XUtils.decodeHex(message.nonce),
                     this.idKeys!.secretKey
                 );
-                if (decrypted) {
-                    message.message = XUtils.encodeUTF8(decrypted);
+                if (localDecrypt) {
+                    message.message = XUtils.encodeUTF8(localDecrypt);
                 } else {
                     throw new Error("Couldn't decrypt messages on disk!");
                 }
@@ -158,18 +158,18 @@ export class Storage extends EventEmitter implements IStorage {
             // decrypt
             message.decrypted = Boolean(message.decrypted);
 
-            const decrypted = nacl.secretbox.open(
-                XUtils.decodeHex(message.message),
-                XUtils.decodeHex(message.nonce),
-                this.idKeys!.secretKey
-            );
-
-            if (decrypted) {
-                message.message = XUtils.encodeUTF8(decrypted);
-            } else {
-                throw new Error("Couldn't decrypt messages on disk!");
+            if (message.decrypted) {
+                const localDecrypt = nacl.secretbox.open(
+                    XUtils.decodeHex(message.message),
+                    XUtils.decodeHex(message.nonce),
+                    this.idKeys!.secretKey
+                );
+                if (localDecrypt) {
+                    message.message = XUtils.encodeUTF8(localDecrypt);
+                } else {
+                    throw new Error("Couldn't decrypt messages on disk!");
+                }
             }
-
             return message;
         });
         this.log.debug(
