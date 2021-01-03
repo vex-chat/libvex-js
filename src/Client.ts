@@ -77,6 +77,11 @@ export interface IChannel extends XTypes.SQL.IChannel {}
 export interface IServer extends XTypes.SQL.IServer {}
 
 /**
+ * Ifile is an uploaded encrypted file.
+ */
+export interface IFile extends XTypes.SQL.IFile {}
+
+/**
  * @ignore
  */
 interface IUsers {
