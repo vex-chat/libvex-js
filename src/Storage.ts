@@ -111,15 +111,17 @@ export class Storage extends EventEmitter implements IStorage {
         const messages = await this.db("messages")
             .select()
             .where({ direction: "incoming", sender: userID, group: null })
-            .orWhere({ direction: "outgoing", recipient: userID, group: null })
-            .orderBy("timestamp", "desc")
-            .limit(100);
+            .orderBy("timestamp", "desc");
 
-        const fixedMessages = messages.reverse().map((message) => {
+        const fixedMessages = messages.reverse().map((message: IMessage) => {
             // some cleanup because of how knex serializes the data
             message.timestamp = new Date(message.timestamp);
             // decrypt
             message.decrypted = Boolean(message.decrypted);
+
+            if (!message.message) {
+                this.log.warn(message.message);
+            }
 
             const decrypted = nacl.secretbox.open(
                 XUtils.decodeHex(message.message),
@@ -148,11 +150,11 @@ export class Storage extends EventEmitter implements IStorage {
             );
             return [];
         }
-        const messages = await this.db("messages")
+        const messages: IMessage[] = await this.db("messages")
             .select()
-            .where({ group: channelID })
-            .orderBy("timestamp", "desc")
-            .limit(100);
+            .distinct("nonce")
+            .where({ direction: "incoming", group: channelID })
+            .orderBy("timestamp", "desc");
 
         const fixedMessages = messages.reverse().map((message) => {
             // some cleanup because of how knex serializes the data
