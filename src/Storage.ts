@@ -108,8 +108,8 @@ export class Storage extends EventEmitter implements IStorage {
         }
         const messages = await this.db("messages")
             .select()
-            .where({ sender: userID, group: null })
-            .orWhere({ recipient: userID, group: null })
+            .where({ direction: "incoming", sender: userID, group: null })
+            .orWhere({ direction: "outgoing", recipient: userID, group: null })
             .orderBy("timestamp", "desc")
             .limit(100);
 
