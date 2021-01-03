@@ -3,6 +3,7 @@ import {
     IChannel,
     IClientOptions,
     IFile,
+    IFileRes,
     IKeys,
     IMessage,
     IPermission,
@@ -25,4 +26,5 @@ export {
     IServer,
     IStorage,
     IFile,
+    IFileRes,
 };

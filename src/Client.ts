@@ -82,6 +82,11 @@ export interface IServer extends XTypes.SQL.IServer {}
 export interface IFile extends XTypes.SQL.IFile {}
 
 /**
+ * IFileRes is a server response to a file retrieval request.
+ */
+export interface IFileRes extends XTypes.HTTP.IFileResponse {}
+
+/**
  * @ignore
  */
 interface IUsers {

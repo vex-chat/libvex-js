@@ -1,6 +1,7 @@
 import { sleep } from "@extrahash/sleep";
 // tslint:disable-next-line: no-implicit-dependencies
 import { Spire } from "@vex-chat/spire";
+import fs from "fs";
 import _ from "lodash";
 import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
 import { Storage } from "../Storage";
@@ -127,11 +128,20 @@ describe("Perform client tests", () => {
 
     test("File operations", async (done) => {
         const createdFile = Buffer.from("HELLO WORLD THIS IS A FILE");
+        const [createdDetails, key] = await client.files.create(createdFile);
+        const fetchedFileRes = await client.files.retrieve(
+            createdDetails.fileID,
+            key
+        );
+        if (!fetchedFileRes) {
+            throw new Error("Error fetching file.");
+        }
 
-        const [file, key] = await client.files.create(createdFile);
-        const fetchedFile = await client.files.retrieve(file.fileID, key);
+        const { data, details } = fetchedFileRes;
 
-        expect(_.isEqual(createdFile, fetchedFile));
+        expect(_.isEqual(createdFile, data)).toBe(true);
+        expect(_.isEqual(createdDetails, details)).toBe(true);
+
         done();
     });
 
@@ -182,6 +192,7 @@ describe("Perform client tests", () => {
 });
 
 afterAll(() => {
+    fs.rmdirSync("files", { recursive: true });
     return spire?.close();
 });
 
