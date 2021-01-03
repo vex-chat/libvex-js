@@ -111,6 +111,7 @@ export class Storage extends EventEmitter implements IStorage {
         const messages = await this.db("messages")
             .select()
             .where({ direction: "incoming", sender: userID, group: null })
+            .orWhere({ direction: "outgoing", recipient: userID, group: null })
             .orderBy("timestamp", "desc");
 
         const fixedMessages = messages.reverse().map((message: IMessage) => {
@@ -148,8 +149,7 @@ export class Storage extends EventEmitter implements IStorage {
         }
         const messages: IMessage[] = await this.db("messages")
             .select()
-            .distinct("nonce")
-            .where({ direction: "incoming", group: channelID })
+            .where({ group: channelID })
             .orderBy("timestamp", "desc");
 
         const fixedMessages = messages.reverse().map((message) => {
