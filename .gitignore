@@ -10,3 +10,4 @@ databases
 *.tgz
 .vscode
 test.key
+files

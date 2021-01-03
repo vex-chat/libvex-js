@@ -10,6 +10,9 @@ module.exports = {
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
+    // "setupFiles": [
+    //   "./scripts/testSpire.ts"
+    // ],
     "maxWorkers": 1,
     "verbose": true,
   }

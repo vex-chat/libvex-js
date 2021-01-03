@@ -1,7 +1,18 @@
 import { sleep } from "@extrahash/sleep";
+// tslint:disable-next-line: no-implicit-dependencies
+import { Spire } from "@vex-chat/spire";
 import _ from "lodash";
 import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
 import { Storage } from "../Storage";
+
+let spire: Spire | null = null;
+
+beforeAll(() => {
+    spire = new Spire({
+        dbType: "sqlite3mem",
+        logLevel: "error",
+    });
+});
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
@@ -10,6 +21,8 @@ describe("Perform client tests", () => {
         inMemoryDb: true,
         logLevel: "warn",
         dbLogLevel: "warn",
+        host: "localhost:16777",
+        unsafeHttp: true,
     };
 
     const storage = new Storage(":memory:", SK, clientOptions);
@@ -163,10 +176,13 @@ describe("Perform client tests", () => {
     });
 
     test("Client close", async (done) => {
-        await sleep(500);
         await client.close();
         done();
     });
+});
+
+afterAll(() => {
+    return spire?.close();
 });
 
 /**

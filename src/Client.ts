@@ -170,6 +170,7 @@ export interface IClientOptions {
         | "verbose"
         | "debug"
         | "silly";
+    unsafeHttp?: boolean;
 }
 
 // tslint:disable-next-line: interface-name
@@ -599,6 +600,10 @@ export class Client extends EventEmitter {
 
     private manuallyClosing: boolean = false;
 
+    private prefixes:
+        | { HTTP: "http://"; WS: "ws://" }
+        | { HTTP: "https://"; WS: "wss://" };
+
     constructor(
         privateKey?: string,
         options?: IClientOptions,
@@ -607,6 +612,10 @@ export class Client extends EventEmitter {
         super();
 
         this.log = createLogger("client", options?.logLevel);
+
+        this.prefixes = options?.unsafeHttp
+            ? { HTTP: "http://", WS: "ws://" }
+            : { HTTP: "https://", WS: "wss://" };
 
         this.signKeys = privateKey
             ? nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(privateKey))
@@ -618,7 +627,6 @@ export class Client extends EventEmitter {
         }
 
         this.host = options?.host || "api.vex.chat";
-
         const dbFileName = options?.inMemoryDb
             ? ":memory:"
             : XUtils.encodeHex(this.signKeys.publicKey) + ".sqlite";
@@ -719,7 +727,7 @@ export class Client extends EventEmitter {
         if (!this.user) {
             try {
                 const res = await ax.get(
-                    "https://" +
+                    this.prefixes.HTTP +
                         this.host +
                         "/user/" +
                         XUtils.encodeHex(this.signKeys.publicKey)
@@ -778,7 +786,7 @@ export class Client extends EventEmitter {
             };
             try {
                 const res = await ax.post(
-                    "https://" + this.host + "/register/new",
+                    this.prefixes.HTTP + this.host + "/register/new",
                     regMsg
                 );
 
@@ -862,7 +870,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.HTTP.IFileResponse | null> {
         try {
             const res = await ax.get(
-                "https://" + this.host + "/file/" + fileID
+                this.prefixes.HTTP + this.host + "/file/" + fileID
             );
             const resp: XTypes.HTTP.IFileResponse = res.data;
 
@@ -956,7 +964,10 @@ export class Client extends EventEmitter {
             nonce: XUtils.encodeHex(nonce),
         };
 
-        const res = await ax.post("https://" + this.host + "/file", payload);
+        const res = await ax.post(
+            this.prefixes.HTTP + this.host + "/file",
+            payload
+        );
         const createdFile: XTypes.SQL.IFile = res.data;
 
         return [createdFile, XUtils.encodeHex(key.secretKey)];
@@ -1217,7 +1228,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.SQL.IServer | null> {
         try {
             const res = await ax.get(
-                "https://" + this.host + "/server/" + serverID
+                this.prefixes.HTTP + this.host + "/server/" + serverID
             );
             return res.data;
         } catch (err) {
@@ -1230,7 +1241,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.SQL.IChannel | null> {
         try {
             const res = await ax.get(
-                "https://" + this.host + "/channel/" + channelID
+                this.prefixes.HTTP + this.host + "/channel/" + channelID
             );
             return res.data;
         } catch (err) {
@@ -1289,7 +1300,7 @@ export class Client extends EventEmitter {
     ): Promise<[XTypes.SQL.IUser | null, AxiosError | null]> {
         try {
             const res = await ax.get(
-                "https://" + this.host + "/user/" + userIdentifier
+                this.prefixes.HTTP + this.host + "/user/" + userIdentifier
             );
             return [res.data, null];
         } catch (err) {
@@ -1797,7 +1808,7 @@ export class Client extends EventEmitter {
 
     private initSocket() {
         try {
-            this.conn = new WebSocket("wss://" + this.host + "/socket");
+            this.conn = new WebSocket(this.prefixes.WS + this.host + "/socket");
             this.conn.on("open", () => {
                 this.log.info("Connection opened.");
                 this.pingInterval = setInterval(this.ping.bind(this), 5000);
@@ -2066,10 +2077,12 @@ export class Client extends EventEmitter {
 
     private async getRegistrationKey(): Promise<XTypes.HTTP.IRegKey | null> {
         try {
-            const res = await ax.post("https://" + this.host + "/register/key");
+            const res = await ax.post(
+                this.prefixes.HTTP + this.host + "/register/key"
+            );
             return res.data;
         } catch (err) {
-            this.log.warn("error getting regkey:", err.toString());
+            this.log.warn(err);
             return null;
         }
     }
