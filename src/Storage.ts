@@ -119,22 +119,18 @@ export class Storage extends EventEmitter implements IStorage {
             // decrypt
             message.decrypted = Boolean(message.decrypted);
 
-            if (!message.message) {
-                this.log.warn(message.message);
+            if (message.message !== undefined) {
+                const decrypted = nacl.secretbox.open(
+                    XUtils.decodeHex(message.message),
+                    XUtils.decodeHex(message.nonce),
+                    this.idKeys!.secretKey
+                );
+                if (decrypted) {
+                    message.message = XUtils.encodeUTF8(decrypted);
+                } else {
+                    throw new Error("Couldn't decrypt messages on disk!");
+                }
             }
-
-            const decrypted = nacl.secretbox.open(
-                XUtils.decodeHex(message.message),
-                XUtils.decodeHex(message.nonce),
-                this.idKeys!.secretKey
-            );
-
-            if (decrypted) {
-                message.message = XUtils.encodeUTF8(decrypted);
-            } else {
-                throw new Error("Couldn't decrypt messages on disk!");
-            }
-
             return message;
         });
         this.log.debug(
