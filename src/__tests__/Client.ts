@@ -175,6 +175,10 @@ describe("Perform client tests", () => {
         await client.messages.group(createdChannel!.channelID, "subsequent");
     });
 
+    test("Fail test", () => {
+        throw new Error("Fail!");
+    });
+
     test("Client close", async (done) => {
         await client.close();
         done();
