@@ -1,5 +1,7 @@
 # vex-js
 
+![typescript_ci](https://github.com/vex-chat/libvex-js/workflows/typescript_ci/badge.svg)
+
 nodejs for interfacing with xchat server. Use it for a client, a bot, whatever you'd like to conncet to vex.
 
 <a href="https://vex-chat.github.io/libvex-js/">Documentation</a>
