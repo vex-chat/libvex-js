@@ -157,7 +157,7 @@ interface IFiles {
     ) => Promise<XTypes.HTTP.IFileResponse | null>;
 }
 
-interface IFileProgress {
+export interface IFileProgress {
     token: string;
     progress: number;
     loaded: number;
