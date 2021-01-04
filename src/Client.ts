@@ -157,6 +157,13 @@ interface IFiles {
     ) => Promise<XTypes.HTTP.IFileResponse | null>;
 }
 
+interface IFileProgress {
+    token: string;
+    progress: number;
+    loaded: number;
+    total: number;
+}
+
 /**
  * IClientOptions are the options you can pass into the client.
  */
@@ -185,6 +192,24 @@ export interface IClientOptions {
 
 // tslint:disable-next-line: interface-name
 export declare interface Client {
+    /**
+     * This is emitted for file progress events.
+     *
+     * Example:
+     *
+     * ```ts
+     *   client.on("ready", () => {
+     *       await client.register()
+     *   });
+     * ```
+     *
+     * @event
+     */
+    on(
+        event: "fileProgress",
+        callback: (progress: IFileProgress) => void
+    ): this;
+
     /**
      * This is emitted whenever the keyring is done initializing after an init()
      * call. You must wait to login or register until after this event.
@@ -999,11 +1024,15 @@ export class Client extends EventEmitter {
                     const percentCompleted = Math.round(
                         (progressEvent.loaded * 100) / progressEvent.total
                     );
+                    const { loaded, total } = progressEvent;
                     this.log.info("File upload :", percentCompleted);
-                    this.emit("fileProgress", {
+                    const progress: IFileProgress = {
                         token: token.key,
                         progress: percentCompleted,
-                    });
+                        loaded,
+                        total,
+                    };
+                    this.emit("fileProgress", progress);
                 },
             }
         );
