@@ -1,4 +1,4 @@
-# vex-js
+# libvex-js
 
 ![build](https://github.com/vex-chat/libvex-js/workflows/build/badge.svg)
 
