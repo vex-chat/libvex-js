@@ -380,6 +380,7 @@ export class Client extends EventEmitter {
             addendum.toString()
         );
     }
+
     private static getMnemonic(session: XTypes.SQL.ISession): string {
         return xMnemonic(xKDF(XUtils.decodeHex(session.fingerprint)));
     }
@@ -814,6 +815,18 @@ export class Client extends EventEmitter {
         }
     }
 
+    private async getFileToken(): Promise<XTypes.HTTP.IRegKey | null> {
+        try {
+            const res = await ax.get(
+                this.prefixes.HTTP + this.host + "/token/file"
+            );
+            return res.data;
+        } catch (err) {
+            this.log.warn(err);
+            return null;
+        }
+    }
+
     private createPermission(params: {
         userID: string;
         resourceType: string;
@@ -957,26 +970,42 @@ export class Client extends EventEmitter {
     private async createFile(
         file: Buffer
     ): Promise<[XTypes.SQL.IFile, string]> {
+        const token = await this.getFileToken();
+        if (!token) {
+            throw new Error("Wasn't able to get token.");
+        }
+
         const nonce = xMakeNonce();
         const key = nacl.box.keyPair();
         const box = nacl.secretbox(Uint8Array.from(file), nonce, key.secretKey);
 
-        const decrypted = nacl.secretbox.open(box, nonce, key.secretKey);
-        if (!decrypted) {
-            throw new Error("decryption test failed!");
-        }
-
-        const signed = nacl.sign(box, this.signKeys.secretKey);
+        const signed = nacl.sign(
+            Uint8Array.from(uuid.parse(token.key)),
+            this.signKeys.secretKey
+        );
 
         const payload: XTypes.HTTP.IFilePayload = {
             owner: this.getUser().userID,
             signed: XUtils.encodeHex(signed),
             nonce: XUtils.encodeHex(nonce),
+            file: Buffer.from(box),
         };
 
         const res = await ax.post(
             this.prefixes.HTTP + this.host + "/file",
-            payload
+            payload,
+            {
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round(
+                        (progressEvent.loaded * 100) / progressEvent.total
+                    );
+                    this.log.info("File upload :", percentCompleted);
+                    this.emit("fileProgress", {
+                        token: token.key,
+                        progress: percentCompleted,
+                    });
+                },
+            }
         );
         const createdFile: XTypes.SQL.IFile = res.data;
 

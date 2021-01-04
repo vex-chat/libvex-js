@@ -119,10 +119,6 @@ describe("Perform client tests", () => {
         };
         client.on("message", onMessage);
 
-        for (let i = 0; i < 120; i++) {
-            await client.messages.send(client.users.me().userID, i.toString());
-        }
-
         const me = client.users.me();
 
         await client.messages.send(me.userID, "initial");
