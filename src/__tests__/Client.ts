@@ -3,7 +3,14 @@ import { sleep } from "@extrahash/sleep";
 import { Spire } from "@vex-chat/spire";
 import fs from "fs";
 import _ from "lodash";
-import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
+import {
+    Client,
+    IChannel,
+    IClientOptions,
+    IFileProgress,
+    IMessage,
+    IServer,
+} from "..";
 import { Storage } from "../Storage";
 
 let spire: Spire | null = null;
@@ -20,7 +27,7 @@ describe("Perform client tests", () => {
 
     const clientOptions: IClientOptions = {
         inMemoryDb: true,
-        logLevel: "error",
+        logLevel: "info",
         dbLogLevel: "error",
         host: "localhost:16777",
         unsafeHttp: true,
@@ -127,7 +134,10 @@ describe("Perform client tests", () => {
     });
 
     test("File operations", async (done) => {
-        const createdFile = Buffer.from("HELLO WORLD THIS IS A FILE");
+        jest.setTimeout(30000);
+        const createdFile = Buffer.alloc(5000000);
+        createdFile.fill(0);
+
         const [createdDetails, key] = await client.files.create(createdFile);
         const fetchedFileRes = await client.files.retrieve(
             createdDetails.fileID,

@@ -25,6 +25,7 @@ import { IStorage } from "./IStorage";
 import { Storage } from "./Storage";
 import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
+import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
 /**
@@ -159,6 +160,7 @@ interface IFiles {
 
 export interface IFileProgress {
     token: string;
+    direction: "upload" | "download";
     progress: number;
     loaded: number;
     total: number;
@@ -918,7 +920,23 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.HTTP.IFileResponse | null> {
         try {
             const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/file/" + fileID
+                this.prefixes.HTTP + this.host + "/file/" + fileID,
+                {
+                    onDownloadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round(
+                            (progressEvent.loaded * 100) / progressEvent.total
+                        );
+                        const { loaded, total } = progressEvent;
+                        const progress: IFileProgress = {
+                            direction: "download",
+                            token: fileID,
+                            progress: percentCompleted,
+                            loaded,
+                            total,
+                        };
+                        this.emit("fileProgress", progress);
+                    },
+                }
             );
             const resp: XTypes.HTTP.IFileResponse = res.data;
 
@@ -999,10 +1017,15 @@ export class Client extends EventEmitter {
         if (!token) {
             throw new Error("Wasn't able to get token.");
         }
+        this.log.info(
+            "Creating file, size: " + formatBytes(Buffer.byteLength(file))
+        );
 
         const nonce = xMakeNonce();
         const key = nacl.box.keyPair();
         const box = nacl.secretbox(Uint8Array.from(file), nonce, key.secretKey);
+
+        this.log.info("Encrypted size: " + formatBytes(Buffer.byteLength(box)));
 
         const signed = nacl.sign(
             Uint8Array.from(uuid.parse(token.key)),
@@ -1025,8 +1048,8 @@ export class Client extends EventEmitter {
                         (progressEvent.loaded * 100) / progressEvent.total
                     );
                     const { loaded, total } = progressEvent;
-                    this.log.info("File upload :", percentCompleted);
                     const progress: IFileProgress = {
+                        direction: "upload",
                         token: token.key,
                         progress: percentCompleted,
                         loaded,
@@ -1483,7 +1506,6 @@ export class Client extends EventEmitter {
 
         const hmac = xHMAC(mail, SK);
         this.log.info("Generated hmac: " + XUtils.encodeHex(hmac));
-        this.log.info(JSON.stringify(mail, null, 4));
 
         const msg: XTypes.WS.IResourceMsg = {
             transmissionID: uuid.v4(),
@@ -1626,7 +1648,7 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match."
                     );
-                    this.log.info(JSON.stringify(mail, null, 4));
+
                     await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
@@ -1727,7 +1749,6 @@ export class Client extends EventEmitter {
 
                 const hmac = xHMAC(mail, SK);
                 this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
-                this.log.info(JSON.stringify(mail, null, 4));
 
                 // associated data
                 const AD = xConcat(
