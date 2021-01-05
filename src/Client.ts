@@ -685,7 +685,6 @@ export class Client extends EventEmitter {
         this.database.on("error", (error) => {
             this.log.error(error);
             this.close(true);
-            this.emit("disconnect");
         });
 
         // we want to initialize this later with login()
@@ -2038,11 +2037,6 @@ export class Client extends EventEmitter {
         while (!this.wsOpen) {
             await sleep(i);
             i *= 2;
-
-            if (i > 500) {
-                this.close(true);
-                this.emit("disconnect");
-            }
         }
 
         this.log.debug(
@@ -2197,10 +2191,6 @@ export class Client extends EventEmitter {
         if (!this.isAlive) {
             this.log.warn("Ping failed.");
             this.failCount++;
-            if (this.failCount === 2) {
-                await this.close(true);
-                this.emit("disconnect");
-            }
         }
         this.setAlive(false);
         this.send({ transmissionID: uuid.v4(), type: "ping" });
