@@ -193,17 +193,6 @@ describe("Perform client tests", () => {
         await sleep(500);
         await client.messages.group(createdChannel!.channelID, "subsequent");
     });
-
-    test("Client close", async (done) => {
-        // aborted
-        // at PendingOperation.abort (node_modules/tarn/dist/PendingOperation.js:25:21)
-        // at node_modules/tarn/dist/Pool.js:208:25
-        //     at Array.map (<anonymous>)
-        // at node_modules/tarn/dist/Pool.js:207:53
-
-        client.close();
-        done();
-    });
 });
 
 // afterAll(() => {
