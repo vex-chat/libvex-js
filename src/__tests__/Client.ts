@@ -202,7 +202,7 @@ describe("Perform client tests", () => {
         // at node_modules/tarn/dist/Pool.js:207:53
 
         // TODO: figure out how to close whatever this is properly
-        await client.close();
+        client.close();
 
         done();
     });
