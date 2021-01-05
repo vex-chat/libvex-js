@@ -1039,6 +1039,9 @@ export class Client extends EventEmitter {
         this.log.info(
             "Compression took " + (performance.now() - t0).toString() + " ms."
         );
+        const bytesSaved =
+            Buffer.byteLength(file) - Buffer.byteLength(compressed);
+        this.log.info("Compression saved " + formatBytes(bytesSaved));
 
         const nonce = xMakeNonce();
         const key = nacl.box.keyPair();
