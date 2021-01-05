@@ -29,6 +29,8 @@ import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
+// tslint:disable-next-line: no-var-requires
+
 /**
  * IMessage is a chat message.
  */
@@ -948,9 +950,10 @@ export class Client extends EventEmitter {
             );
 
             if (decrypted) {
-                const uncompressed = ((await lzma.decompress(
+                // @ts-expect-error
+                const uncompressed: Buffer = await lzma.decompress(
                     Buffer.from(decrypted)
-                )) as unknown) as Buffer;
+                );
                 resp.data = uncompressed;
                 return resp;
             }
@@ -1027,10 +1030,8 @@ export class Client extends EventEmitter {
 
         const t0 = performance.now();
         // this type is wrong lol, it's a Promise<buffer>
-        const compressed = ((await lzma.compress(
-            file,
-            6
-        )) as unknown) as Buffer;
+        // @ts-expect-error
+        const compressed: Buffer = await lzma.compress(file, 6);
 
         this.log.info(
             "Compressed size: " + formatBytes(Buffer.byteLength(file))
@@ -1038,9 +1039,6 @@ export class Client extends EventEmitter {
         this.log.info(
             "Compression took " + (performance.now() - t0).toString() + " ms."
         );
-        const bytesSaved =
-            Buffer.byteLength(file) - Buffer.byteLength(compressed);
-        this.log.info("Compression saved " + formatBytes(bytesSaved));
 
         const nonce = xMakeNonce();
         const key = nacl.box.keyPair();
