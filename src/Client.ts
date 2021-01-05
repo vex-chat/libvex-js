@@ -17,6 +17,7 @@ import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
+import lzma from "lzma-native";
 import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
@@ -947,7 +948,10 @@ export class Client extends EventEmitter {
             );
 
             if (decrypted) {
-                resp.data = Buffer.from(decrypted);
+                const uncompressed = ((await lzma.decompress(
+                    Buffer.from(decrypted)
+                )) as unknown) as Buffer;
+                resp.data = uncompressed;
                 return resp;
             }
             throw new Error("Decryption failed.");
@@ -1021,9 +1025,27 @@ export class Client extends EventEmitter {
             "Creating file, size: " + formatBytes(Buffer.byteLength(file))
         );
 
+        const t0 = performance.now();
+        // this type is wrong lol, it's a Promise<buffer>
+        const compressed = ((await lzma.compress(
+            file,
+            6
+        )) as unknown) as Buffer;
+
+        this.log.info(
+            "Compressed size: " + formatBytes(Buffer.byteLength(file))
+        );
+        this.log.info(
+            "Compression took " + (performance.now() - t0).toString() + " ms."
+        );
+
         const nonce = xMakeNonce();
         const key = nacl.box.keyPair();
-        const box = nacl.secretbox(Uint8Array.from(file), nonce, key.secretKey);
+        const box = nacl.secretbox(
+            Uint8Array.from(compressed),
+            nonce,
+            key.secretKey
+        );
 
         this.log.info("Encrypted size: " + formatBytes(Buffer.byteLength(box)));
 
@@ -1031,13 +1053,6 @@ export class Client extends EventEmitter {
             Uint8Array.from(uuid.parse(token.key)),
             this.signKeys.secretKey
         );
-
-        // const payload: XTypes.HTTP.IFilePayload = {
-        //     owner: this.getUser().userID,
-        //     signed: XUtils.encodeHex(signed),
-        //     nonce: XUtils.encodeHex(nonce),
-        //     file: Buffer.from(box),
-        // };
 
         const payload = new FormData();
         payload.set("owner", this.getUser().userID);
