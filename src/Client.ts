@@ -816,7 +816,7 @@ export class Client extends EventEmitter {
         while (!this.xKeyRing) {
             await sleep(100);
         }
-        const regKey = await this.getToken("registration");
+        const regKey = await this.getToken("register");
         if (regKey) {
             const signKey = XUtils.encodeHex(this.signKeys.publicKey);
             const signed = XUtils.encodeHex(
@@ -858,7 +858,7 @@ export class Client extends EventEmitter {
     }
 
     private async getToken(
-        type: "registration" | "file" | "avatar"
+        type: "register" | "file" | "avatar"
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
             const res = await ax.get(
@@ -883,27 +883,33 @@ export class Client extends EventEmitter {
         );
 
         const payload = new FormData();
-        payload.set("owner", this.getUser().userID);
         payload.set("signed", XUtils.encodeHex(signed));
-        payload.set("file", new Blob([avatar]));
+        payload.set("avatar", new Blob([avatar]));
 
-        await ax.post(this.prefixes.HTTP + this.host + "/file", payload, {
-            headers: { "Content-Type": "multipart/form-data" },
-            onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round(
-                    (progressEvent.loaded * 100) / progressEvent.total
-                );
-                const { loaded, total } = progressEvent;
-                const progress: IFileProgress = {
-                    direction: "upload",
-                    token: token.key,
-                    progress: percentCompleted,
-                    loaded,
-                    total,
-                };
-                this.emit("fileProgress", progress);
-            },
-        });
+        await ax.post(
+            this.prefixes.HTTP +
+                this.host +
+                "/avatar/" +
+                this.me.details().userID,
+            payload,
+            {
+                headers: { "Content-Type": "multipart/form-data" },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round(
+                        (progressEvent.loaded * 100) / progressEvent.total
+                    );
+                    const { loaded, total } = progressEvent;
+                    const progress: IFileProgress = {
+                        direction: "upload",
+                        token: token.key,
+                        progress: percentCompleted,
+                        loaded,
+                        total,
+                    };
+                    this.emit("fileProgress", progress);
+                },
+            }
+        );
     }
 
     private createPermission(params: {

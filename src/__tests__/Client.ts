@@ -126,7 +126,7 @@ describe("Perform client tests", () => {
         };
         client.on("message", onMessage);
 
-        const me = client.users.me();
+        const me = client.me.details();
 
         await client.messages.send(me.userID, "initial");
         await sleep(500);
@@ -151,6 +151,11 @@ describe("Perform client tests", () => {
         expect(_.isEqual(createdFile, data)).toBe(true);
         expect(_.isEqual(createdDetails, details)).toBe(true);
 
+        done();
+    });
+
+    test("Upload an avatar", async (done) => {
+        await client.me.setAvatar(Buffer.from("./ghost.png"));
         done();
     });
 
