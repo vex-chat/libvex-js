@@ -17,7 +17,6 @@ import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
-import lzma from "lzma-native";
 import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
@@ -28,6 +27,8 @@ import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
+
+const lzma = require("lzma");
 
 // tslint:disable-next-line: no-var-requires
 
@@ -950,11 +951,10 @@ export class Client extends EventEmitter {
             );
 
             if (decrypted) {
-                // @ts-expect-error
-                const uncompressed: Buffer = await lzma.decompress(
-                    Buffer.from(decrypted)
+                const decompressed: Buffer = Buffer.from(
+                    lzma.decompress(Buffer.from(decrypted))
                 );
-                resp.data = uncompressed;
+                resp.data = decompressed;
                 return resp;
             }
             throw new Error("Decryption failed.");
@@ -1030,15 +1030,15 @@ export class Client extends EventEmitter {
 
         const t0 = performance.now();
         // this type is wrong lol, it's a Promise<buffer>
-        // @ts-expect-error
-        const compressed: Buffer = await lzma.compress(file, 6);
+        const compressed: Buffer = Buffer.from(lzma.compress(file, 6));
 
         this.log.info(
-            "Compressed size: " + formatBytes(Buffer.byteLength(file))
+            "Compressed size: " + formatBytes(Buffer.byteLength(compressed))
         );
         this.log.info(
             "Compression took " + (performance.now() - t0).toString() + " ms."
         );
+
         const bytesSaved =
             Buffer.byteLength(file) - Buffer.byteLength(compressed);
         this.log.info("Compression saved " + formatBytes(bytesSaved));
