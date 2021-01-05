@@ -28,8 +28,6 @@ import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
-const lzma = require("lzma");
-
 // tslint:disable-next-line: no-var-requires
 
 /**
@@ -951,10 +949,7 @@ export class Client extends EventEmitter {
             );
 
             if (decrypted) {
-                const decompressed: Buffer = Buffer.from(
-                    lzma.decompress(Buffer.from(decrypted))
-                );
-                resp.data = decompressed;
+                resp.data = Buffer.from(decrypted);
                 return resp;
             }
             throw new Error("Decryption failed.");
@@ -1028,28 +1023,9 @@ export class Client extends EventEmitter {
             "Creating file, size: " + formatBytes(Buffer.byteLength(file))
         );
 
-        const t0 = performance.now();
-        // this type is wrong lol, it's a Promise<buffer>
-        const compressed: Buffer = Buffer.from(lzma.compress(file, 6));
-
-        this.log.info(
-            "Compressed size: " + formatBytes(Buffer.byteLength(compressed))
-        );
-        this.log.info(
-            "Compression took " + (performance.now() - t0).toString() + " ms."
-        );
-
-        const bytesSaved =
-            Buffer.byteLength(file) - Buffer.byteLength(compressed);
-        this.log.info("Compression saved " + formatBytes(bytesSaved));
-
         const nonce = xMakeNonce();
         const key = nacl.box.keyPair();
-        const box = nacl.secretbox(
-            Uint8Array.from(compressed),
-            nonce,
-            key.secretKey
-        );
+        const box = nacl.secretbox(Uint8Array.from(file), nonce, key.secretKey);
 
         this.log.info("Encrypted size: " + formatBytes(Buffer.byteLength(box)));
 
