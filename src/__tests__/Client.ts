@@ -16,10 +16,10 @@ import { Storage } from "../Storage";
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    spire = new Spire({
-        dbType: "sqlite3mem",
-        logLevel: "error",
-    });
+    // spire = new Spire({
+    //     dbType: "sqlite3mem",
+    //     logLevel: "error",
+    // });
 });
 
 describe("Perform client tests", () => {
@@ -134,7 +134,6 @@ describe("Perform client tests", () => {
     });
 
     test("File operations", async (done) => {
-        jest.setTimeout(30000);
         const createdFile = Buffer.alloc(5000000);
         createdFile.fill(0);
 

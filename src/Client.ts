@@ -1032,17 +1032,24 @@ export class Client extends EventEmitter {
             this.signKeys.secretKey
         );
 
-        const payload: XTypes.HTTP.IFilePayload = {
-            owner: this.getUser().userID,
-            signed: XUtils.encodeHex(signed),
-            nonce: XUtils.encodeHex(nonce),
-            file: Buffer.from(box),
-        };
+        // const payload: XTypes.HTTP.IFilePayload = {
+        //     owner: this.getUser().userID,
+        //     signed: XUtils.encodeHex(signed),
+        //     nonce: XUtils.encodeHex(nonce),
+        //     file: Buffer.from(box),
+        // };
+
+        const payload = new FormData();
+        payload.set("owner", this.getUser().userID);
+        payload.set("signed", XUtils.encodeHex(signed));
+        payload.set("nonce", XUtils.encodeHex(nonce));
+        payload.set("file", new Blob([box]));
 
         const res = await ax.post(
             this.prefixes.HTTP + this.host + "/file",
             payload,
             {
+                headers: { "Content-Type": "multipart/form-data" },
                 onUploadProgress: (progressEvent) => {
                     const percentCompleted = Math.round(
                         (progressEvent.loaded * 100) / progressEvent.total
