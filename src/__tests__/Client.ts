@@ -13,24 +13,24 @@ import {
 } from "..";
 import { Storage } from "../Storage";
 
-let spire: Spire | null = null;
+// let spire: Spire | null = null;
 
-beforeAll(() => {
-    // spire = new Spire({
-    //     dbType: "sqlite3mem",
-    //     logLevel: "error",
-    // });
-});
+// beforeAll(() => {
+//     spire = new Spire({
+//         dbType: "sqlite3mem",
+//         logLevel: "error",
+//     });
+// });
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
 
     const clientOptions: IClientOptions = {
         inMemoryDb: true,
-        logLevel: "info",
+        logLevel: "error",
         dbLogLevel: "error",
-        host: "localhost:16777",
-        unsafeHttp: true,
+        // host: "localhost:16777",
+        // unsafeHttp: true,
     };
 
     const storage = new Storage(":memory:", SK, clientOptions);
@@ -134,7 +134,7 @@ describe("Perform client tests", () => {
     });
 
     test("File operations", async (done) => {
-        const createdFile = Buffer.alloc(5000000);
+        const createdFile = Buffer.alloc(1000);
         createdFile.fill(0);
 
         const [createdDetails, key] = await client.files.create(createdFile);
@@ -195,15 +195,23 @@ describe("Perform client tests", () => {
     });
 
     test("Client close", async (done) => {
+        // aborted
+        // at PendingOperation.abort (node_modules/tarn/dist/PendingOperation.js:25:21)
+        // at node_modules/tarn/dist/Pool.js:208:25
+        //     at Array.map (<anonymous>)
+        // at node_modules/tarn/dist/Pool.js:207:53
+
+        // TODO: figure out how to close whatever this is properly
         await client.close();
+
         done();
     });
 });
 
-afterAll(() => {
-    fs.rmdirSync("files", { recursive: true });
-    return spire?.close();
-});
+// afterAll(() => {
+//     fs.rmdirSync("files", { recursive: true });
+//     return spire?.close();
+// });
 
 /**
  * @hidden
