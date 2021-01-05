@@ -92,9 +92,16 @@ export interface IFileRes extends XTypes.HTTP.IFileResponse {}
 /**
  * @ignore
  */
+interface IMe {
+    details: () => XTypes.SQL.IUser;
+    setAvatar: (avatar: Buffer) => Promise<void>;
+}
+
+/**
+ * @ignore
+ */
 interface IUsers {
     retrieve: (userID: string) => Promise<[IUser | null, AxiosError | null]>;
-    me: () => XTypes.SQL.IUser;
     familiars: () => Promise<IUser[]>;
 }
 
@@ -446,17 +453,24 @@ export class Client extends EventEmitter {
          */
         retrieve: this.retrieveUserDBEntry.bind(this),
         /**
-         * Retrieves the currently logged in user's (you) information.
-         *
-         * @returns - The logged in user's IUser object.
-         */
-        me: this.getUser.bind(this),
-        /**
          * Retrieves the list of users you can currently access, or are already familiar with.
          *
          * @returns - The list of IUser objects.
          */
         familiars: this.getFamiliars.bind(this),
+    };
+
+    public me: IMe = {
+        /**
+         * Retrieves your user information
+         *
+         * @returns - The logged in user's IUser object.
+         */
+        details: this.getUser.bind(this),
+        /**
+         * Changes your avatar.
+         */
+        setAvatar: this.uploadAvatar.bind(this),
     };
 
     /**
@@ -802,7 +816,7 @@ export class Client extends EventEmitter {
         while (!this.xKeyRing) {
             await sleep(100);
         }
-        const regKey = await this.getRegistrationKey();
+        const regKey = await this.getToken("registration");
         if (regKey) {
             const signKey = XUtils.encodeHex(this.signKeys.publicKey);
             const signed = XUtils.encodeHex(
@@ -843,16 +857,53 @@ export class Client extends EventEmitter {
         }
     }
 
-    private async getFileToken(): Promise<XTypes.HTTP.IRegKey | null> {
+    private async getToken(
+        type: "registration" | "file" | "avatar"
+    ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
             const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/token/file"
+                this.prefixes.HTTP + this.host + "/token/" + type
             );
             return res.data;
         } catch (err) {
             this.log.warn(err);
             return null;
         }
+    }
+
+    private async uploadAvatar(avatar: Buffer): Promise<void> {
+        const token = await this.getToken("avatar");
+        if (!token) {
+            this.log.warn("Failed to get token.");
+            return;
+        }
+        const signed = nacl.sign(
+            Uint8Array.from(uuid.parse(token.key)),
+            this.signKeys.secretKey
+        );
+
+        const payload = new FormData();
+        payload.set("owner", this.getUser().userID);
+        payload.set("signed", XUtils.encodeHex(signed));
+        payload.set("file", new Blob([avatar]));
+
+        await ax.post(this.prefixes.HTTP + this.host + "/file", payload, {
+            headers: { "Content-Type": "multipart/form-data" },
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total
+                );
+                const { loaded, total } = progressEvent;
+                const progress: IFileProgress = {
+                    direction: "upload",
+                    token: token.key,
+                    progress: percentCompleted,
+                    loaded,
+                    total,
+                };
+                this.emit("fileProgress", progress);
+            },
+        });
     }
 
     private createPermission(params: {
@@ -1014,7 +1065,7 @@ export class Client extends EventEmitter {
     private async createFile(
         file: Buffer
     ): Promise<[XTypes.SQL.IFile, string]> {
-        const token = await this.getFileToken();
+        const token = await this.getToken("file");
         if (!token) {
             throw new Error("Wasn't able to get token.");
         }
@@ -2158,18 +2209,6 @@ export class Client extends EventEmitter {
         };
 
         this.send(response);
-    }
-
-    private async getRegistrationKey(): Promise<XTypes.HTTP.IRegKey | null> {
-        try {
-            const res = await ax.post(
-                this.prefixes.HTTP + this.host + "/register/key"
-            );
-            return res.data;
-        } catch (err) {
-            this.log.warn(err);
-            return null;
-        }
     }
 
     private censorPreKey(preKey: XTypes.CRYPTO.IPreKeys): XTypes.WS.IPreKeys {
