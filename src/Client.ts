@@ -93,7 +93,8 @@ export interface IFileRes extends XTypes.HTTP.IFileResponse {}
  * @ignore
  */
 interface IMe {
-    details: () => XTypes.SQL.IUser;
+    user: () => XTypes.SQL.IUser;
+    device: () => XTypes.SQL.IDevice;
     setAvatar: (avatar: Buffer) => Promise<void>;
 }
 
@@ -466,7 +467,13 @@ export class Client extends EventEmitter {
          *
          * @returns - The logged in user's IUser object.
          */
-        details: this.getUser.bind(this),
+        user: this.getUser.bind(this),
+        /**
+         * Retrieves current device details
+         *
+         * @returns - The logged in device's IDevice object.
+         */
+        device: this.getDevice.bind(this),
         /**
          * Changes your avatar.
          */
@@ -640,6 +647,8 @@ export class Client extends EventEmitter {
     private xKeyRing?: XTypes.CRYPTO.IXKeyRing;
 
     private user?: XTypes.SQL.IUser;
+    private device?: XTypes.SQL.IDevice;
+
     private isAlive: boolean = true;
     private failCount: number = 0;
     private reading: boolean = false;
@@ -777,15 +786,28 @@ export class Client extends EventEmitter {
         }
         this.hasLoggedIn = true;
 
+        if (!this.device) {
+            const res = await ax.get(
+                this.prefixes.HTTP +
+                    this.host +
+                    "/device/" +
+                    XUtils.encodeHex(this.signKeys.publicKey)
+            );
+            const device: XTypes.SQL.IDevice = res.data;
+            this.device = device;
+        }
+
         if (!this.user) {
             try {
-                const res = await ax.get(
-                    this.prefixes.HTTP +
-                        this.host +
-                        "/user/" +
-                        XUtils.encodeHex(this.signKeys.publicKey)
+                const [user, err] = await this.users.retrieve(
+                    this.device.owner
                 );
-                this.user = res.data;
+                if (err) {
+                    throw err;
+                }
+                if (user) {
+                    this.user = user;
+                }
             } catch (err) {
                 return new Error(
                     "Error retrieving user info from server: " + err.toString()
@@ -811,7 +833,8 @@ export class Client extends EventEmitter {
      * @example [user, err] = await client.register("MyUsername");
      */
     public async register(
-        username: string
+        username: string,
+        password: string
     ): Promise<[XTypes.SQL.IUser | null, Error | null]> {
         while (!this.xKeyRing) {
             await sleep(100);
@@ -836,13 +859,13 @@ export class Client extends EventEmitter {
                     this.xKeyRing.preKeys.signature
                 ),
                 preKeyIndex: this.xKeyRing.preKeys.index!,
+                password,
             };
             try {
                 const res = await ax.post(
                     this.prefixes.HTTP + this.host + "/register/new",
                     regMsg
                 );
-
                 this.setUser(res.data);
                 return [this.getUser(), null];
             } catch (err) {
@@ -887,10 +910,7 @@ export class Client extends EventEmitter {
         payload.set("avatar", new Blob([avatar]));
 
         await ax.post(
-            this.prefixes.HTTP +
-                this.host +
-                "/avatar/" +
-                this.me.details().userID,
+            this.prefixes.HTTP + this.host + "/avatar/" + this.me.user().userID,
             payload,
             {
                 headers: { "Content-Type": "multipart/form-data" },
@@ -1091,7 +1111,7 @@ export class Client extends EventEmitter {
         );
 
         const payload = new FormData();
-        payload.set("owner", this.getUser().userID);
+        payload.set("owner", this.getDevice().deviceID);
         payload.set("signed", XUtils.encodeHex(signed));
         payload.set("nonce", XUtils.encodeHex(nonce));
         payload.set("file", new Blob([box]));
@@ -1168,7 +1188,6 @@ export class Client extends EventEmitter {
         return messages;
     }
 
-    /* A thin wrapper around sendMail for string inputs. */
     private async sendMessage(userID: string, message: string): Promise<void> {
         try {
             while (this.lockedUsers.includes(userID)) {
@@ -1176,12 +1195,26 @@ export class Client extends EventEmitter {
                 await sleep(500);
             }
             this.lockedUsers.push(userID);
-            await this.sendMail(userID, XUtils.decodeUTF8(message), null);
+
+            const deviceList = await this.getUserDeviceList(userID);
+            if (!deviceList) {
+                throw new Error("Couldn't get device list.");
+            }
+
+            for (const device of deviceList) {
+                await this.sendMail(
+                    device.deviceID,
+                    XUtils.decodeUTF8(message),
+                    null
+                );
+            }
+
             this.lockedUsers.splice(this.lockedUsers.indexOf(userID), 1);
         } catch (err) {
             this.log.error(
                 "Message " + (err.message?.mailID || "") + " threw exception."
             );
+            this.log.error(err.toString());
             if (err.message?.mailID) {
                 await this.database.deleteMessage(err.message.mailID);
             }
@@ -1197,14 +1230,20 @@ export class Client extends EventEmitter {
         const mailID = uuid.v4();
         const promises: Array<Promise<void>> = [];
         for (const user of userList) {
-            promises.push(
-                this.sendMail(
-                    user.userID,
-                    XUtils.decodeUTF8(message),
-                    uuidToUint8(channelID),
-                    mailID
-                )
-            );
+            const deviceList = await this.getUserDeviceList(user.userID);
+            if (!deviceList) {
+                throw new Error("Couldn't get devicelist for " + user.userID);
+            }
+            for (const device of deviceList) {
+                promises.push(
+                    this.sendMail(
+                        device.deviceID,
+                        XUtils.decodeUTF8(message),
+                        uuidToUint8(channelID),
+                        mailID
+                    )
+                );
+            }
         }
 
         return Promise.all(promises).catch(async (err) => {
@@ -1242,18 +1281,21 @@ export class Client extends EventEmitter {
 
     /* Sends encrypted mail to a user. */
     private async sendMail(
-        userID: string,
+        deviceID: string,
         msg: Uint8Array,
         group: Uint8Array | null,
         mailID?: string
     ): Promise<void> {
-        this.log.info("Sending mail to " + userID);
+        this.log.info("Sending mail to " + deviceID);
 
-        const session = await this.database.getSessionByUserID(userID);
+        const session = await this.database.getSessionByDeviceID(deviceID);
+
         if (!session) {
-            this.log.info("Creating new session for " + userID);
-            await this.createSession(userID, msg, group, mailID);
+            this.log.info("Creating new session for " + deviceID);
+            await this.createSession(deviceID, msg, group, mailID);
             return;
+        } else {
+            this.log.info("Found existing session, using.");
         }
 
         const nonce = xMakeNonce();
@@ -1263,7 +1305,7 @@ export class Client extends EventEmitter {
         const mail: XTypes.WS.IMail = {
             mailType: XTypes.WS.MailType.subsequent,
             mailID: mailID || uuid.v4(),
-            recipient: userID,
+            recipient: deviceID,
             cipher,
             nonce,
             extra,
@@ -1372,6 +1414,32 @@ export class Client extends EventEmitter {
         });
     }
 
+    private async getDeviceByID(
+        deviceID: string
+    ): Promise<XTypes.SQL.IDevice | null> {
+        try {
+            const res = await ax.get(
+                this.prefixes.HTTP + this.host + "/device/" + deviceID
+            );
+            return res.data;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    private async getUserDeviceList(
+        userID: string
+    ): Promise<XTypes.SQL.IDevice[] | null> {
+        try {
+            const res = await ax.get(
+                this.prefixes.HTTP + this.host + "/user/" + userID + "/devices"
+            );
+            return res.data;
+        } catch (err) {
+            return null;
+        }
+    }
+
     private async getServerByID(
         serverID: string
     ): Promise<XTypes.SQL.IServer | null> {
@@ -1437,6 +1505,15 @@ export class Client extends EventEmitter {
         return this.user;
     }
 
+    private getDevice(): XTypes.SQL.IDevice {
+        if (!this.device) {
+            throw new Error(
+                "You must wait until the auth event is emitted before getting device details."
+            );
+        }
+        return this.device;
+    }
+
     private setUser(user: XTypes.SQL.IUser): void {
         this.user = user;
     }
@@ -1484,7 +1561,7 @@ export class Client extends EventEmitter {
     }
 
     private async createSession(
-        userID: string,
+        deviceID: string,
         message: Uint8Array,
         group: Uint8Array | null,
         /* this is passed through if the first message is 
@@ -1495,10 +1572,32 @@ export class Client extends EventEmitter {
 
         this.log.info("Requesting key bundle.");
         try {
-            keyBundle = await this.retrieveKeyBundle(userID);
+            keyBundle = await this.retrieveKeyBundle(deviceID);
         } catch (err) {
             this.log.warn("Couldn't get key bundle:", err);
             return;
+        }
+
+        const deviceDetails = await this.getDeviceByID(deviceID);
+        if (!deviceDetails) {
+            throw new Error("Couldn't get device details.");
+        }
+
+        let [user, userErr] = await this.retrieveUserDBEntry(
+            deviceDetails.owner
+        );
+        if (!user || userErr) {
+            let failed = 1;
+            // retry a couple times
+            while (!user) {
+                [user, userErr] = await this.retrieveUserDBEntry(
+                    deviceDetails.owner
+                );
+                failed++;
+                if (failed > 3) {
+                    throw new Error("Couldn't retrieve user");
+                }
+            }
         }
 
         // my keys
@@ -1554,7 +1653,7 @@ export class Client extends EventEmitter {
         const mail: XTypes.WS.IMail = {
             mailType: XTypes.WS.MailType.initial,
             mailID: mailID || uuid.v4(),
-            recipient: userID,
+            recipient: deviceID,
             cipher,
             nonce,
             extra,
@@ -1581,33 +1680,19 @@ export class Client extends EventEmitter {
         const sessionEntry: XTypes.SQL.ISession = {
             verified: false,
             sessionID: uuid.v4(),
-            userID,
+            userID: user.userID,
             mode: "initiator",
             SK: XUtils.encodeHex(SK),
             publicKey: XUtils.encodeHex(PK),
             lastUsed: new Date(Date.now()),
             fingerprint: XUtils.encodeHex(AD),
+            // TODO: FIX THIS
+            deviceID: "",
         };
 
         await this.database.saveSession(sessionEntry);
 
-        let [user, err] = await this.retrieveUserDBEntry(userID);
-
-        if (user) {
-            this.emit("session", sessionEntry, user);
-        } else {
-            let failed = 1;
-            // retry a couple times
-            while (!user) {
-                [user, err] = await this.retrieveUserDBEntry(userID);
-                failed++;
-                if (failed > 3) {
-                    throw new Error(
-                        "We saved a session, but we didn't get it back from the db!"
-                    );
-                }
-            }
-        }
+        this.emit("session", sessionEntry, user);
 
         // emit the message
         const emitMsg: IMessage = {
@@ -1860,6 +1945,8 @@ export class Client extends EventEmitter {
                         publicKey: XUtils.encodeHex(PK),
                         lastUsed: new Date(Date.now()),
                         fingerprint: XUtils.encodeHex(AD),
+                        // TODO: FIX THIS
+                        deviceID: "",
                     };
                     if (newSession.userID !== this.user!.userID) {
                         await this.database.saveSession(newSession);
@@ -2106,7 +2193,7 @@ export class Client extends EventEmitter {
     }
 
     private async retrieveKeyBundle(
-        userID: string
+        deviceID: string
     ): Promise<XTypes.WS.IKeyBundle> {
         return new Promise((res, rej) => {
             const transmissionID = uuid.v4();
@@ -2127,7 +2214,7 @@ export class Client extends EventEmitter {
                 type: "resource",
                 resourceType: "keyBundle",
                 action: "RETRIEVE",
-                data: userID,
+                data: deviceID,
             };
             this.send(outMsg);
         });

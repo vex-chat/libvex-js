@@ -105,8 +105,8 @@ export interface IStorage extends EventEmitter {
      *
      * @param userID The userID to retrieve the active session for.
      */
-    getSessionByUserID: (
-        userID: string
+    getSessionByDeviceID: (
+        deviceID: string
     ) => Promise<XTypes.CRYPTO.ISession | null>;
     /**
      * Saves an encryption session.

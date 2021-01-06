@@ -820,26 +820,6 @@
   dependencies:
     "@types/yargs-parser" "*"
 
-"@vex-chat/crypto@^0.7.11":
-  version "0.7.15"
-  resolved "https://registry.yarnpkg.com/@vex-chat/crypto/-/crypto-0.7.15.tgz#f7720d0d8100f51a6bdd3c9d7952ed66f8eee8dd"
-  integrity sha512-hq+mcLrkiSOD+8UMjpI4Ap7BHm1p020uVynDq3uydflQaOxFbxLR2LVD+UUDdONZBv2jxgzvztcgL1xyPjVoVA==
-  dependencies:
-    "@extrahash/keyring" "^1.0.1"
-    "@types/create-hmac" "^1.1.0"
-    "@types/ed2curve" "^0.2.2"
-    "@types/msgpack-lite" "^0.1.7"
-    "@types/pbkdf2" "^3.1.0"
-    "@vex-chat/types" "^0.7.21"
-    bip39 "^3.0.3"
-    create-hmac "^1.1.7"
-    ed2curve "^0.3.0"
-    futoin-hkdf "^1.3.2"
-    msgpack-lite "^0.1.26"
-    pbkdf2 "^3.1.1"
-    ts-jest "^26.4.4"
-    tweetnacl "^1.0.3"
-
 "@vex-chat/crypto@^0.7.13":
   version "0.7.13"
   resolved "https://registry.yarnpkg.com/@vex-chat/crypto/-/crypto-0.7.13.tgz#3d7bfb0a70186103e6fa4c039997a77b5e6005b3"
@@ -860,10 +840,30 @@
     ts-jest "^26.4.4"
     tweetnacl "^1.0.3"
 
-"@vex-chat/spire@0.2.26":
-  version "0.2.26"
-  resolved "https://registry.yarnpkg.com/@vex-chat/spire/-/spire-0.2.26.tgz#daff8a2600f9d5dd5312efc9e013b79096c7d875"
-  integrity sha512-GIhHozTFOTCQsBqzxEFPuKdhrV0lZSjjQt8xq+qQmu4I3pIrlW9UxLGmSaPx5b4PovqMbSHmxOtDX8oI00HqLQ==
+"@vex-chat/crypto@^0.7.15":
+  version "0.7.15"
+  resolved "https://registry.yarnpkg.com/@vex-chat/crypto/-/crypto-0.7.15.tgz#f7720d0d8100f51a6bdd3c9d7952ed66f8eee8dd"
+  integrity sha512-hq+mcLrkiSOD+8UMjpI4Ap7BHm1p020uVynDq3uydflQaOxFbxLR2LVD+UUDdONZBv2jxgzvztcgL1xyPjVoVA==
+  dependencies:
+    "@extrahash/keyring" "^1.0.1"
+    "@types/create-hmac" "^1.1.0"
+    "@types/ed2curve" "^0.2.2"
+    "@types/msgpack-lite" "^0.1.7"
+    "@types/pbkdf2" "^3.1.0"
+    "@vex-chat/types" "^0.7.21"
+    bip39 "^3.0.3"
+    create-hmac "^1.1.7"
+    ed2curve "^0.3.0"
+    futoin-hkdf "^1.3.2"
+    msgpack-lite "^0.1.26"
+    pbkdf2 "^3.1.1"
+    ts-jest "^26.4.4"
+    tweetnacl "^1.0.3"
+
+"@vex-chat/spire@^0.3.3":
+  version "0.3.3"
+  resolved "https://registry.yarnpkg.com/@vex-chat/spire/-/spire-0.3.3.tgz#ef2d6a3e8ca0b7aa8579d27c8f6d816a2b070077"
+  integrity sha512-/fzw7pfoPhhX99fiv0P46nX55mByFeDYYuN1FEdkkJw8bDTShBarvgJ7HmdkbE+HLBOhpiEej5VYW4ggtNP5wQ==
   dependencies:
     "@extrahash/sleep" "^1.0.0"
     "@types/cors" "^2.8.8"
@@ -874,8 +874,8 @@
     "@types/multer" "^1.4.5"
     "@types/uuid" "^8.3.0"
     "@types/ws" "^7.4.0"
-    "@vex-chat/crypto" "^0.7.11"
-    "@vex-chat/types" "^0.8.3"
+    "@vex-chat/crypto" "^0.7.15"
+    "@vex-chat/types" "0.8.9"
     chalk "^4.1.0"
     cors "^2.8.5"
     dotenv "^8.2.0"
@@ -888,12 +888,20 @@
     msgpack-lite "^0.1.26"
     multer "^1.4.2"
     mysql "^2.18.1"
+    pbkdf2 "^3.1.1"
     sqlite "^4.0.17"
     sqlite3 "^5.0.0"
     tweetnacl "^1.0.3"
     uuid "^8.3.1"
     winston "^3.3.3"
     ws "^7.4.0"
+
+"@vex-chat/types@0.8.9":
+  version "0.8.9"
+  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.8.9.tgz#9ece2a54f061a2a53be3ba4fbe86ba82113ab114"
+  integrity sha512-5GAALHAN6VAT3cvOvxoikhQ6K5GzBfjpdFcSB11IQB3rmAcHcW/GisP/W+zcDaAwZzN5PMqyyDcPQHPruC7q5w==
+  dependencies:
+    tweetnacl "^1.0.3"
 
 "@vex-chat/types@^0.7.21":
   version "0.7.21"
@@ -902,17 +910,10 @@
   dependencies:
     tweetnacl "^1.0.3"
 
-"@vex-chat/types@^0.8.2":
-  version "0.8.2"
-  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.8.2.tgz#50fe3e40ca70d2ba509544c4ba492f6d6afe802e"
-  integrity sha512-lgrVo7uBbfm5BN9z2jz3sUHNwT0Ni9mYm7gPCHbnRK/bx7H+KEkf0Xj1MKyFCn3qH+8oafOLp0q9J/yg/Hu4fA==
-  dependencies:
-    tweetnacl "^1.0.3"
-
-"@vex-chat/types@^0.8.3":
-  version "0.8.3"
-  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.8.3.tgz#7cf694b03d2310cbbcbc2f5060c4cbed5035d4f9"
-  integrity sha512-yOM1yY58CnarD10AMfTZ06+a3y9ZdL0JiJvMGCvSuioyJbpnOVpA+xLv0cqKlZhEKLmxCaRSN4kGp28lpwIbaw==
+"@vex-chat/types@^0.8.7":
+  version "0.8.7"
+  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.8.7.tgz#4836e361e84756ea52782f437c29c7465c318b39"
+  integrity sha512-ZlAmAjCj8pFx894JcJQkbv2JqC2vI/VyYJOXACs/6eqwNrYaHcjDkQRGdjbvXXagf1K9HQoVsWRueJO60VMXHA==
   dependencies:
     tweetnacl "^1.0.3"
 

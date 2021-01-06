@@ -73,7 +73,16 @@ export class Storage extends EventEmitter implements IStorage {
             )
         );
 
-        await this.db("messages").insert(copy);
+        try {
+            await this.db("messages").insert(copy);
+        } catch (err) {
+            if (err.errno !== 19) {
+                throw err;
+            }
+            this.log.warn(
+                "Attempted to insert duplicate nonce into message table."
+            );
+        }
     }
 
     public async deleteMessage(mailID: string) {
@@ -276,8 +285,8 @@ export class Storage extends EventEmitter implements IStorage {
         return fixedRows;
     }
 
-    public async getSessionByUserID(
-        userID: string
+    public async getSessionByDeviceID(
+        deviceID: string
     ): Promise<XTypes.CRYPTO.ISession | null> {
         if (this.closing) {
             this.log.warn(
@@ -288,7 +297,7 @@ export class Storage extends EventEmitter implements IStorage {
         const rows: XTypes.SQL.ISession[] = await this.db
             .from("sessions")
             .select()
-            .where({ userID })
+            .where({ deviceID })
             .limit(1)
             .orderBy("lastUsed", "desc");
         if (rows.length === 0) {
@@ -413,6 +422,7 @@ export class Storage extends EventEmitter implements IStorage {
                 await this.db.schema.createTable("sessions", (table) => {
                     table.string("sessionID").primary();
                     table.string("userID");
+                    table.string("deviceID");
                     table.string("SK").unique();
                     table.string("publicKey");
                     table.string("fingerprint");
@@ -426,6 +436,7 @@ export class Storage extends EventEmitter implements IStorage {
                     table.increments("index");
                     table.string("keyID").unique();
                     table.string("userID");
+                    table.string("deviceID");
                     table.string("privateKey");
                     table.string("publicKey");
                     table.string("signature");
@@ -436,6 +447,7 @@ export class Storage extends EventEmitter implements IStorage {
                     table.increments("index");
                     table.string("keyID").unique();
                     table.string("userID");
+                    table.string("deviceID");
                     table.string("privateKey");
                     table.string("publicKey");
                     table.string("signature");
