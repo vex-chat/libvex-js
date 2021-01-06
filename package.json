@@ -15,7 +15,7 @@
         "test": "npx jest --runInBand --forceExit"
     },
     "devDependencies": {
-        "@vex-chat/spire": "0.2.18",
+        "@vex-chat/spire": "0.2.20",
         "dotenv": "^8.2.0",
         "husky": "^3.1.0",
         "jest": "^26.6.3",
@@ -51,7 +51,6 @@
         "chalk": "^4.1.0",
         "knex": "^0.21.15",
         "lodash": "^4.17.20",
-        "lzma": "^2.3.2",
         "msgpack-lite": "^0.1.26",
         "sqlite3": "^5.0.0",
         "tweetnacl": "^1.0.3",
