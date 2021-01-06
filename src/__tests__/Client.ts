@@ -3,24 +3,17 @@ import { sleep } from "@extrahash/sleep";
 import { Spire } from "@vex-chat/spire";
 import fs from "fs";
 import _ from "lodash";
-import {
-    Client,
-    IChannel,
-    IClientOptions,
-    IFileProgress,
-    IMessage,
-    IServer,
-} from "..";
+import { Client, IChannel, IClientOptions, IMessage, IServer } from "..";
 import { Storage } from "../Storage";
 
-// let spire: Spire | null = null;
+let spire: Spire | null = null;
 
-// beforeAll(() => {
-//     spire = new Spire({
-//         dbType: "sqlite3mem",
-//         logLevel: "error",
-//     });
-// });
+beforeAll(() => {
+    spire = new Spire({
+        dbType: "sqlite3mem",
+        logLevel: "error",
+    });
+});
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
@@ -29,12 +22,11 @@ describe("Perform client tests", () => {
         inMemoryDb: true,
         logLevel: "info",
         dbLogLevel: "error",
-        // host: "localhost:16777",
-        // unsafeHttp: true,
+        host: "localhost:16777",
+        unsafeHttp: true,
     };
 
     const storage = new Storage(":memory:", SK, clientOptions);
-
     const client = new Client(SK, clientOptions, storage);
 
     let createdServer: IServer | null = null;
@@ -155,7 +147,15 @@ describe("Perform client tests", () => {
     });
 
     test("Upload an avatar", async (done) => {
-        await client.me.setAvatar(Buffer.from("./ghost.png"));
+        const buf = fs.readFileSync("./src/__tests__/ghost.png");
+        await client.me.setAvatar(buf);
+
+        const receivedFile = fs.readFileSync(
+            "./avatars/" + client.me.details().userID
+        );
+
+        expect(receivedFile).toEqual(buf);
+
         done();
     });
 
@@ -200,10 +200,13 @@ describe("Perform client tests", () => {
     });
 });
 
-// afterAll(() => {
-//     fs.rmdirSync("files", { recursive: true });
-//     return spire?.close();
-// });
+afterAll(() => {
+    const createdDirs = ["files", "avatars"];
+    for (const dir of createdDirs) {
+        fs.rmdirSync(dir, { recursive: true });
+    }
+    return spire?.close();
+});
 
 /**
  * @hidden
