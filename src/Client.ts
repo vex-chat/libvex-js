@@ -911,8 +911,6 @@ export class Client extends EventEmitter {
         if (!this.xKeyRing) {
             throw new Error("Keyring not initialized, call init() first.");
         }
-
-        console.log(token);
         const signKey = this.getKeys().public;
         const signed = XUtils.encodeHex(
             nacl.sign(
