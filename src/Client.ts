@@ -706,7 +706,7 @@ export class Client extends EventEmitter {
               );
 
         this.database.on("error", (error) => {
-            this.log.error(error);
+            this.log.error(error.toString());
             this.close(true);
         });
 
@@ -780,42 +780,52 @@ export class Client extends EventEmitter {
      * Logs in to the server. You must have registered() before with your current
      * private key.
      */
-    public async login(): Promise<Error | null> {
+    public async login(username: string): Promise<Error | null> {
         if (this.hasLoggedIn) {
             return new Error("You should only call login() once.");
         }
         this.hasLoggedIn = true;
 
-        if (!this.device) {
-            const res = await ax.get(
-                this.prefixes.HTTP +
-                    this.host +
-                    "/device/" +
-                    XUtils.encodeHex(this.signKeys.publicKey)
-            );
-            const device: XTypes.SQL.IDevice = res.data;
-            this.device = device;
-        }
-
         if (!this.user) {
             try {
-                const [user, err] = await this.users.retrieve(
-                    this.device.owner
-                );
+                const [user, err] = await this.users.retrieve(username);
                 if (err) {
+                    this.log.error("Error getting user.");
                     throw err;
                 }
                 if (user) {
                     this.user = user;
                 }
+                if (!user) {
+                    throw new Error("Username not found. Register first.");
+                }
             } catch (err) {
-                return new Error(
-                    "Error retrieving user info from server: " + err.toString()
-                );
+                return err;
             }
         }
 
+        if (!this.device) {
+            try {
+                const res = await ax.get(
+                    this.prefixes.HTTP +
+                        this.host +
+                        "/device/" +
+                        XUtils.encodeHex(this.signKeys.publicKey)
+                );
+                this.log.info(
+                    "response from get device " +
+                        JSON.stringify(res.data, null, 4)
+                );
+                const device: XTypes.SQL.IDevice = res.data;
+                this.device = device;
+            } catch (err) {
+                throw err;
+            }
+        }
+        this.log.info("Got device " + JSON.stringify(this.device, null, 4));
+
         try {
+            this.log.info("init socket");
             await this.initSocket();
         } catch (err) {
             return err;
@@ -880,8 +890,64 @@ export class Client extends EventEmitter {
         }
     }
 
+    public async registerDevice(
+        username: string,
+        password: string
+    ): Promise<XTypes.SQL.IDevice | null> {
+        const token = await this.getToken("device");
+
+        const [userDetails, err] = await this.retrieveUserDBEntry(username);
+        if (!userDetails) {
+            throw new Error("Username not found " + username);
+        }
+        if (err) {
+            throw err;
+        }
+
+        if (!token) {
+            throw new Error("Couldn't fetch token.");
+        }
+
+        if (!this.xKeyRing) {
+            throw new Error("Keyring not initialized, call init() first.");
+        }
+
+        console.log(token);
+        const signKey = this.getKeys().public;
+        const signed = XUtils.encodeHex(
+            nacl.sign(
+                Uint8Array.from(uuid.parse(token.key)),
+                this.signKeys.secretKey
+            )
+        );
+
+        const devMsg: XTypes.HTTP.IRegPayload = {
+            username: userDetails.username,
+            signKey,
+            signed,
+            preKey: XUtils.encodeHex(this.xKeyRing.preKeys.keyPair.publicKey),
+            preKeySignature: XUtils.encodeHex(this.xKeyRing.preKeys.signature),
+            preKeyIndex: this.xKeyRing.preKeys.index!,
+            password,
+        };
+
+        try {
+            const res = await ax.post(
+                this.prefixes.HTTP +
+                    this.host +
+                    "/user/" +
+                    userDetails.userID +
+                    "/devices",
+                devMsg
+            );
+            return res.data;
+        } catch (err) {
+            throw err;
+        }
+    }
+
     private async getToken(
-        type: "register" | "file" | "avatar"
+        type: "register" | "file" | "avatar" | "device"
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
             const res = await ax.get(
@@ -1030,7 +1096,7 @@ export class Client extends EventEmitter {
             }
             throw new Error("Decryption failed.");
         } catch (err) {
-            console.warn(err);
+            this.log.warn(err);
             return null;
         }
     }
