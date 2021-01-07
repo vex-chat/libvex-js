@@ -9,19 +9,19 @@ import { Storage } from "../Storage";
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    spire = new Spire({
-        dbType: "sqlite3mem",
-        logLevel: "warn",
-    });
+    // spire = new Spire({
+    //     dbType: "sqlite3mem",
+    //     logLevel: "warn",
+    // });
 });
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
 
     const clientOptions: IClientOptions = {
-        inMemoryDb: true,
-        logLevel: "warn",
-        dbLogLevel: "warn",
+        inMemoryDb: false,
+        logLevel: "info",
+        dbLogLevel: "info",
         host: "localhost:16777",
         unsafeHttp: true,
     };
@@ -70,7 +70,7 @@ describe("Perform client tests", () => {
             }
         });
 
-        newDevice.on("authed", () => {
+        newDevice.on("authed", async () => {
             done();
         });
 
@@ -197,6 +197,7 @@ describe("Perform client tests", () => {
                 message.decrypted &&
                 message.group !== null
             ) {
+                console.log(message);
                 received++;
                 if (received === 2) {
                     client.off("message", onGroupMessage);

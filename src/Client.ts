@@ -1922,9 +1922,22 @@ export class Client extends EventEmitter {
 
                 const preKeyIndex = XUtils.uint8ArrToNumber(indexBytes);
 
-                this.log.debug("otk #" + preKeyIndex + " indicated");
+                this.log.info("otk #" + preKeyIndex + " indicated");
 
                 const otk = await this.database.getOneTimeKey(preKeyIndex);
+
+                this.log.info(
+                    "otk #" +
+                        JSON.stringify(otk?.index) +
+                        "retrieved from database."
+                );
+
+                if (otk?.index !== preKeyIndex) {
+                    console.log(
+                        "OTK missing, message likely already decreypted."
+                    );
+                    return;
+                }
 
                 // their public keys
                 const IK_A = XKeyConvert.convertPublicKey(signKey)!;
@@ -2376,6 +2389,7 @@ export class Client extends EventEmitter {
             publicKey: preKey.keyPair.publicKey,
             signature: preKey.signature,
             index: preKey.index,
+            deviceID: this.getDevice().deviceID,
         };
     }
 
