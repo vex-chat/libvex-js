@@ -26,8 +26,8 @@ describe("Perform client tests", () => {
         unsafeHttp: true,
     };
 
-    const storage = new Storage(":memory:", SK, clientOptions);
-    const client = new Client(SK, clientOptions, storage);
+    //const storage = new Storage(":memory:", SK, clientOptions);
+    const client = new Client(SK, clientOptions /* storage */);
 
     let createdServer: IServer | null = null;
     let createdChannel: IChannel | null = null;
@@ -71,6 +71,7 @@ describe("Perform client tests", () => {
         });
 
         newDevice.on("authed", async () => {
+            await newDevice.close();
             done();
         });
 
@@ -138,6 +139,7 @@ describe("Perform client tests", () => {
             ) {
                 received.push(message.message);
                 if (receivedAllExpected()) {
+                    client.off("message", onMessage);
                     done();
                 }
             }
@@ -186,7 +188,10 @@ describe("Perform client tests", () => {
     });
 
     test("Group messaging", async (done) => {
-        let received = 0;
+        const received: string[] = [];
+
+        const receivedAllExpected = () =>
+            received.includes("initial") && received.includes("subsequent");
 
         const onGroupMessage = (message: IMessage) => {
             if (!message.decrypted) {
@@ -197,10 +202,8 @@ describe("Perform client tests", () => {
                 message.decrypted &&
                 message.group !== null
             ) {
-                console.log(message);
-                received++;
-                if (received === 2) {
-                    client.off("message", onGroupMessage);
+                received.push(message.message);
+                if (receivedAllExpected()) {
                     done();
                 }
             }

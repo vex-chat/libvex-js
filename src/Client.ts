@@ -1291,10 +1291,17 @@ export class Client extends EventEmitter {
         message: string
     ): Promise<void[]> {
         const userList = await this.getUserList(channelID);
+        this.log.info("Sending to userlist " + JSON.stringify(userList));
         const mailID = uuid.v4();
         const promises: Array<Promise<void>> = [];
         for (const user of userList) {
             const deviceList = await this.getUserDeviceList(user.userID);
+            this.log.info(
+                "user " +
+                    user.username +
+                    " devicelist" +
+                    JSON.stringify(deviceList)
+            );
             if (!deviceList) {
                 throw new Error("Couldn't get devicelist for " + user.userID);
             }
@@ -1750,8 +1757,7 @@ export class Client extends EventEmitter {
             publicKey: XUtils.encodeHex(PK),
             lastUsed: new Date(Date.now()),
             fingerprint: XUtils.encodeHex(AD),
-            // TODO: FIX THIS
-            deviceID: "",
+            deviceID,
         };
 
         await this.database.saveSession(sessionEntry);
@@ -1926,15 +1932,20 @@ export class Client extends EventEmitter {
 
                 const otk = await this.database.getOneTimeKey(preKeyIndex);
 
-                this.log.info(
-                    "otk #" +
-                        JSON.stringify(otk?.index) +
-                        "retrieved from database."
-                );
+                if (otk) {
+                    this.log.info(
+                        "otk #" +
+                            JSON.stringify(otk?.index) +
+                            " retrieved from database."
+                    );
+                }
 
                 if (otk?.index !== preKeyIndex) {
-                    console.log(
-                        "OTK missing, message likely already decreypted."
+                    this.log.warn(
+                        "OTK index mismatch, received " +
+                            JSON.stringify(otk?.index) +
+                            ", expected " +
+                            preKeyIndex.toString()
                     );
                     return;
                 }
@@ -2202,22 +2213,28 @@ export class Client extends EventEmitter {
             this.log.warn("Problem getting mail", err.toString());
         }
 
-        this.mailInterval = setInterval(this.getMail.bind(this), 5000);
+        this.mailInterval = setInterval(this.getMail.bind(this), 1000 * 60);
     }
 
     private async getMail(): Promise<void> {
-        while (this.getting) {
-            await sleep(100);
+        if (this.getting) {
+            this.log.warn("Already fetching mail, not fetching again.");
+            return;
         }
         this.getting = true;
+        this.log.info("Fetching mail for " + this.getDevice().deviceID);
         return new Promise((res, rej) => {
             const transmissionID = uuid.v4();
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
+                    let mailReceived = 0;
                     if (msg.type === "success") {
                         if (!(msg as XTypes.WS.ISucessMsg).data) {
                             this.conn.off("message", callback);
+                            this.log.info(
+                                "Received " + mailReceived.toString() + " mail."
+                            );
                             this.getting = false;
                             res();
                             return;
@@ -2234,7 +2251,9 @@ export class Client extends EventEmitter {
                                 err.toString()
                             );
                         }
+                        mailReceived++;
                     } else {
+                        this.getting = false;
                         rej(msg);
                     }
                 }
