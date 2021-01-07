@@ -400,7 +400,16 @@ export class Storage extends EventEmitter implements IStorage {
             );
             return;
         }
-        await this.db("sessions").insert(session);
+        try {
+            await this.db("sessions").insert(session);
+        } catch (err) {
+            if (err.errno === 19) {
+                this.log.warn("Attempted to insert duplicate SK");
+                return;
+            } else {
+                throw err;
+            }
+        }
     }
 
     public async init() {

@@ -980,7 +980,7 @@ export class Client extends EventEmitter {
             );
             return res.data;
         } catch (err) {
-            this.log.warn(err);
+            this.log.warn(err.toString());
             return null;
         }
     }
@@ -1121,7 +1121,7 @@ export class Client extends EventEmitter {
             }
             throw new Error("Decryption failed.");
         } catch (err) {
-            this.log.warn(err);
+            this.log.warn(err.toString());
             return null;
         }
     }
@@ -1311,7 +1311,7 @@ export class Client extends EventEmitter {
                         1
                     );
                 } catch (err) {
-                    this.log.warn(err);
+                    this.log.warn(err.toString());
                     this.sendInProgress.splice(
                         this.sendInProgress.indexOf(device.deviceID),
                         1
@@ -1727,6 +1727,14 @@ export class Client extends EventEmitter {
             return;
         }
 
+        this.log.info(
+            this.toString() +
+                " retrieved keybundle #" +
+                keyBundle.otk?.index.toString() +
+                " for " +
+                deviceID
+        );
+
         const deviceDetails = await this.getDeviceByID(deviceID);
         if (!deviceDetails) {
             throw new Error("Couldn't get device details.");
@@ -1778,7 +1786,7 @@ export class Client extends EventEmitter {
         this.log.info("Obtained SK.");
 
         const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
-        this.log.warn(
+        this.log.info(
             this.toString() +
                 " Obtained PK for " +
                 deviceID +
@@ -1924,9 +1932,7 @@ export class Client extends EventEmitter {
                         this.toString() +
                             ` Invalid session public key ${XUtils.encodeHex(
                                 publicKey
-                            )} No session found for current deviceID ${
-                                this.getDevice().deviceID
-                            }`
+                            )} No session found`
                     );
                     return;
                 }
@@ -2008,7 +2014,9 @@ export class Client extends EventEmitter {
 
                 const preKeyIndex = XUtils.uint8ArrToNumber(indexBytes);
 
-                this.log.warn("otk #" + preKeyIndex + " indicated");
+                this.log.info(
+                    this.toString() + " otk #" + preKeyIndex + " indicated"
+                );
 
                 const otk =
                     preKeyIndex === 0
@@ -2016,7 +2024,7 @@ export class Client extends EventEmitter {
                         : await this.database.getOneTimeKey(preKeyIndex);
 
                 if (otk) {
-                    this.log.warn(
+                    this.log.info(
                         "otk #" +
                             JSON.stringify(otk?.index) +
                             " retrieved from database."
@@ -2060,7 +2068,7 @@ export class Client extends EventEmitter {
 
                 // shared public key
                 const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
-                this.log.warn(
+                this.log.info(
                     this.toString() +
                         "Obtained PK for " +
                         mail.sender +
@@ -2145,28 +2153,25 @@ export class Client extends EventEmitter {
                         fingerprint: XUtils.encodeHex(AD),
                         deviceID: mail.sender,
                     };
-                    if (newSession.deviceID !== this.getDevice().deviceID) {
-                        await this.database.saveSession(newSession);
+                    await this.database.saveSession(newSession);
 
-                        let [user, err] = await this.retrieveUserDBEntry(
-                            newSession.userID
-                        );
+                    let [user, err] = await this.retrieveUserDBEntry(
+                        newSession.userID
+                    );
 
-                        if (user) {
-                            this.emit("session", newSession, user);
-                        } else {
-                            let failed = 1;
-                            // retry a couple times
-                            while (!user) {
-                                [user, err] = await this.retrieveUserDBEntry(
-                                    newSession.userID
-                                );
-                                failed++;
-                                if (failed > 3) {
-                                    throw new Error(
-                                        "We saved a session, but we didn't get it back from the db!"
-                                    );
-                                }
+                    if (user) {
+                        this.emit("session", newSession, user);
+                    } else {
+                        let failed = 1;
+                        // retry a couple times
+                        while (!user) {
+                            [user, err] = await this.retrieveUserDBEntry(
+                                newSession.userID
+                            );
+                            failed++;
+                            if (failed > 3) {
+                                this.log.warn("Couldn't retrieve user entry.");
+                                break;
                             }
                         }
                     }
@@ -2313,7 +2318,7 @@ export class Client extends EventEmitter {
         try {
             await this.negotiateOTK();
         } catch (err) {
-            this.log.warn("error negotiating OTKs:", err.toString());
+            this.log.warn("error negotiating OTKs:" + err.toString());
         }
 
         while (true) {
@@ -2321,7 +2326,7 @@ export class Client extends EventEmitter {
                 await this.getMail();
                 this.fetchingMail = false;
             } catch (err) {
-                this.log.warn("Problem fetching mail", err.toString());
+                this.log.warn("Problem fetching mail" + err.toString());
             }
             await sleep(1000 * 60);
         }
@@ -2356,8 +2361,7 @@ export class Client extends EventEmitter {
                             );
                         } catch (err) {
                             this.log.warn(
-                                "error reading mail:",
-                                err.toString()
+                                "error reading mail:" + err.toString()
                             );
                         }
                         mailReceived++;

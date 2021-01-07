@@ -8,10 +8,10 @@ import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    // spire = new Spire({
-    //     dbType: "sqlite3mem",
-    //     logLevel: "warn",
-    // });
+    spire = new Spire({
+        dbType: "sqlite3mem",
+        logLevel: "warn",
+    });
 });
 
 describe("Perform client tests", () => {
@@ -57,7 +57,6 @@ describe("Perform client tests", () => {
     });
 
     test("Multiple devices", async (done) => {
-        jest.setTimeout(10000);
         const ASK2 = Client.generateSecretKey();
         const clientA2 = new Client(ASK2, {
             ...clientOptions,
@@ -93,7 +92,7 @@ describe("Perform client tests", () => {
             clientA2.init();
             clientB.init();
 
-            let timeout = 1;
+            let timeout = 5;
             while (true) {
                 if (newReady && otherReady) {
                     res();
@@ -150,18 +149,25 @@ describe("Perform client tests", () => {
                 return [...new Set(results)].sort();
             };
 
-            let timeout = 1;
+            let timeout = 5;
             while (true) {
+                const received =
+                    receivedA.length + receivedA2.length + receivedB.length;
+                // console.log("A", receivedResults(receivedA))
+                // console.log("A2", receivedResults(receivedA2))
+                // console.log("B", receivedResults(receivedB))
+
                 if (
                     _.isEqual(receivedResults(receivedA), expectedResults) &&
                     _.isEqual(receivedResults(receivedA2), expectedResults) &&
                     _.isEqual(receivedResults(receivedB), expectedResults) &&
-                    receivedA.length > 15
+                    received > 30
                 ) {
                     clientA.off("message", onAMessage);
                     clientA2.off("message", onA2Message);
                     clientB.off("message", onBMessage);
                     done();
+                    break;
                 }
                 await sleep(Math.log(timeout));
                 timeout = timeout * 2;
