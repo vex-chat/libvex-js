@@ -8,10 +8,10 @@ import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    spire = new Spire({
-        dbType: "sqlite3mem",
-        logLevel: "warn",
-    });
+    // spire = new Spire({
+    //     dbType: "sqlite3mem",
+    //     logLevel: "warn",
+    // });
 });
 
 describe("Perform client tests", () => {
@@ -59,10 +59,13 @@ describe("Perform client tests", () => {
     test("Multiple devices", async (done) => {
         jest.setTimeout(10000);
         const ASK2 = Client.generateSecretKey();
-        const clientA2 = new Client(ASK2, clientOptions);
+        const clientA2 = new Client(ASK2, {
+            ...clientOptions,
+            logLevel: "warn",
+        });
 
         const BSK = Client.generateSecretKey();
-        const clientB = new Client(BSK, clientOptions);
+        const clientB = new Client(BSK, { ...clientOptions, logLevel: "warn" });
 
         await new Promise(async (res, rej) => {
             let newReady = false;
@@ -72,7 +75,8 @@ describe("Perform client tests", () => {
                 await clientA2.registerDevice(username, password);
                 await clientA2.login(username);
             });
-            clientA2.on("authed", () => {
+            clientA2.on("authed", async () => {
+                await sleep(500);
                 newReady = true;
             });
 
@@ -81,7 +85,8 @@ describe("Perform client tests", () => {
                 await clientB.register(otherUsername, password);
                 await clientB.login(otherUsername);
             });
-            clientB.on("authed", () => {
+            clientB.on("authed", async () => {
+                await sleep(500);
                 otherReady = true;
             });
 
@@ -93,7 +98,7 @@ describe("Perform client tests", () => {
                 if (newReady && otherReady) {
                     res();
                 }
-                await sleep(timeout);
+                await sleep(Math.log(timeout));
                 timeout *= 2;
             }
         });
@@ -134,11 +139,9 @@ describe("Perform client tests", () => {
             (async () => {
                 while (true) {
                     clientA.messages.send(userB, "clientA");
-                    await sleep(200);
                     clientA2.messages.send(userB, "clientA2");
-                    await sleep(200);
                     clientB.messages.send(userA, "clientB");
-                    await sleep(200);
+                    await sleep(1000);
                 }
             })();
 
@@ -150,17 +153,18 @@ describe("Perform client tests", () => {
             let timeout = 1;
             while (true) {
                 if (
+                    _.isEqual(receivedResults(receivedA), expectedResults) &&
+                    _.isEqual(receivedResults(receivedA2), expectedResults) &&
                     _.isEqual(receivedResults(receivedB), expectedResults) &&
-                    receivedB.length > 10
+                    receivedA.length > 15
                 ) {
                     clientA.off("message", onAMessage);
                     clientA2.off("message", onA2Message);
                     clientB.off("message", onBMessage);
                     done();
                 }
-
-                await sleep(timeout);
-                timeout *= 2;
+                await sleep(Math.log(timeout));
+                timeout = timeout * 2;
             }
         });
         done();

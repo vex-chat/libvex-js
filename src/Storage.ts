@@ -227,8 +227,9 @@ export class Storage extends EventEmitter implements IStorage {
             .where({ publicKey: str })
             .limit(1);
         if (rows.length === 0) {
-            this.log.debug(
-                "getSessionByPublicKey() => " + JSON.stringify(null, null, 4)
+            this.log.warn(
+                `getSessionByPublicKey(${XUtils.encodeHex(publicKey)}) => ` +
+                    JSON.stringify(null, null, 4)
             );
             return null;
         }
@@ -416,6 +417,7 @@ export class Storage extends EventEmitter implements IStorage {
                     table.string("direction");
                     table.date("timestamp");
                     table.boolean("decrypted");
+                    table.boolean("forward");
                 });
             }
             if (!(await this.db.schema.hasTable("sessions"))) {

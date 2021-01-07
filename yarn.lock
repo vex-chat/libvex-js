@@ -910,10 +910,10 @@
   dependencies:
     tweetnacl "^1.0.3"
 
-"@vex-chat/types@^0.9.5":
-  version "0.9.5"
-  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.9.5.tgz#00a2257c6e47d42776ebe7d2c83860bbc032d6e7"
-  integrity sha512-nMW7H5oJlBvq4cID2VmHg3avD3S12VL5FcK8YWrANXJxYMEbrVXEHsgJEHppDAHyeLe95YI46DB5pZinhDkUrg==
+"@vex-chat/types@^0.9.7":
+  version "0.9.7"
+  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.9.7.tgz#c592976fb2d10860800536d0dce2dad953a7bfe5"
+  integrity sha512-OyiSPG/iMlGwhpr2DiOhg7ICzrZ3Kg6VuHttqA65KwMgWzTfmpXO1BWA6E67+Cs6S/e9n3gqsZvHO4/4ty+ALw==
   dependencies:
     tweetnacl "^1.0.3"
 

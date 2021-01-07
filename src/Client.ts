@@ -17,6 +17,7 @@ import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
+import msgpack from "msgpack-lite";
 import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
@@ -43,6 +44,7 @@ export interface IMessage {
     timestamp: Date;
     decrypted: boolean;
     group: string | null;
+    forward: boolean;
 }
 
 /**
@@ -113,7 +115,7 @@ interface IUsers {
  */
 interface IMessages {
     send: (userID: string, message: string) => Promise<void>;
-    group: (channelID: string, message: string) => Promise<void[]>;
+    group: (channelID: string, message: string) => Promise<void>;
     retrieve: (userID: string) => Promise<IMessage[]>;
     retrieveGroup: (channelID: string) => Promise<IMessage[]>;
 }
@@ -672,7 +674,7 @@ export class Client extends EventEmitter {
     private reading: boolean = false;
     private fetchingMail: boolean = false;
 
-    private lockedUsers: string[] = [];
+    private sendInProgress: string[] = [];
 
     private log: winston.Logger;
 
@@ -746,13 +748,16 @@ export class Client extends EventEmitter {
 
         await this.populateKeyRing();
         this.on("message", async (message) => {
+            if (message.direction === "outgoing" && !message.forward) {
+                this.forward(message);
+            }
+
             if (
                 message.direction === "incoming" &&
                 message.recipient === message.sender
             ) {
                 return;
             }
-
             await this.database.saveMessage(message);
         });
 
@@ -960,6 +965,10 @@ export class Client extends EventEmitter {
         } catch (err) {
             throw err;
         }
+    }
+
+    public toString(): string {
+        return this.user?.username + "<" + this.device?.deviceID + ">";
     }
 
     private async getToken(
@@ -1272,26 +1281,43 @@ export class Client extends EventEmitter {
 
     private async sendMessage(userID: string, message: string): Promise<void> {
         try {
-            while (this.lockedUsers.includes(userID)) {
-                this.log.warn("User locked, waiting.");
-                await sleep(500);
-            }
-            this.lockedUsers.push(userID);
-
-            const deviceList = await this.getUserDeviceList(userID);
+            let deviceList = await this.getUserDeviceList(userID);
             if (!deviceList) {
-                throw new Error("Couldn't get device list.");
+                let retries = 0;
+                while (!deviceList) {
+                    deviceList = await this.getUserDeviceList(userID);
+                    retries++;
+                    if (retries > 3) {
+                        throw new Error("Couldn't get device list.");
+                    }
+                }
             }
 
             for (const device of deviceList) {
-                await this.sendMail(
-                    device.deviceID,
-                    XUtils.decodeUTF8(message),
-                    null
-                );
+                try {
+                    while (this.sendInProgress.includes(device.deviceID)) {
+                        await sleep(500);
+                    }
+                    this.sendInProgress.push(device.deviceID);
+                    await this.sendMail(
+                        device.deviceID,
+                        XUtils.decodeUTF8(message),
+                        null,
+                        null,
+                        false
+                    );
+                    this.sendInProgress.splice(
+                        this.sendInProgress.indexOf(device.deviceID),
+                        1
+                    );
+                } catch (err) {
+                    this.log.warn(err);
+                    this.sendInProgress.splice(
+                        this.sendInProgress.indexOf(device.deviceID),
+                        1
+                    );
+                }
             }
-
-            this.lockedUsers.splice(this.lockedUsers.indexOf(userID), 1);
         } catch (err) {
             this.log.error(
                 "Message " + (err.message?.mailID || "") + " threw exception."
@@ -1307,7 +1333,7 @@ export class Client extends EventEmitter {
     private async sendGroupMessage(
         channelID: string,
         message: string
-    ): Promise<void[]> {
+    ): Promise<void> {
         const userList = await this.getUserList(channelID);
         this.log.info("Sending to userlist " + JSON.stringify(userList));
         const mailID = uuid.v4();
@@ -1324,22 +1350,22 @@ export class Client extends EventEmitter {
                 throw new Error("Couldn't get devicelist for " + user.userID);
             }
             for (const device of deviceList) {
-                promises.push(
-                    this.sendMail(
-                        device.deviceID,
-                        XUtils.decodeUTF8(message),
-                        uuidToUint8(channelID),
-                        mailID
-                    )
+                while (this.sendInProgress.includes(device.deviceID)) {
+                    await sleep(100);
+                }
+                this.sendInProgress.push(device.deviceID);
+                await this.sendMail(
+                    device.deviceID,
+                    XUtils.decodeUTF8(message),
+                    uuidToUint8(channelID),
+                    mailID,
+                    false
+                );
+                this.sendInProgress.splice(
+                    this.sendInProgress.indexOf(device.deviceID)
                 );
             }
         }
-
-        return Promise.all(promises).catch(async (err) => {
-            this.log.error("Message " + mailID + " threw exception.");
-            await this.database.deleteMessage(mailID);
-            throw err;
-        });
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
@@ -1368,12 +1394,40 @@ export class Client extends EventEmitter {
         });
     }
 
+    private async forward(message: IMessage) {
+        const copy = { ...message };
+
+        const msgBytes = Uint8Array.from(msgpack.encode(copy));
+
+        let myDevices = await this.getUserDeviceList(this.getUser().userID);
+        let retries = 0;
+        while (!myDevices) {
+            if (retries > 3) {
+                throw new Error("Couldn't get own device list.");
+            }
+            myDevices = await this.getUserDeviceList(this.getUser().userID);
+            retries++;
+        }
+        for (const device of myDevices) {
+            if (device.deviceID !== this.getDevice().deviceID) {
+                await this.sendMail(
+                    device.deviceID,
+                    msgBytes,
+                    null,
+                    null,
+                    true
+                );
+            }
+        }
+    }
+
     /* Sends encrypted mail to a user. */
     private async sendMail(
         deviceID: string,
         msg: Uint8Array,
         group: Uint8Array | null,
-        mailID?: string
+        mailID: string | null,
+        forward: boolean
     ): Promise<void> {
         this.log.info("Sending mail to " + deviceID);
 
@@ -1381,7 +1435,7 @@ export class Client extends EventEmitter {
 
         if (!session) {
             this.log.info("Creating new session for " + deviceID);
-            await this.createSession(deviceID, msg, group, mailID);
+            await this.createSession(deviceID, msg, group, mailID, forward);
             return;
         } else {
             this.log.info(JSON.stringify(session));
@@ -1401,6 +1455,7 @@ export class Client extends EventEmitter {
             extra,
             sender: this.getDevice().deviceID,
             group,
+            forward,
         };
 
         const msgb: XTypes.WS.IResourceMsg = {
@@ -1413,17 +1468,20 @@ export class Client extends EventEmitter {
 
         const hmac = xHMAC(mail, session.SK);
 
-        const outMsg: IMessage = {
-            mailID: mail.mailID,
-            sender: mail.sender,
-            recipient: mail.recipient,
-            nonce: XUtils.encodeHex(mail.nonce),
-            message: XUtils.encodeUTF8(msg),
-            direction: "outgoing",
-            timestamp: new Date(Date.now()),
-            decrypted: true,
-            group: mail.group ? uuid.stringify(mail.group) : null,
-        };
+        const outMsg: IMessage = forward
+            ? { ...msgpack.decode(msg), forward: true }
+            : {
+                  mailID: mail.mailID,
+                  sender: mail.sender,
+                  recipient: mail.recipient,
+                  nonce: XUtils.encodeHex(mail.nonce),
+                  message: XUtils.encodeUTF8(msg),
+                  direction: "outgoing",
+                  timestamp: new Date(Date.now()),
+                  decrypted: true,
+                  group: mail.group ? uuid.stringify(mail.group) : null,
+                  forward: mail.forward,
+              };
         this.emit("message", outMsg);
 
         await new Promise((res, rej) => {
@@ -1656,7 +1714,8 @@ export class Client extends EventEmitter {
         group: Uint8Array | null,
         /* this is passed through if the first message is 
         part of a group message */
-        mailID?: string
+        mailID: string | null,
+        forward: boolean
     ): Promise<void> {
         let keyBundle: XTypes.WS.IKeyBundle;
 
@@ -1719,6 +1778,13 @@ export class Client extends EventEmitter {
         this.log.info("Obtained SK.");
 
         const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
+        this.log.warn(
+            this.toString() +
+                " Obtained PK for " +
+                deviceID +
+                " " +
+                XUtils.encodeHex(PK)
+        );
 
         const AD = xConcat(
             xEncode(xConstants.CURVE, IK_AP),
@@ -1749,6 +1815,7 @@ export class Client extends EventEmitter {
             extra,
             sender: this.getDevice().deviceID,
             group,
+            forward,
         };
 
         const hmac = xHMAC(mail, SK);
@@ -1784,17 +1851,20 @@ export class Client extends EventEmitter {
         this.emit("session", sessionEntry, user);
 
         // emit the message
-        const emitMsg: IMessage = {
-            nonce: XUtils.encodeHex(mail.nonce),
-            mailID: mail.mailID,
-            sender: mail.sender,
-            recipient: mail.recipient,
-            message: XUtils.encodeUTF8(message),
-            direction: "outgoing",
-            timestamp: new Date(Date.now()),
-            decrypted: true,
-            group: mail.group ? uuid.stringify(mail.group) : null,
-        };
+        const emitMsg: IMessage = forward
+            ? { ...msgpack.decode(message), forward: true }
+            : {
+                  nonce: XUtils.encodeHex(mail.nonce),
+                  mailID: mail.mailID,
+                  sender: mail.sender,
+                  recipient: mail.recipient,
+                  message: XUtils.encodeUTF8(message),
+                  direction: "outgoing",
+                  timestamp: new Date(Date.now()),
+                  decrypted: true,
+                  group: mail.group ? uuid.stringify(mail.group) : null,
+                  forward: mail.forward,
+              };
         this.emit("message", emitMsg);
 
         // send mail and wait for response
@@ -1851,25 +1921,13 @@ export class Client extends EventEmitter {
                 );
                 if (!session) {
                     this.log.warn(
-                        `Invalid session public key ${XUtils.encodeHex(
-                            publicKey
-                        )} Decryption failed.`
+                        this.toString() +
+                            ` Invalid session public key ${XUtils.encodeHex(
+                                publicKey
+                            )} No session found for current deviceID ${
+                                this.getDevice().deviceID
+                            }`
                     );
-
-                    // emit the message
-                    const message: IMessage = {
-                        nonce: XUtils.encodeHex(mail.nonce),
-                        mailID: mail.mailID,
-                        sender: mail.sender,
-                        recipient: mail.recipient,
-                        message: "",
-                        direction: "incoming",
-                        timestamp: new Date(Date.now()),
-                        decrypted: false,
-                        group: mail.group ? uuid.stringify(mail.group) : null,
-                    };
-                    this.emit("message", message);
-
                     return;
                 }
                 this.log.info("Session found for " + mail.sender);
@@ -1891,25 +1949,31 @@ export class Client extends EventEmitter {
                 );
 
                 if (decrypted) {
-                    this.log.info(
-                        "Decryption successful: " + XUtils.encodeUTF8(decrypted)
-                    );
+                    if (!mail.forward) {
+                        this.log.info(
+                            "Decryption successful: " +
+                                XUtils.encodeUTF8(decrypted)
+                        );
 
-                    // emit the message
-                    const message: IMessage = {
-                        nonce: XUtils.encodeHex(mail.nonce),
-                        mailID: mail.mailID,
-                        sender: mail.sender,
-                        recipient: mail.recipient,
-                        message: XUtils.encodeUTF8(decrypted),
-                        direction: "incoming",
-                        timestamp: new Date(Date.now()),
-                        decrypted: true,
-                        group: mail.group ? uuid.stringify(mail.group) : null,
-                    };
-
-                    this.emit("message", message);
-
+                        // emit the message
+                        const message: IMessage = mail.forward
+                            ? { ...msgpack.decode(decrypted), forward: true }
+                            : {
+                                  nonce: XUtils.encodeHex(mail.nonce),
+                                  mailID: mail.mailID,
+                                  sender: mail.sender,
+                                  recipient: mail.recipient,
+                                  message: XUtils.encodeUTF8(decrypted),
+                                  direction: "incoming",
+                                  timestamp: new Date(Date.now()),
+                                  decrypted: true,
+                                  group: mail.group
+                                      ? uuid.stringify(mail.group)
+                                      : null,
+                                  forward: mail.forward,
+                              };
+                        this.emit("message", message);
+                    }
                     await this.database.markSessionUsed(session.sessionID);
                 } else {
                     this.log.info("Decryption failed.");
@@ -1925,6 +1989,7 @@ export class Client extends EventEmitter {
                         timestamp: new Date(Date.now()),
                         decrypted: false,
                         group: mail.group ? uuid.stringify(mail.group) : null,
+                        forward: mail.forward,
                     };
                     this.emit("message", message);
                 }
@@ -1943,19 +2008,22 @@ export class Client extends EventEmitter {
 
                 const preKeyIndex = XUtils.uint8ArrToNumber(indexBytes);
 
-                this.log.info("otk #" + preKeyIndex + " indicated");
+                this.log.warn("otk #" + preKeyIndex + " indicated");
 
-                const otk = await this.database.getOneTimeKey(preKeyIndex);
+                const otk =
+                    preKeyIndex === 0
+                        ? null
+                        : await this.database.getOneTimeKey(preKeyIndex);
 
                 if (otk) {
-                    this.log.info(
+                    this.log.warn(
                         "otk #" +
                             JSON.stringify(otk?.index) +
                             " retrieved from database."
                     );
                 }
 
-                if (otk?.index !== preKeyIndex) {
+                if (otk?.index !== preKeyIndex && preKeyIndex !== 0) {
                     this.log.warn(
                         "OTK index mismatch, received " +
                             JSON.stringify(otk?.index) +
@@ -1992,6 +2060,13 @@ export class Client extends EventEmitter {
 
                 // shared public key
                 const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
+                this.log.warn(
+                    this.toString() +
+                        "Obtained PK for " +
+                        mail.sender +
+                        " " +
+                        XUtils.encodeHex(PK)
+                );
 
                 const hmac = xHMAC(mail, SK);
                 this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
@@ -2006,6 +2081,7 @@ export class Client extends EventEmitter {
                     console.warn(
                         "Mail authentication failed (HMAC did not match)."
                     );
+                    console.warn(mail);
                     // return;
                 }
                 this.log.info("Mail authenticated successfully.");
@@ -2016,22 +2092,31 @@ export class Client extends EventEmitter {
                     SK
                 );
                 if (unsealed) {
-                    this.log.info(
-                        "Decryption successful " + XUtils.encodeUTF8(unsealed)
-                    );
+                    if (!mail.forward) {
+                        this.log.info(
+                            "Decryption successful " +
+                                XUtils.encodeUTF8(unsealed)
+                        );
+                    }
 
                     // emit the message
-                    const message: IMessage = {
-                        nonce: XUtils.encodeHex(mail.nonce),
-                        mailID: mail.mailID,
-                        sender: mail.sender,
-                        recipient: mail.recipient,
-                        message: XUtils.encodeUTF8(unsealed),
-                        direction: "incoming",
-                        timestamp: new Date(Date.now()),
-                        decrypted: true,
-                        group: mail.group ? uuid.stringify(mail.group) : null,
-                    };
+                    const message: IMessage = mail.forward
+                        ? { ...msgpack.decode(unsealed), forward: true }
+                        : {
+                              nonce: XUtils.encodeHex(mail.nonce),
+                              mailID: mail.mailID,
+                              sender: mail.sender,
+                              recipient: mail.recipient,
+                              message: XUtils.encodeUTF8(unsealed),
+                              direction: "incoming",
+                              timestamp: new Date(Date.now()),
+                              decrypted: true,
+                              group: mail.group
+                                  ? uuid.stringify(mail.group)
+                                  : null,
+                              forward: mail.forward,
+                          };
+
                     this.emit("message", message);
 
                     // discard onetimekey
@@ -2060,7 +2145,7 @@ export class Client extends EventEmitter {
                         fingerprint: XUtils.encodeHex(AD),
                         deviceID: mail.sender,
                     };
-                    if (newSession.userID !== this.user!.userID) {
+                    if (newSession.deviceID !== this.getDevice().deviceID) {
                         await this.database.saveSession(newSession);
 
                         let [user, err] = await this.retrieveUserDBEntry(
