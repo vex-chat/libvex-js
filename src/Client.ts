@@ -670,7 +670,7 @@ export class Client extends EventEmitter {
     private isAlive: boolean = true;
     private failCount: number = 0;
     private reading: boolean = false;
-    private getting: boolean = false;
+    private fetchingMail: boolean = false;
 
     private lockedUsers: string[] = [];
 
@@ -808,7 +808,7 @@ export class Client extends EventEmitter {
             try {
                 const [user, err] = await this.users.retrieve(username);
                 if (err) {
-                    this.log.error("Error getting user.");
+                    this.log.error("Error fetchingMail user.");
                     throw err;
                 }
                 if (user) {
@@ -1588,7 +1588,7 @@ export class Client extends EventEmitter {
     private getUser(): XTypes.SQL.IUser {
         if (!this.user) {
             throw new Error(
-                "You must wait until the auth event is emitted before getting user details."
+                "You must wait until the auth event is emitted before fetchingMail user details."
             );
         }
         return this.user;
@@ -1597,7 +1597,7 @@ export class Client extends EventEmitter {
     private getDevice(): XTypes.SQL.IDevice {
         if (!this.device) {
             throw new Error(
-                "You must wait until the auth event is emitted before getting device details."
+                "You must wait until the auth event is emitted before fetchingMail device details."
             );
         }
         return this.device;
@@ -2111,7 +2111,8 @@ export class Client extends EventEmitter {
         switch (msg.event) {
             case "mail":
                 this.log.info("Server has informed us of new mail.");
-                this.getMail();
+                await this.getMail();
+                this.fetchingMail = false;
                 break;
             case "permission":
                 this.emit("permission", msg.data as IPermission);
@@ -2225,21 +2226,22 @@ export class Client extends EventEmitter {
             this.log.warn("error negotiating OTKs:", err.toString());
         }
 
-        try {
-            await this.getMail();
-        } catch (err) {
-            this.log.warn("Problem getting mail", err.toString());
+        while (true) {
+            try {
+                await this.getMail();
+                this.fetchingMail = false;
+            } catch (err) {
+                this.log.warn("Problem fetchingMail mail", err.toString());
+            }
+            await sleep(1000 * 60);
         }
-
-        this.mailInterval = setInterval(this.getMail.bind(this), 1000 * 60);
     }
 
     private async getMail(): Promise<void> {
-        if (this.getting) {
-            this.log.warn("Already fetching mail, not fetching again.");
-            return;
+        while (this.fetchingMail) {
+            await sleep(500);
         }
-        this.getting = true;
+        this.fetchingMail = true;
         this.log.info("Fetching mail for " + this.getDevice().deviceID);
         return new Promise((res, rej) => {
             const transmissionID = uuid.v4();
@@ -2253,7 +2255,6 @@ export class Client extends EventEmitter {
                             this.log.info(
                                 "Received " + mailReceived.toString() + " mail."
                             );
-                            this.getting = false;
                             res();
                             return;
                         }
@@ -2271,7 +2272,6 @@ export class Client extends EventEmitter {
                         }
                         mailReceived++;
                     } else {
-                        this.getting = false;
                         rej(msg);
                     }
                 }
