@@ -59,6 +59,8 @@ export interface IKeys {
     private: string;
 }
 
+export interface IDevice extends XTypes.SQL.IDevice {}
+
 /**
  * IUser is a single user on the vex platform.
  */
@@ -155,6 +157,17 @@ interface ISessions {
     retrieve: () => Promise<XTypes.SQL.ISession[]>;
     verify: (session: XTypes.SQL.ISession) => string;
     markVerified: (fingerprint: string) => Promise<void>;
+}
+
+/**
+ * @ignore
+ */
+interface IDevices {
+    retrieve: (deviceIdentifier: string) => Promise<XTypes.SQL.IDevice | null>;
+    register: (
+        username: string,
+        password: string
+    ) => Promise<XTypes.SQL.IDevice | null>;
 }
 
 /**
@@ -478,6 +491,11 @@ export class Client extends EventEmitter {
          * Changes your avatar.
          */
         setAvatar: this.uploadAvatar.bind(this),
+    };
+
+    public devices: IDevices = {
+        retrieve: this.getDeviceByID.bind(this),
+        register: this.registerDevice.bind(this),
     };
 
     /**

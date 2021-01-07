@@ -2,6 +2,7 @@ import {
     Client,
     IChannel,
     IClientOptions,
+    IDevice,
     IFile,
     IFileProgress,
     IFileRes,
@@ -29,4 +30,5 @@ export {
     IFile,
     IFileRes,
     IFileProgress,
+    IDevice,
 };
