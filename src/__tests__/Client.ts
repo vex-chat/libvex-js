@@ -4,30 +4,28 @@ import { Spire } from "@vex-chat/spire";
 import fs from "fs";
 import _ from "lodash";
 import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
-import { Storage } from "../Storage";
 
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    // spire = new Spire({
-    //     dbType: "sqlite3mem",
-    //     logLevel: "warn",
-    // });
+    spire = new Spire({
+        dbType: "sqlite3mem",
+        logLevel: "warn",
+    });
 });
 
 describe("Perform client tests", () => {
     const SK = Client.generateSecretKey();
 
     const clientOptions: IClientOptions = {
-        inMemoryDb: false,
+        inMemoryDb: true,
         logLevel: "info",
         dbLogLevel: "info",
         host: "localhost:16777",
         unsafeHttp: true,
     };
 
-    //const storage = new Storage(":memory:", SK, clientOptions);
-    const client = new Client(SK, clientOptions /* storage */);
+    const client = new Client(SK, clientOptions);
 
     let createdServer: IServer | null = null;
     let createdChannel: IChannel | null = null;
