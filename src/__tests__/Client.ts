@@ -19,8 +19,8 @@ describe("Perform client tests", () => {
 
     const clientOptions: IClientOptions = {
         inMemoryDb: true,
-        logLevel: "warn",
-        dbLogLevel: "warn",
+        logLevel: "error",
+        dbLogLevel: "error",
         host: "localhost:16777",
         unsafeHttp: true,
     };

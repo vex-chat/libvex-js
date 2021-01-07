@@ -15,7 +15,7 @@
         "test": "npx jest --runInBand --forceExit"
     },
     "devDependencies": {
-        "@vex-chat/spire": "^0.4.1",
+        "@vex-chat/spire": "^0.4.3",
         "dotenv": "^8.2.0",
         "husky": "^3.1.0",
         "jest": "^26.6.3",

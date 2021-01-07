@@ -1384,7 +1384,7 @@ export class Client extends EventEmitter {
             await this.createSession(deviceID, msg, group, mailID);
             return;
         } else {
-            this.log.info("Found existing session, using.");
+            this.log.info("Found existing session for " + deviceID);
         }
 
         const nonce = xMakeNonce();
@@ -1398,7 +1398,7 @@ export class Client extends EventEmitter {
             cipher,
             nonce,
             extra,
-            sender: this.user!.userID,
+            sender: this.getDevice().deviceID,
             group,
         };
 
@@ -1671,10 +1671,10 @@ export class Client extends EventEmitter {
         if (!deviceDetails) {
             throw new Error("Couldn't get device details.");
         }
-
         let [user, userErr] = await this.retrieveUserDBEntry(
             deviceDetails.owner
         );
+
         if (!user || userErr) {
             let failed = 1;
             // retry a couple times
@@ -1746,7 +1746,7 @@ export class Client extends EventEmitter {
             cipher,
             nonce,
             extra,
-            sender: this.user!.userID,
+            sender: this.getDevice().deviceID,
             group,
         };
 
@@ -1879,7 +1879,6 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match."
                     );
-
                     await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
@@ -2006,11 +2005,11 @@ export class Client extends EventEmitter {
                 );
 
                 if (!XUtils.bytesEqual(hmac, header)) {
-                    this.log.warn(
+                    console.warn(
                         "Mail authentication failed (HMAC did not match)."
                     );
                     await this.sendReceipt(mail.nonce, transmissionID);
-                    return;
+                    // return;
                 }
                 this.log.info("Mail authenticated successfully.");
 
@@ -2041,18 +2040,28 @@ export class Client extends EventEmitter {
                     // discard onetimekey
                     await this.database.deleteOneTimeKey(preKeyIndex);
 
+                    const deviceEntry = await this.getDeviceByID(mail.sender);
+                    if (!deviceEntry) {
+                        throw new Error("Couldn't get device entry.");
+                    }
+                    const [userEntry, userErr] = await this.retrieveUserDBEntry(
+                        deviceEntry.owner
+                    );
+                    if (!userEntry) {
+                        throw new Error("Couldn't get user entry.");
+                    }
+
                     // save session
                     const newSession: XTypes.SQL.ISession = {
                         verified: false,
                         sessionID: uuid.v4(),
-                        userID: mail.sender,
+                        userID: userEntry.userID,
                         mode: "receiver",
                         SK: XUtils.encodeHex(SK),
                         publicKey: XUtils.encodeHex(PK),
                         lastUsed: new Date(Date.now()),
                         fingerprint: XUtils.encodeHex(AD),
-                        // TODO: FIX THIS
-                        deviceID: "",
+                        deviceID: mail.sender,
                     };
                     if (newSession.userID !== this.user!.userID) {
                         await this.database.saveSession(newSession);
