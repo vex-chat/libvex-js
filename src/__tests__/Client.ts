@@ -25,7 +25,7 @@ describe("Perform client tests", () => {
         unsafeHttp: true,
     };
 
-    const client = new Client(SK, clientOptions);
+    const clientA = new Client(SK, clientOptions);
 
     let createdServer: IServer | null = null;
     let createdChannel: IChannel | null = null;
@@ -35,8 +35,8 @@ describe("Perform client tests", () => {
 
     let userDetails: IUser | null = null;
     test("Register", async (done) => {
-        client.on("ready", async () => {
-            const [user, err] = await client.register(username, password);
+        clientA.on("ready", async () => {
+            const [user, err] = await clientA.register(username, password);
             if (err) {
                 throw err;
             }
@@ -45,73 +45,163 @@ describe("Perform client tests", () => {
             done();
         });
 
-        client.init();
+        clientA.init();
     });
 
     test("Login", async (done) => {
-        login(client, username, password);
+        login(clientA, username, password);
 
-        client.on("authed", async () => {
+        clientA.on("authed", async () => {
             done();
         });
     });
 
-    test("Create a device", async (done) => {
-        const NSK = Client.generateSecretKey();
-        const newDevice = new Client(NSK, clientOptions);
+    test("Multiple devices", async (done) => {
+        jest.setTimeout(10000);
+        const ASK2 = Client.generateSecretKey();
+        const clientA2 = new Client(ASK2, clientOptions);
 
-        newDevice.on("ready", async () => {
-            await newDevice.registerDevice(username, password);
-            const err = await newDevice.login(username);
-            if (err) {
-                throw new Error(`${err}`);
+        const BSK = Client.generateSecretKey();
+        const clientB = new Client(BSK, clientOptions);
+
+        await new Promise(async (res, rej) => {
+            let newReady = false;
+            let otherReady = false;
+
+            clientA2.on("ready", async () => {
+                await clientA2.registerDevice(username, password);
+                await clientA2.login(username);
+            });
+            clientA2.on("authed", () => {
+                newReady = true;
+            });
+
+            clientB.on("ready", async () => {
+                const otherUsername = Client.randomUsername();
+                await clientB.register(otherUsername, password);
+                await clientB.login(otherUsername);
+            });
+            clientB.on("authed", () => {
+                otherReady = true;
+            });
+
+            clientA2.init();
+            clientB.init();
+
+            let timeout = 1;
+            while (true) {
+                if (newReady && otherReady) {
+                    res();
+                }
+                await sleep(timeout);
+                timeout *= 2;
             }
         });
 
-        newDevice.on("authed", async () => {
-            await newDevice.close();
-            done();
-        });
+        await new Promise(async (res, rej) => {
+            const receivedA: string[] = [];
+            const receivedA2: string[] = [];
+            const receivedB: string[] = [];
 
-        newDevice.init();
+            const userA = clientA.me.user().userID;
+            const userB = clientB.me.user().userID;
+
+            const onAMessage = (message: IMessage) => {
+                if (!message.decrypted) {
+                    throw new Error("Message failed to decrypt.");
+                }
+                receivedA.push(message.message);
+            };
+
+            const onA2Message = (message: IMessage) => {
+                if (!message.decrypted) {
+                    throw new Error("Message failed to decrypt.");
+                }
+                receivedA2.push(message.message);
+            };
+
+            const onBMessage = (message: IMessage) => {
+                if (!message.decrypted) {
+                    throw new Error("Message failed to decrypt.");
+                }
+                receivedB.push(message.message);
+            };
+
+            clientA.on("message", onAMessage);
+            clientA2.on("message", onA2Message);
+            clientB.on("message", onBMessage);
+
+            (async () => {
+                while (true) {
+                    clientA.messages.send(userB, "clientA");
+                    await sleep(200);
+                    clientA2.messages.send(userB, "clientA2");
+                    await sleep(200);
+                    clientB.messages.send(userA, "clientB");
+                    await sleep(200);
+                }
+            })();
+
+            const expectedResults = ["clientA", "clientA2", "clientB"];
+            const receivedResults = (results: string[]) => {
+                return [...new Set(results)].sort();
+            };
+
+            let timeout = 1;
+            while (true) {
+                if (
+                    _.isEqual(receivedResults(receivedB), expectedResults) &&
+                    receivedB.length > 10
+                ) {
+                    clientA.off("message", onAMessage);
+                    clientA2.off("message", onA2Message);
+                    clientB.off("message", onBMessage);
+                    done();
+                }
+
+                await sleep(timeout);
+                timeout *= 2;
+            }
+        });
+        done();
     });
 
     test("Server operations", async (done) => {
-        const server = await client.servers.create("Test Server");
-        const serverList = await client.servers.retrieve();
+        const server = await clientA.servers.create("Test Server");
+        const serverList = await clientA.servers.retrieve();
 
         const [knownServer] = serverList;
         expect(server.serverID === knownServer.serverID).toBe(true);
 
-        const retrieveByIDServer = await client.servers.retrieveByID(
+        const retrieveByIDServer = await clientA.servers.retrieveByID(
             server.serverID
         );
         expect(server.serverID === retrieveByIDServer?.serverID).toBe(true);
 
-        await client.servers.delete(server.serverID);
+        await clientA.servers.delete(server.serverID);
 
         // make another server to be used by channel tests
-        createdServer = await client.servers.create("Channel Test Server");
+        createdServer = await clientA.servers.create("Channel Test Server");
         done();
     });
 
     test("Channel operations", async (done) => {
-        const servers = await client.servers.retrieve();
+        const servers = await clientA.servers.retrieve();
         const [testServer] = servers;
 
-        const channel = await client.channels.create(
+        const channel = await clientA.channels.create(
             "Test Channel",
             testServer.serverID
         );
 
-        await client.channels.delete(channel.channelID);
+        await clientA.channels.delete(channel.channelID);
 
-        const channels = await client.channels.retrieve(testServer.serverID);
+        const channels = await clientA.channels.retrieve(testServer.serverID);
         expect(channels.length).toBe(1);
 
         createdChannel = channels[0];
 
-        const retrievedByIDChannel = await client.channels.retrieveByID(
+        const retrievedByIDChannel = await clientA.channels.retrieveByID(
             channels[0].channelID
         );
         expect(channels[0].channelID === retrievedByIDChannel?.channelID).toBe(
@@ -137,26 +227,26 @@ describe("Perform client tests", () => {
             ) {
                 received.push(message.message);
                 if (receivedAllExpected()) {
-                    client.off("message", onMessage);
+                    clientA.off("message", onMessage);
                     done();
                 }
             }
         };
-        client.on("message", onMessage);
+        clientA.on("message", onMessage);
 
-        const me = client.me.user();
+        const me = clientA.me.user();
 
-        await client.messages.send(me.userID, "initial");
+        await clientA.messages.send(me.userID, "initial");
         await sleep(500);
-        await client.messages.send(me.userID, "subsequent");
+        await clientA.messages.send(me.userID, "subsequent");
     });
 
     test("File operations", async (done) => {
         const createdFile = Buffer.alloc(1000);
         createdFile.fill(0);
 
-        const [createdDetails, key] = await client.files.create(createdFile);
-        const fetchedFileRes = await client.files.retrieve(
+        const [createdDetails, key] = await clientA.files.create(createdFile);
+        const fetchedFileRes = await clientA.files.retrieve(
             createdDetails.fileID,
             key
         );
@@ -174,14 +264,7 @@ describe("Perform client tests", () => {
 
     test("Upload an avatar", async (done) => {
         const buf = fs.readFileSync("./src/__tests__/ghost.png");
-        await client.me.setAvatar(buf);
-
-        // const receivedFile = fs.readFileSync(
-        //     "./avatars/" + client.me.user().userID
-        // );
-
-        // expect(receivedFile).toEqual(buf);
-
+        await clientA.me.setAvatar(buf);
         done();
     });
 
@@ -207,7 +290,7 @@ describe("Perform client tests", () => {
             }
         };
 
-        client.on("message", onGroupMessage);
+        clientA.on("message", onGroupMessage);
 
         const userIDs: string[] = [
             /*
@@ -217,16 +300,16 @@ describe("Perform client tests", () => {
          */
         ];
         for (const userID of userIDs) {
-            await client.permissions.create({
+            await clientA.permissions.create({
                 userID,
                 resourceType: "server",
                 resourceID: createdServer!.serverID,
             });
         }
 
-        await client.messages.group(createdChannel!.channelID, "initial");
+        await clientA.messages.group(createdChannel!.channelID, "initial");
         await sleep(500);
-        await client.messages.group(createdChannel!.channelID, "subsequent");
+        await clientA.messages.group(createdChannel!.channelID, "subsequent");
     });
 });
 
@@ -241,10 +324,10 @@ afterAll(() => {
 /**
  * @hidden
  */
-const login = async (client: Client, username: string, password: string) => {
-    const err = await client.login(username);
+const login = async (clientA: Client, username: string, password: string) => {
+    const err = await clientA.login(username);
     if (err) {
-        await client.close();
+        await clientA.close();
         throw new Error(err.message);
     }
 };

@@ -808,7 +808,7 @@ export class Client extends EventEmitter {
             try {
                 const [user, err] = await this.users.retrieve(username);
                 if (err) {
-                    this.log.error("Error fetchingMail user.");
+                    this.log.error("Error fetching user.");
                     throw err;
                 }
                 if (user) {
@@ -1384,6 +1384,7 @@ export class Client extends EventEmitter {
             await this.createSession(deviceID, msg, group, mailID);
             return;
         } else {
+            this.log.info(JSON.stringify(session));
             this.log.info("Found existing session for " + deviceID);
         }
 
@@ -1588,7 +1589,7 @@ export class Client extends EventEmitter {
     private getUser(): XTypes.SQL.IUser {
         if (!this.user) {
             throw new Error(
-                "You must wait until the auth event is emitted before fetchingMail user details."
+                "You must wait until the auth event is emitted before fetching user details."
             );
         }
         return this.user;
@@ -1597,7 +1598,7 @@ export class Client extends EventEmitter {
     private getDevice(): XTypes.SQL.IDevice {
         if (!this.device) {
             throw new Error(
-                "You must wait until the auth event is emitted before fetchingMail device details."
+                "You must wait until the auth event is emitted before fetching device details."
             );
         }
         return this.device;
@@ -1832,6 +1833,8 @@ export class Client extends EventEmitter {
         header: Uint8Array,
         transmissionID: string
     ) {
+        await this.sendReceipt(mail.nonce, transmissionID);
+
         while (this.reading) {
             await sleep(100);
         }
@@ -1867,7 +1870,6 @@ export class Client extends EventEmitter {
                     };
                     this.emit("message", message);
 
-                    await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
                 this.log.info("Session found for " + mail.sender);
@@ -1879,7 +1881,6 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match."
                     );
-                    await this.sendReceipt(mail.nonce, transmissionID);
                     return;
                 }
 
@@ -1910,7 +1911,6 @@ export class Client extends EventEmitter {
                     this.emit("message", message);
 
                     await this.database.markSessionUsed(session.sessionID);
-                    await this.sendReceipt(mail.nonce, transmissionID);
                 } else {
                     this.log.info("Decryption failed.");
 
@@ -1927,8 +1927,6 @@ export class Client extends EventEmitter {
                         group: mail.group ? uuid.stringify(mail.group) : null,
                     };
                     this.emit("message", message);
-
-                    await this.sendReceipt(mail.nonce, transmissionID);
                 }
                 break;
             case XTypes.WS.MailType.initial:
@@ -2008,7 +2006,6 @@ export class Client extends EventEmitter {
                     console.warn(
                         "Mail authentication failed (HMAC did not match)."
                     );
-                    await this.sendReceipt(mail.nonce, transmissionID);
                     // return;
                 }
                 this.log.info("Mail authenticated successfully.");
@@ -2088,7 +2085,6 @@ export class Client extends EventEmitter {
                             }
                         }
                     }
-                    await this.sendReceipt(mail.nonce, transmissionID);
                 } else {
                     this.log.warn("Mail decryption failed.");
                 }
@@ -2240,7 +2236,7 @@ export class Client extends EventEmitter {
                 await this.getMail();
                 this.fetchingMail = false;
             } catch (err) {
-                this.log.warn("Problem fetchingMail mail", err.toString());
+                this.log.warn("Problem fetching mail", err.toString());
             }
             await sleep(1000 * 60);
         }
@@ -2254,10 +2250,10 @@ export class Client extends EventEmitter {
         this.log.info("Fetching mail for " + this.getDevice().deviceID);
         return new Promise((res, rej) => {
             const transmissionID = uuid.v4();
+            let mailReceived = 0;
             const callback = (packedMsg: Buffer) => {
                 const [header, msg] = XUtils.unpackMessage(packedMsg);
                 if (msg.transmissionID === transmissionID) {
-                    let mailReceived = 0;
                     if (msg.type === "success") {
                         if (!(msg as XTypes.WS.ISucessMsg).data) {
                             this.conn.off("message", callback);
