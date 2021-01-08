@@ -107,7 +107,7 @@ interface IMe {
  */
 interface IUsers {
     retrieve: (userID: string) => Promise<[IUser | null, AxiosError | null]>;
-    familiars: () => Promise<IUser[]>;
+    familiars: () => Promise<Record<string, IUser>>;
 }
 
 /**
@@ -1683,29 +1683,17 @@ export class Client extends EventEmitter {
     }
 
     /* Retrieves the current list of users you have access to. */
-    private getFamiliars(): Promise<XTypes.SQL.IUser[]> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "users",
-                action: "RETRIEVE",
-            };
-            this.send(outMsg);
-        });
+    private async getFamiliars(): Promise<Record<string, IUser>> {
+        const sessions = await this.database.getAllSessions();
+        const familiars: Record<string, IUser> = {};
+
+        for (const session of sessions) {
+            const [user, err] = await this.retrieveUserDBEntry(session.userID);
+            if (user) {
+                familiars[session.deviceID] = user;
+            }
+        }
+        return familiars;
     }
 
     private async createSession(
