@@ -45,6 +45,7 @@ export interface IMessage {
     decrypted: boolean;
     group: string | null;
     forward: boolean;
+    authorID: string;
 }
 
 /**
@@ -1482,6 +1483,7 @@ export class Client extends EventEmitter {
                   decrypted: true,
                   group: mail.group ? uuid.stringify(mail.group) : null,
                   forward: mail.forward,
+                  authorID: mail.authorID,
               };
         this.emit("message", outMsg);
 
@@ -1863,6 +1865,7 @@ export class Client extends EventEmitter {
                   decrypted: true,
                   group: mail.group ? uuid.stringify(mail.group) : null,
                   forward: mail.forward,
+                  authorID: mail.authorID,
               };
         this.emit("message", emitMsg);
 
@@ -1979,6 +1982,7 @@ export class Client extends EventEmitter {
                                       ? uuid.stringify(mail.group)
                                       : null,
                                   forward: mail.forward,
+                                  authorID: mail.authorID,
                               };
                         this.emit("message", message);
                     }
@@ -1998,6 +2002,7 @@ export class Client extends EventEmitter {
                         decrypted: false,
                         group: mail.group ? uuid.stringify(mail.group) : null,
                         forward: mail.forward,
+                        authorID: mail.authorID,
                     };
                     this.emit("message", message);
                 }
@@ -2125,6 +2130,7 @@ export class Client extends EventEmitter {
                                   ? uuid.stringify(mail.group)
                                   : null,
                               forward: mail.forward,
+                              authorID: mail.authorID,
                           };
 
                     this.emit("message", message);
