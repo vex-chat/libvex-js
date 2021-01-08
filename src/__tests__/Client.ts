@@ -73,7 +73,7 @@ describe("Perform client tests", () => {
 
             clientA2.on("ready", async () => {
                 await clientA2.registerDevice(username, password);
-                await clientA2.login(username);
+                await clientA2.login(username, password);
             });
             clientA2.on("authed", async () => {
                 await sleep(500);
@@ -83,7 +83,7 @@ describe("Perform client tests", () => {
             clientB.on("ready", async () => {
                 const otherUsername = Client.randomUsername();
                 await clientB.register(otherUsername, password);
-                await clientB.login(otherUsername);
+                await clientB.login(otherUsername, password);
             });
             clientB.on("authed", async () => {
                 await sleep(500);
@@ -96,7 +96,7 @@ describe("Perform client tests", () => {
             let timeout = 5;
             while (true) {
                 if (newReady && otherReady) {
-                    res();
+                    res(1);
                 }
                 await sleep(Math.log(timeout));
                 timeout *= 2;
@@ -341,7 +341,7 @@ afterAll(async (done) => {
  * @hidden
  */
 const login = async (clientA: Client, username: string, password: string) => {
-    const err = await clientA.login(username);
+    const err = await clientA.login(username, password);
     if (err) {
         await clientA.close();
         throw new Error(err.message);
