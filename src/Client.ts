@@ -1727,7 +1727,7 @@ export class Client extends EventEmitter {
             return;
         }
 
-        this.log.info(
+        this.log.warn(
             this.toString() +
                 " retrieved keybundle #" +
                 keyBundle.otk?.index.toString() +
@@ -1924,15 +1924,26 @@ export class Client extends EventEmitter {
                     mail.mailType,
                     mail.extra
                 );
-                const session = await this.database.getSessionByPublicKey(
+                let session = await this.database.getSessionByPublicKey(
                     publicKey
                 );
+                let retries = 0;
+                while (!session) {
+                    if (retries > 3) {
+                        break;
+                    }
+
+                    session = await this.database.getSessionByPublicKey(
+                        publicKey
+                    );
+                    retries++;
+                    return;
+                }
+
                 if (!session) {
                     this.log.warn(
-                        this.toString() +
-                            ` Invalid session public key ${XUtils.encodeHex(
-                                publicKey
-                            )} No session found`
+                        "Couldn't find session public key " +
+                            XUtils.encodeHex(publicKey)
                     );
                     return;
                 }

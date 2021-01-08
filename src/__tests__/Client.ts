@@ -21,8 +21,8 @@ describe("Perform client tests", () => {
         inMemoryDb: true,
         logLevel: "error",
         dbLogLevel: "error",
-        host: "localhost:16777",
         unsafeHttp: true,
+        host: "localhost:16777",
     };
 
     const clientA = new Client(SK, clientOptions);
@@ -57,6 +57,7 @@ describe("Perform client tests", () => {
     });
 
     test("Multiple devices", async (done) => {
+        jest.setTimeout(10000);
         const ASK2 = Client.generateSecretKey();
         const clientA2 = new Client(ASK2, {
             ...clientOptions,
@@ -153,15 +154,15 @@ describe("Perform client tests", () => {
             while (true) {
                 const received =
                     receivedA.length + receivedA2.length + receivedB.length;
-                // console.log("A", receivedResults(receivedA))
-                // console.log("A2", receivedResults(receivedA2))
-                // console.log("B", receivedResults(receivedB))
+                // console.log("A", receivedResults(receivedA));
+                // console.log("A2", receivedResults(receivedA2));
+                // console.log("B", receivedResults(receivedB));
 
                 if (
                     _.isEqual(receivedResults(receivedA), expectedResults) &&
                     _.isEqual(receivedResults(receivedA2), expectedResults) &&
                     _.isEqual(receivedResults(receivedB), expectedResults) &&
-                    received > 30
+                    received > 20
                 ) {
                     clientA.off("message", onAMessage);
                     clientA2.off("message", onA2Message);
@@ -247,7 +248,6 @@ describe("Perform client tests", () => {
         const me = clientA.me.user();
 
         await clientA.messages.send(me.userID, "initial");
-        await sleep(500);
         await clientA.messages.send(me.userID, "subsequent");
     });
 
@@ -323,12 +323,18 @@ describe("Perform client tests", () => {
     });
 });
 
-afterAll(() => {
+afterAll(async (done) => {
     const createdDirs = ["files", "avatars"];
     for (const dir of createdDirs) {
         fs.rmdirSync(dir, { recursive: true });
     }
-    return spire?.close();
+    try {
+        await spire?.close();
+        done();
+    } catch (err) {
+        console.warn(err);
+        done();
+    }
 });
 
 /**
