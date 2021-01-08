@@ -1456,6 +1456,7 @@ export class Client extends EventEmitter {
             sender: this.getDevice().deviceID,
             group,
             forward,
+            authorID: this.getUser().userID,
         };
 
         const msgb: XTypes.WS.IResourceMsg = {
@@ -1813,6 +1814,7 @@ export class Client extends EventEmitter {
             sender: this.getDevice().deviceID,
             group,
             forward,
+            authorID: this.getUser().userID,
         };
 
         const hmac = xHMAC(mail, SK);
