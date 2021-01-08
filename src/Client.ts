@@ -1424,7 +1424,7 @@ export class Client extends EventEmitter {
                     device.deviceID,
                     msgBytes,
                     null,
-                    null,
+                    copy.mailID,
                     true
                 );
             }
