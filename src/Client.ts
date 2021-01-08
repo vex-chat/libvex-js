@@ -107,7 +107,7 @@ interface IMe {
  */
 interface IUsers {
     retrieve: (userID: string) => Promise<[IUser | null, AxiosError | null]>;
-    familiars: () => Promise<Record<string, IUser>>;
+    familiars: () => Promise<IUser[]>;
 }
 
 /**
@@ -1682,17 +1682,18 @@ export class Client extends EventEmitter {
         }
     }
 
-    /* Retrieves the current list of users you have access to. */
-    private async getFamiliars(): Promise<Record<string, IUser>> {
+    /* Retrieves the current list of users you have sessions with. */
+    private async getFamiliars(): Promise<IUser[]> {
         const sessions = await this.database.getAllSessions();
-        const familiars: Record<string, IUser> = {};
+        const familiars: IUser[] = [];
 
         for (const session of sessions) {
             const [user, err] = await this.retrieveUserDBEntry(session.userID);
             if (user) {
-                familiars[session.deviceID] = user;
+                familiars.push(user);
             }
         }
+
         return familiars;
     }
 
