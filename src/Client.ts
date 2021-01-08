@@ -1301,13 +1301,12 @@ export class Client extends EventEmitter {
                     }
                 }
             }
-
+            const mailID = uuid.v4();
             for (const device of deviceList) {
                 try {
                     while (this.sendInProgress.includes(device.deviceID)) {
                         await sleep(500);
                     }
-                    const mailID = uuid.v4();
                     this.sendInProgress.push(device.deviceID);
                     await this.sendMail(
                         device.deviceID,
