@@ -762,7 +762,6 @@ export class Client extends EventEmitter {
             }
             await this.database.saveMessage(message);
         });
-
         this.emit("ready");
     }
 
@@ -805,7 +804,10 @@ export class Client extends EventEmitter {
      * Logs in to the server. You must have registered() before with your current
      * private key.
      */
-    public async login(username: string): Promise<Error | null> {
+    public async login(
+        username: string,
+        password: string
+    ): Promise<Error | null> {
         if (this.hasLoggedIn) {
             return new Error("You should only call login() once.");
         }
@@ -921,6 +923,9 @@ export class Client extends EventEmitter {
         username: string,
         password: string
     ): Promise<XTypes.SQL.IDevice | null> {
+        while (!this.xKeyRing) {
+            await sleep(100);
+        }
         const token = await this.getToken("device");
 
         const [userDetails, err] = await this.retrieveUserDBEntry(username);
@@ -1296,7 +1301,7 @@ export class Client extends EventEmitter {
                     }
                 }
             }
-
+            const mailID = uuid.v4();
             for (const device of deviceList) {
                 try {
                     while (this.sendInProgress.includes(device.deviceID)) {
@@ -1307,7 +1312,7 @@ export class Client extends EventEmitter {
                         device.deviceID,
                         XUtils.decodeUTF8(message),
                         null,
-                        null,
+                        mailID,
                         false
                     );
                     this.sendInProgress.splice(
@@ -1418,7 +1423,7 @@ export class Client extends EventEmitter {
                     device.deviceID,
                     msgBytes,
                     null,
-                    null,
+                    copy.mailID,
                     true
                 );
             }
