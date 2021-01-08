@@ -1307,12 +1307,13 @@ export class Client extends EventEmitter {
                     while (this.sendInProgress.includes(device.deviceID)) {
                         await sleep(500);
                     }
+                    const mailID = uuid.v4();
                     this.sendInProgress.push(device.deviceID);
                     await this.sendMail(
                         device.deviceID,
                         XUtils.decodeUTF8(message),
                         null,
-                        null,
+                        mailID,
                         false
                     );
                     this.sendInProgress.splice(
