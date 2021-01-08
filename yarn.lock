@@ -860,10 +860,10 @@
     ts-jest "^26.4.4"
     tweetnacl "^1.0.3"
 
-"@vex-chat/spire@^0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@vex-chat/spire/-/spire-0.4.8.tgz#91bd54023777c8f50c3196d67529588e938e451d"
-  integrity sha512-yy7ZkLzEdthPQrIPalFDiTmQ+x1fTvpsLWFJuYzpw7M48d2WlEjRVCD3b5VP73jQaFfF2xW+L9bsumgIegHbCw==
+"@vex-chat/spire@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@vex-chat/spire/-/spire-0.5.0.tgz#8598f7f551482b46c23a968d399b4cf5401a9eea"
+  integrity sha512-qvAonZliFxJAfPdCCBhClJQ+OrnUsu6grlNbPO9tmlinFG0g6TAyPJz/LwKmgXpLqVirv6P9j8WUC5ZLIaF9mg==
   dependencies:
     "@extrahash/sleep" "^1.0.0"
     "@types/cors" "^2.8.8"
@@ -875,7 +875,7 @@
     "@types/uuid" "^8.3.0"
     "@types/ws" "^7.4.0"
     "@vex-chat/crypto" "^0.7.15"
-    "@vex-chat/types" "^0.10.0"
+    "@vex-chat/types" "^0.10.2"
     chalk "^4.1.0"
     cors "^2.8.5"
     dotenv "^8.2.0"
@@ -895,13 +895,6 @@
     uuid "^8.3.1"
     winston "^3.3.3"
     ws "^7.4.0"
-
-"@vex-chat/types@^0.10.0":
-  version "0.10.0"
-  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.10.0.tgz#9543584d5e2e5dfc301e8fe4c7d7dff6742ebf36"
-  integrity sha512-aNzPLWk3AMz3ESNvY+vIGYqCY6tfCsePLH7opXjHZichnpyn+GAK8GwfH0hO2lt0gFuGvp7cLjtNtzsPbnq/mQ==
-  dependencies:
-    tweetnacl "^1.0.3"
 
 "@vex-chat/types@^0.10.2":
   version "0.10.2"
