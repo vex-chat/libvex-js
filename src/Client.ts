@@ -1918,7 +1918,6 @@ export class Client extends EventEmitter {
         transmissionID: string
     ) {
         await this.sendReceipt(mail.nonce, transmissionID);
-
         while (this.reading) {
             await sleep(100);
         }

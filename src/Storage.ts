@@ -119,8 +119,8 @@ export class Storage extends EventEmitter implements IStorage {
         }
         const messages = await this.db("messages")
             .select()
-            .where({ direction: "incoming", sender: userID, group: null })
-            .orWhere({ direction: "outgoing", recipient: userID, group: null })
+            .where({ direction: "incoming", authorID: userID, group: null })
+            .orWhere({ direction: "outgoing", readerID: userID, group: null })
             .orderBy("timestamp", "desc");
 
         const fixedMessages = messages.reverse().map((message: IMessage) => {
