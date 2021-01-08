@@ -46,6 +46,7 @@ export interface IMessage {
     group: string | null;
     forward: boolean;
     authorID: string;
+    readerID: string;
 }
 
 /**
@@ -1458,6 +1459,7 @@ export class Client extends EventEmitter {
             group,
             forward,
             authorID: this.getUser().userID,
+            readerID: session.userID,
         };
 
         const msgb: XTypes.WS.IResourceMsg = {
@@ -1484,6 +1486,7 @@ export class Client extends EventEmitter {
                   group: mail.group ? uuid.stringify(mail.group) : null,
                   forward: mail.forward,
                   authorID: mail.authorID,
+                  readerID: mail.readerID,
               };
         this.emit("message", outMsg);
 
@@ -1817,6 +1820,7 @@ export class Client extends EventEmitter {
             group,
             forward,
             authorID: this.getUser().userID,
+            readerID: user.userID,
         };
 
         const hmac = xHMAC(mail, SK);
@@ -1866,6 +1870,7 @@ export class Client extends EventEmitter {
                   group: mail.group ? uuid.stringify(mail.group) : null,
                   forward: mail.forward,
                   authorID: mail.authorID,
+                  readerID: mail.readerID,
               };
         this.emit("message", emitMsg);
 
@@ -1983,6 +1988,7 @@ export class Client extends EventEmitter {
                                       : null,
                                   forward: mail.forward,
                                   authorID: mail.authorID,
+                                  readerID: mail.readerID,
                               };
                         this.emit("message", message);
                     }
@@ -2003,6 +2009,7 @@ export class Client extends EventEmitter {
                         group: mail.group ? uuid.stringify(mail.group) : null,
                         forward: mail.forward,
                         authorID: mail.authorID,
+                        readerID: mail.readerID,
                     };
                     this.emit("message", message);
                 }
@@ -2131,6 +2138,7 @@ export class Client extends EventEmitter {
                                   : null,
                               forward: mail.forward,
                               authorID: mail.authorID,
+                              readerID: mail.readerID,
                           };
 
                     this.emit("message", message);

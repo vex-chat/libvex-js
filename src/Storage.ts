@@ -428,6 +428,7 @@ export class Storage extends EventEmitter implements IStorage {
                     table.boolean("decrypted");
                     table.boolean("forward");
                     table.string("authorID");
+                    table.string("readerID");
                 });
             }
             if (!(await this.db.schema.hasTable("sessions"))) {
