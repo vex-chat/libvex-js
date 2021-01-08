@@ -844,9 +844,11 @@ export class Client extends EventEmitter {
                 const device: XTypes.SQL.IDevice = res.data;
                 this.device = device;
             } catch (err) {
-                throw err;
+                this.log.error(err);
+                return err;
             }
         }
+
         this.log.info("Got device " + JSON.stringify(this.device, null, 4));
 
         try {
