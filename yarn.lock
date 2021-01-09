@@ -903,6 +903,13 @@
   dependencies:
     tweetnacl "^1.0.3"
 
+"@vex-chat/types@^0.10.4":
+  version "0.10.4"
+  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.10.4.tgz#ddc814cf69ba3607c4ed4e98c9a8246c64b3a628"
+  integrity sha512-/7gAW7IP1feT8gQmTeVR18I0DFIH+MyV1qYPETkHaGGEgqVVShdnzetYVbAIQas0uNv5lWi0PmcDarvpHpk+sA==
+  dependencies:
+    tweetnacl "^1.0.3"
+
 "@vex-chat/types@^0.7.21":
   version "0.7.21"
   resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.7.21.tgz#64631ba2ac7edd5dc0ce9d32d15f76f164715a43"

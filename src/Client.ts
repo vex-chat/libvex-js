@@ -18,6 +18,7 @@ import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
 import msgpack from "msgpack-lite";
+import os from "os";
 import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
@@ -887,7 +888,7 @@ export class Client extends EventEmitter {
                     this.signKeys.secretKey
                 )
             );
-            const regMsg: XTypes.HTTP.IRegPayload = {
+            const regMsg: XTypes.HTTP.IDevicePayload = {
                 username,
                 signKey,
                 signed,
@@ -899,6 +900,7 @@ export class Client extends EventEmitter {
                 ),
                 preKeyIndex: this.xKeyRing.preKeys.index!,
                 password,
+                deviceName: `${os.platform()}-${os.release()}`,
             };
             try {
                 const res = await ax.post(
@@ -951,7 +953,7 @@ export class Client extends EventEmitter {
             )
         );
 
-        const devMsg: XTypes.HTTP.IRegPayload = {
+        const devMsg: XTypes.HTTP.IDevicePayload = {
             username: userDetails.username,
             signKey,
             signed,
@@ -959,6 +961,7 @@ export class Client extends EventEmitter {
             preKeySignature: XUtils.encodeHex(this.xKeyRing.preKeys.signature),
             preKeyIndex: this.xKeyRing.preKeys.index!,
             password,
+            deviceName: `${os.platform()}-${os.release()}`,
         };
 
         try {
