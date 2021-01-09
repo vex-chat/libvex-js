@@ -153,6 +153,7 @@ interface IChannels {
     retrieveByID: (channelID: string) => Promise<XTypes.SQL.IChannel | null>;
     create: (name: string, serverID: string) => Promise<XTypes.SQL.IChannel>;
     delete: (channelID: string) => Promise<void>;
+    userList: (channelID: string) => Promise<IUser[]>;
 }
 
 /**
@@ -644,6 +645,11 @@ export class Client extends EventEmitter {
          * @param channelID: The unique channelID to delete.
          */
         delete: this.deleteChannel.bind(this),
+        /**
+         * Retrieves a channel's userlist.
+         * @param channelID: The channelID to retrieve userlist for.
+         */
+        userList: this.getUserList.bind(this),
     };
 
     /**
