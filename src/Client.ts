@@ -667,6 +667,8 @@ export class Client extends EventEmitter {
     private signKeys: nacl.SignKeyPair;
     private idKeys: nacl.BoxKeyPair | null;
 
+    private password: string | null = null;
+
     private xKeyRing?: XTypes.CRYPTO.IXKeyRing;
 
     private user?: XTypes.SQL.IUser;
@@ -854,6 +856,7 @@ export class Client extends EventEmitter {
 
         this.log.info("Got device " + JSON.stringify(this.device, null, 4));
 
+        this.password = password;
         try {
             this.log.info("init socket");
             await this.initSocket();
@@ -2532,8 +2535,8 @@ export class Client extends EventEmitter {
             type: "response",
             signed: nacl.sign(msg.challenge, this.signKeys.secretKey),
             userID: this.user!.userID,
+            password: this.password || "",
         };
-
         this.send(response);
     }
 
