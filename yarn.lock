@@ -860,10 +860,10 @@
     ts-jest "^26.4.4"
     tweetnacl "^1.0.3"
 
-"@vex-chat/spire@^0.6.0":
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/@vex-chat/spire/-/spire-0.6.0.tgz#c945fde57c4c7ced6d7f38bee77a7c56c7215d67"
-  integrity sha512-zn61DXzyVXumJAQbaOWpr+yNrBp1vQkUSKZ+1BBAks6rQmbr9o6fg6+ddwQTsqmAATpzLmHkqRk+Q5W/QBwpIg==
+"@vex-chat/spire@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@vex-chat/spire/-/spire-0.7.0.tgz#28bd54a5c6284a6c0dd792e97344438a6f191482"
+  integrity sha512-eCJI39y0pHbT5wAVR9Rdx6HemUwheT99lzJAUCK+7ExbxkcrbPSwy9IwUK6gJAcUKgPo6yyQCybHtV5vJT1tvQ==
   dependencies:
     "@extrahash/sleep" "^1.0.0"
     "@types/cors" "^2.8.8"
