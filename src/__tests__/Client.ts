@@ -8,10 +8,10 @@ import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    spire = new Spire({
-        dbType: "sqlite3mem",
-        logLevel: "warn",
-    });
+    // spire = new Spire({
+    //     dbType: "sqlite3mem",
+    //     logLevel: "warn",
+    // });
 });
 
 describe("Perform client tests", () => {
@@ -56,126 +56,126 @@ describe("Perform client tests", () => {
         });
     });
 
-    test("Multiple devices", async (done) => {
-        jest.setTimeout(10000);
-        const ASK2 = Client.generateSecretKey();
-        const clientA2 = new Client(ASK2, {
-            ...clientOptions,
-            logLevel: "warn",
-        });
+    // test("Multiple devices", async (done) => {
+    //     jest.setTimeout(10000);
+    //     const ASK2 = Client.generateSecretKey();
+    //     const clientA2 = new Client(ASK2, {
+    //         ...clientOptions,
+    //         logLevel: "warn",
+    //     });
 
-        const BSK = Client.generateSecretKey();
-        const clientB = new Client(BSK, { ...clientOptions, logLevel: "warn" });
+    //     const BSK = Client.generateSecretKey();
+    //     const clientB = new Client(BSK, { ...clientOptions, logLevel: "warn" });
 
-        await new Promise(async (res, rej) => {
-            let newReady = false;
-            let otherReady = false;
+    //     await new Promise(async (res, rej) => {
+    //         let newReady = false;
+    //         let otherReady = false;
 
-            clientA2.on("ready", async () => {
-                await clientA2.registerDevice(username, password);
-                await clientA2.login(username, password);
-            });
-            clientA2.on("authed", async () => {
-                await sleep(500);
-                newReady = true;
-            });
+    //         clientA2.on("ready", async () => {
+    //             await clientA2.registerDevice(username, password);
+    //             await clientA2.login(username, password);
+    //         });
+    //         clientA2.on("authed", async () => {
+    //             await sleep(500);
+    //             newReady = true;
+    //         });
 
-            clientB.on("ready", async () => {
-                const otherUsername = Client.randomUsername();
-                await clientB.register(otherUsername, password);
-                await clientB.login(otherUsername, password);
-            });
-            clientB.on("authed", async () => {
-                await sleep(500);
-                otherReady = true;
-            });
+    //         clientB.on("ready", async () => {
+    //             const otherUsername = Client.randomUsername();
+    //             await clientB.register(otherUsername, password);
+    //             await clientB.login(otherUsername, password);
+    //         });
+    //         clientB.on("authed", async () => {
+    //             await sleep(500);
+    //             otherReady = true;
+    //         });
 
-            clientA2.init();
-            clientB.init();
+    //         clientA2.init();
+    //         clientB.init();
 
-            let timeout = 5;
-            while (true) {
-                if (newReady && otherReady) {
-                    res(1);
-                }
-                await sleep(Math.log(timeout));
-                timeout *= 2;
-            }
-        });
+    //         let timeout = 5;
+    //         while (true) {
+    //             if (newReady && otherReady) {
+    //                 res(1);
+    //             }
+    //             await sleep(Math.log(timeout));
+    //             timeout *= 2;
+    //         }
+    //     });
 
-        await new Promise(async (res, rej) => {
-            const receivedA: string[] = [];
-            const receivedA2: string[] = [];
-            const receivedB: string[] = [];
+    //     await new Promise(async (res, rej) => {
+    //         const receivedA: string[] = [];
+    //         const receivedA2: string[] = [];
+    //         const receivedB: string[] = [];
 
-            const userA = clientA.me.user().userID;
-            const userB = clientB.me.user().userID;
+    //         const userA = clientA.me.user().userID;
+    //         const userB = clientB.me.user().userID;
 
-            const onAMessage = (message: IMessage) => {
-                if (!message.decrypted) {
-                    throw new Error("Message failed to decrypt.");
-                }
-                receivedA.push(message.message);
-            };
+    //         const onAMessage = (message: IMessage) => {
+    //             if (!message.decrypted) {
+    //                 throw new Error("Message failed to decrypt.");
+    //             }
+    //             receivedA.push(message.message);
+    //         };
 
-            const onA2Message = (message: IMessage) => {
-                if (!message.decrypted) {
-                    throw new Error("Message failed to decrypt.");
-                }
-                receivedA2.push(message.message);
-            };
+    //         const onA2Message = (message: IMessage) => {
+    //             if (!message.decrypted) {
+    //                 throw new Error("Message failed to decrypt.");
+    //             }
+    //             receivedA2.push(message.message);
+    //         };
 
-            const onBMessage = (message: IMessage) => {
-                if (!message.decrypted) {
-                    throw new Error("Message failed to decrypt.");
-                }
-                receivedB.push(message.message);
-            };
+    //         const onBMessage = (message: IMessage) => {
+    //             if (!message.decrypted) {
+    //                 throw new Error("Message failed to decrypt.");
+    //             }
+    //             receivedB.push(message.message);
+    //         };
 
-            clientA.on("message", onAMessage);
-            clientA2.on("message", onA2Message);
-            clientB.on("message", onBMessage);
+    //         clientA.on("message", onAMessage);
+    //         clientA2.on("message", onA2Message);
+    //         clientB.on("message", onBMessage);
 
-            (async () => {
-                while (true) {
-                    clientA.messages.send(userB, "clientA");
-                    clientA2.messages.send(userB, "clientA2");
-                    clientB.messages.send(userA, "clientB");
-                    await sleep(1000);
-                }
-            })();
+    //         (async () => {
+    //             while (true) {
+    //                 clientA.messages.send(userB, "clientA");
+    //                 clientA2.messages.send(userB, "clientA2");
+    //                 clientB.messages.send(userA, "clientB");
+    //                 await sleep(1000);
+    //             }
+    //         })();
 
-            const expectedResults = ["clientA", "clientA2", "clientB"];
-            const receivedResults = (results: string[]) => {
-                return [...new Set(results)].sort();
-            };
+    //         const expectedResults = ["clientA", "clientA2", "clientB"];
+    //         const receivedResults = (results: string[]) => {
+    //             return [...new Set(results)].sort();
+    //         };
 
-            let timeout = 5;
-            while (true) {
-                const received =
-                    receivedA.length + receivedA2.length + receivedB.length;
-                // console.log("A", receivedResults(receivedA));
-                // console.log("A2", receivedResults(receivedA2));
-                // console.log("B", receivedResults(receivedB));
+    //         let timeout = 5;
+    //         while (true) {
+    //             const received =
+    //                 receivedA.length + receivedA2.length + receivedB.length;
+    //             // console.log("A", receivedResults(receivedA));
+    //             // console.log("A2", receivedResults(receivedA2));
+    //             // console.log("B", receivedResults(receivedB));
 
-                if (
-                    _.isEqual(receivedResults(receivedA), expectedResults) &&
-                    _.isEqual(receivedResults(receivedA2), expectedResults) &&
-                    _.isEqual(receivedResults(receivedB), expectedResults) &&
-                    received > 20
-                ) {
-                    clientA.off("message", onAMessage);
-                    clientA2.off("message", onA2Message);
-                    clientB.off("message", onBMessage);
-                    done();
-                    break;
-                }
-                await sleep(Math.log(timeout));
-                timeout = timeout * 2;
-            }
-        });
-        done();
-    });
+    //             if (
+    //                 _.isEqual(receivedResults(receivedA), expectedResults) &&
+    //                 _.isEqual(receivedResults(receivedA2), expectedResults) &&
+    //                 _.isEqual(receivedResults(receivedB), expectedResults) &&
+    //                 received > 20
+    //             ) {
+    //                 clientA.off("message", onAMessage);
+    //                 clientA2.off("message", onA2Message);
+    //                 clientB.off("message", onBMessage);
+    //                 done();
+    //                 break;
+    //             }
+    //             await sleep(Math.log(timeout));
+    //             timeout = timeout * 2;
+    //         }
+    //     });
+    //     done();
+    // });
 
     test("Server operations", async (done) => {
         const server = await clientA.servers.create("Test Server");
