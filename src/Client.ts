@@ -17,6 +17,7 @@ import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
+import { times } from "lodash";
 import msgpack from "msgpack-lite";
 import os from "os";
 import nacl from "tweetnacl";
@@ -685,8 +686,6 @@ export class Client extends EventEmitter {
     private reading: boolean = false;
     private fetchingMail: boolean = false;
 
-    private sendInProgress: string[] = [];
-
     private log: winston.Logger;
 
     private pingInterval?: NodeJS.Timeout;
@@ -1314,31 +1313,27 @@ export class Client extends EventEmitter {
                 }
             }
             const mailID = uuid.v4();
+            const promises: Array<Promise<any>> = [];
             for (const device of deviceList) {
-                try {
-                    while (this.sendInProgress.includes(device.deviceID)) {
-                        await sleep(500);
-                    }
-                    this.sendInProgress.push(device.deviceID);
-                    await this.sendMail(
+                promises.push(
+                    this.sendMail(
                         device.deviceID,
                         XUtils.decodeUTF8(message),
                         null,
                         mailID,
                         false
-                    );
-                    this.sendInProgress.splice(
-                        this.sendInProgress.indexOf(device.deviceID),
-                        1
-                    );
-                } catch (err) {
-                    this.log.warn(err.toString());
-                    this.sendInProgress.splice(
-                        this.sendInProgress.indexOf(device.deviceID),
-                        1
-                    );
-                }
+                    )
+                );
             }
+            Promise.allSettled(promises).then((results) => {
+                for (const result of results) {
+                    const { status } = result;
+                    if (status === "rejected") {
+                        this.log.warn("Message failed.");
+                        this.log.warn(result);
+                    }
+                }
+            });
         } catch (err) {
             this.log.error(
                 "Message " + (err.message?.mailID || "") + " threw exception."
@@ -1371,21 +1366,25 @@ export class Client extends EventEmitter {
                 throw new Error("Couldn't get devicelist for " + user.userID);
             }
             for (const device of deviceList) {
-                while (this.sendInProgress.includes(device.deviceID)) {
-                    await sleep(100);
-                }
-                this.sendInProgress.push(device.deviceID);
-                await this.sendMail(
-                    device.deviceID,
-                    XUtils.decodeUTF8(message),
-                    uuidToUint8(channelID),
-                    mailID,
-                    false
-                );
-                this.sendInProgress.splice(
-                    this.sendInProgress.indexOf(device.deviceID)
+                promises.push(
+                    this.sendMail(
+                        device.deviceID,
+                        XUtils.decodeUTF8(message),
+                        uuidToUint8(channelID),
+                        mailID,
+                        false
+                    )
                 );
             }
+            Promise.allSettled(promises).then((results) => {
+                for (const result of results) {
+                    const { status } = result;
+                    if (status === "rejected") {
+                        this.log.warn("Message failed.");
+                        this.log.warn(result);
+                    }
+                }
+            });
         }
     }
 
