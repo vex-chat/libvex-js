@@ -8,10 +8,10 @@ import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    // spire = new Spire({
-    //     dbType: "sqlite3mem",
-    //     logLevel: "warn",
-    // });
+    spire = new Spire({
+        dbType: "sqlite3mem",
+        logLevel: "warn",
+    });
 });
 
 describe("Perform client tests", () => {
