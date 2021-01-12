@@ -762,32 +762,6 @@ export class Client extends EventEmitter {
     }
 
     /**
-     * Initializes the keyring. This must be called before anything else.
-     */
-    public async init() {
-        if (this.hasInit) {
-            return new Error("You should only call init() once.");
-        }
-        this.hasInit = true;
-
-        await this.populateKeyRing();
-        this.on("message", async (message) => {
-            if (message.direction === "outgoing" && !message.forward) {
-                this.forward(message);
-            }
-
-            if (
-                message.direction === "incoming" &&
-                message.recipient === message.sender
-            ) {
-                return;
-            }
-            await this.database.saveMessage(message);
-        });
-        this.emit("ready");
-    }
-
-    /**
      * Manually closes the client. Emits the closed event on successful shutdown.
      */
     public async close(muteEvent = false): Promise<void> {
@@ -1190,6 +1164,32 @@ export class Client extends EventEmitter {
             };
             this.send(outMsg);
         });
+    }
+
+    /**
+     * Initializes the keyring. This must be called before anything else.
+     */
+    private async init() {
+        if (this.hasInit) {
+            return new Error("You should only call init() once.");
+        }
+        this.hasInit = true;
+
+        await this.populateKeyRing();
+        this.on("message", async (message) => {
+            if (message.direction === "outgoing" && !message.forward) {
+                this.forward(message);
+            }
+
+            if (
+                message.direction === "incoming" &&
+                message.recipient === message.sender
+            ) {
+                return;
+            }
+            await this.database.saveMessage(message);
+        });
+        this.emit("ready");
     }
 
     private async deleteChannel(channelID: string): Promise<void> {
