@@ -31,6 +31,8 @@ import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
+ax.defaults.withCredentials = true;
+
 // tslint:disable-next-line: no-var-requires
 
 /**
@@ -674,24 +676,25 @@ export class Client extends EventEmitter {
     private signKeys: nacl.SignKeyPair;
     private idKeys: nacl.BoxKeyPair | null;
 
-    private password: string | null = null;
-
     private xKeyRing?: XTypes.CRYPTO.IXKeyRing;
 
     private user?: XTypes.SQL.IUser;
     private device?: XTypes.SQL.IDevice;
 
     private isAlive: boolean = true;
-    private failCount: number = 0;
     private reading: boolean = false;
     private fetchingMail: boolean = false;
 
     private log: winston.Logger;
 
-    private pingInterval?: NodeJS.Timeout;
+    private pingInterval: ReturnType<typeof setTimeout> | null = null;
     private mailInterval?: NodeJS.Timeout;
 
     private manuallyClosing: boolean = false;
+
+    private username: string | null = null;
+    private password: string | null = null;
+    private token: string | null = null;
 
     private prefixes:
         | { HTTP: "http://"; WS: "ws://" }
@@ -808,60 +811,33 @@ export class Client extends EventEmitter {
         };
     }
 
-    /**
-     * Logs in to the server. You must have registered() before with your current
-     * private key.
-     */
     public async login(
         username: string,
         password: string
     ): Promise<Error | null> {
-        if (this.hasLoggedIn) {
-            return new Error("You should only call login() once.");
+        try {
+            const res = await ax.post(
+                this.prefixes.HTTP + this.host + "/auth",
+                { username, password }
+            );
+            const { user, token }: { user: IUser; token: string } = res.data;
+            this.user = user;
+            this.token = token;
+            this.username = username;
+            this.password = password;
+        } catch (err) {
+            console.error(err.toString());
+            return err;
         }
-        this.hasLoggedIn = true;
+        return null;
+    }
 
-        if (!this.user) {
-            try {
-                const [user, err] = await this.users.retrieve(username);
-                if (err) {
-                    this.log.error("Error fetching user.");
-                    throw err;
-                }
-                if (user) {
-                    this.user = user;
-                }
-                if (!user) {
-                    throw new Error("Username not found. Register first.");
-                }
-            } catch (err) {
-                return err;
-            }
-        }
+    /**
+     * Connects your device to the chat. You must have called login() first successfully.
+     */
+    public async connect(): Promise<Error | null> {
+        this.device = await this.retrieveOrCreateDevice();
 
-        if (!this.device) {
-            try {
-                const res = await ax.get(
-                    this.prefixes.HTTP +
-                        this.host +
-                        "/device/" +
-                        XUtils.encodeHex(this.signKeys.publicKey)
-                );
-                this.log.info(
-                    "response from get device " +
-                        JSON.stringify(res.data, null, 4)
-                );
-                const device: XTypes.SQL.IDevice = res.data;
-                this.device = device;
-            } catch (err) {
-                this.log.error(err);
-                return err;
-            }
-        }
-
-        this.log.info("Got device " + JSON.stringify(this.device, null, 4));
-
-        this.password = password;
         try {
             this.log.info("init socket");
             await this.initSocket();
@@ -929,18 +905,54 @@ export class Client extends EventEmitter {
         }
     }
 
-    public async registerDevice(
-        username: string,
-        password: string
-    ): Promise<XTypes.SQL.IDevice | null> {
+    public toString(): string {
+        return this.user?.username + "<" + this.device?.deviceID + ">";
+    }
+
+    private async retrieveOrCreateDevice(): Promise<XTypes.SQL.IDevice> {
+        let device: XTypes.SQL.IDevice;
+        try {
+            const res = await ax.get(
+                this.prefixes.HTTP +
+                    this.host +
+                    "/device/" +
+                    XUtils.encodeHex(this.signKeys.publicKey)
+            );
+            this.log.info(
+                "response from get device " + JSON.stringify(res.data, null, 4)
+            );
+            device = res.data;
+        } catch (err) {
+            if (err.response?.status === 404) {
+                const newDevice = await this.registerDevice();
+                if (newDevice) {
+                    device = newDevice;
+                } else {
+                    throw new Error("Error registering device.");
+                }
+            } else {
+                return err;
+            }
+        }
+        return device;
+    }
+
+    private async registerDevice(): Promise<XTypes.SQL.IDevice | null> {
         while (!this.xKeyRing) {
             await sleep(100);
         }
+
+        if (!this.username || !this.password) {
+            throw new Error("login() must be called before connect()");
+        }
+
         const token = await this.getToken("device");
 
-        const [userDetails, err] = await this.retrieveUserDBEntry(username);
+        const [userDetails, err] = await this.retrieveUserDBEntry(
+            this.username
+        );
         if (!userDetails) {
-            throw new Error("Username not found " + username);
+            throw new Error("Username not found " + this.username);
         }
         if (err) {
             throw err;
@@ -950,9 +962,10 @@ export class Client extends EventEmitter {
             throw new Error("Couldn't fetch token.");
         }
 
-        if (!this.xKeyRing) {
-            throw new Error("Keyring not initialized, call init() first.");
+        if (!this.password) {
+            throw new Error("login() must be called before connect()");
         }
+
         const signKey = this.getKeys().public;
         const signed = XUtils.encodeHex(
             nacl.sign(
@@ -968,7 +981,7 @@ export class Client extends EventEmitter {
             preKey: XUtils.encodeHex(this.xKeyRing.preKeys.keyPair.publicKey),
             preKeySignature: XUtils.encodeHex(this.xKeyRing.preKeys.signature),
             preKeyIndex: this.xKeyRing.preKeys.index!,
-            password,
+            password: this.password,
             deviceName: `${os.platform()}-${os.release()}`,
         };
 
@@ -985,10 +998,6 @@ export class Client extends EventEmitter {
         } catch (err) {
             throw err;
         }
-    }
-
-    public toString(): string {
-        return this.user?.username + "<" + this.device?.deviceID + ">";
     }
 
     private async getToken(
@@ -2277,7 +2286,14 @@ export class Client extends EventEmitter {
 
     private initSocket() {
         try {
-            this.conn = new WebSocket(this.prefixes.WS + this.host + "/socket");
+            if (!this.token) {
+                throw new Error("No token found, did you call login()?");
+            }
+
+            this.conn = new WebSocket(
+                this.prefixes.WS + this.host + "/socket",
+                { headers: { Cookie: "auth=" + this.token } }
+            );
             this.conn.on("open", () => {
                 this.log.info("Connection opened.");
                 this.pingInterval = setInterval(this.ping.bind(this), 5000);
@@ -2316,6 +2332,10 @@ export class Client extends EventEmitter {
                         this.log.info("Received challenge from server.");
                         this.respond(msg as XTypes.WS.IChallMsg);
                         break;
+                    case "unauthorized":
+                        throw new Error(
+                            "Received unauthorized message from server."
+                        );
                     case "authorized":
                         this.log.info(
                             "Authenticated with userID " + this.user!.userID
@@ -2539,8 +2559,6 @@ export class Client extends EventEmitter {
             transmissionID: msg.transmissionID,
             type: "response",
             signed: nacl.sign(msg.challenge, this.signKeys.secretKey),
-            userID: this.user!.userID,
-            password: this.password || "",
         };
         this.send(response);
     }
@@ -2564,7 +2582,6 @@ export class Client extends EventEmitter {
     private async ping() {
         if (!this.isAlive) {
             this.log.warn("Ping failed.");
-            this.failCount++;
         }
         this.setAlive(false);
         this.send({ transmissionID: uuid.v4(), type: "ping" });

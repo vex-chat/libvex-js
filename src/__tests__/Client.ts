@@ -8,10 +8,10 @@ import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 let spire: Spire | null = null;
 
 beforeAll(() => {
-    spire = new Spire({
-        dbType: "sqlite3mem",
-        logLevel: "warn",
-    });
+    // spire = new Spire({
+    //     dbType: "sqlite3mem",
+    //     logLevel: "warn",
+    // });
 });
 
 describe("Perform client tests", () => {
@@ -21,8 +21,8 @@ describe("Perform client tests", () => {
         inMemoryDb: true,
         logLevel: "error",
         dbLogLevel: "error",
-        unsafeHttp: true,
-        host: "localhost:16777",
+        // unsafeHttp: true,
+        // host: "localhost:16777",
     };
 
     const clientA = new Client(SK, clientOptions);
@@ -48,12 +48,16 @@ describe("Perform client tests", () => {
         clientA.init();
     });
 
-    test("Login", async (done) => {
-        login(clientA, username, password);
+    test("Login", () => {
+        return login(clientA, username, password);
+    });
 
-        clientA.on("authed", async () => {
+    test("Connect", async (done) => {
+        clientA.on("authed", () => {
             done();
         });
+
+        await clientA.connect();
     });
 
     // test("Multiple devices", async (done) => {
@@ -343,7 +347,8 @@ afterAll(async (done) => {
 const login = async (clientA: Client, username: string, password: string) => {
     const err = await clientA.login(username, password);
     if (err) {
+        console.error(JSON.stringify(err));
         await clientA.close();
-        throw new Error(err.message);
+        throw new Error(err.toString());
     }
 };
