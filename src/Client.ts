@@ -676,8 +676,6 @@ export class Client extends EventEmitter {
      */
     public hasLoggedIn: boolean = false;
 
-    private wsOpen = false;
-
     private database: IStorage;
     private dbPath: string;
     private conn: WebSocket;
@@ -820,17 +818,10 @@ export class Client extends EventEmitter {
     /**
      * Connects your device to the chat. You must have called login() first successfully.
      */
-    public async connect(): Promise<Error | null> {
+    public async connect(): Promise<void> {
         this.device = await this.retrieveOrCreateDevice();
-
-        try {
-            this.log.info("init socket");
-            await this.initSocket();
-        } catch (err) {
-            return err;
-        }
-
-        return null;
+        this.log.info("init socket");
+        await this.initSocket();
     }
 
     /**
@@ -908,7 +899,9 @@ export class Client extends EventEmitter {
             );
             device = res.data;
         } catch (err) {
+            this.log.error(err.toString());
             if (err.response?.status === 404) {
+                this.log.info("Attempting to register device.");
                 const newDevice = await this.registerDevice();
                 if (newDevice) {
                     device = newDevice;
@@ -919,6 +912,7 @@ export class Client extends EventEmitter {
                 return err;
             }
         }
+        this.log.info("Created device " + JSON.stringify(device));
         return device;
     }
 
@@ -2308,7 +2302,6 @@ export class Client extends EventEmitter {
             this.conn.on("open", () => {
                 this.log.info("Connection opened.");
                 this.pingInterval = setInterval(this.ping.bind(this), 5000);
-                this.wsOpen = true;
             });
 
             this.conn.on("close", () => {
@@ -2401,7 +2394,7 @@ export class Client extends EventEmitter {
             await sleep(500);
         }
         this.fetchingMail = true;
-        this.log.info("Fetching mail for " + this.getDevice().deviceID);
+        this.log.info("fetching mail for device " + this.getDevice().deviceID);
         return new Promise((res, rej) => {
             const transmissionID = uuid.v4();
             let mailReceived = 0;
@@ -2450,7 +2443,7 @@ export class Client extends EventEmitter {
     a derived SK */
     private async send(msg: any, header?: Uint8Array) {
         let i = 0;
-        while (!this.wsOpen) {
+        while (this.conn.readyState !== 1) {
             await sleep(i);
             i *= 2;
         }
