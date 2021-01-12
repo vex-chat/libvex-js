@@ -261,12 +261,12 @@ export declare interface Client {
     on(event: "ready", callback: () => void): this;
 
     /**
-     * This is emitted when you are logged in succesfully. You can now call the rest of the methods in the api.
+     * This is emitted when you are connected to the chat.
      *
      * Example:
      *
      * ```ts
-     *   client.on("authed", (user) => {
+     *   client.on("connected", (user) => {
      *       // do something
      *   });
      * ```
@@ -274,7 +274,7 @@ export declare interface Client {
      * @event
      */
     // tslint:disable-next-line: unified-signatures
-    on(event: "authed", callback: () => void): this;
+    on(event: "connected", callback: () => void): this;
 
     /**
      * This is emitted for every sent and received message.
@@ -414,6 +414,17 @@ export class Client extends EventEmitter {
     public static loadKeyFile = XUtils.loadKeyFile;
 
     public static saveKeyFile = XUtils.saveKeyFile;
+
+    public static create = async (
+        privateKey?: string,
+        options?: IClientOptions,
+        storage?: IStorage
+    ): Promise<Client> => {
+        const client = new Client(privateKey, options, storage);
+        await client.init();
+        return client;
+    };
+
     /**
      * Generates an ed25519 secret key as a hex string.
      *
@@ -700,7 +711,7 @@ export class Client extends EventEmitter {
         | { HTTP: "http://"; WS: "ws://" }
         | { HTTP: "https://"; WS: "wss://" };
 
-    constructor(
+    private constructor(
         privateKey?: string,
         options?: IClientOptions,
         storage?: IStorage
@@ -2340,7 +2351,7 @@ export class Client extends EventEmitter {
                         this.log.info(
                             "Authenticated with userID " + this.user!.userID
                         );
-                        this.emit("authed");
+                        this.emit("connected");
                         this.postAuth();
                         break;
                     case "success":
