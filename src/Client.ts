@@ -1096,6 +1096,12 @@ export class Client extends EventEmitter {
         key: string
     ): Promise<XTypes.HTTP.IFileResponse | null> {
         try {
+            const detailsRes = await ax.get(
+                this.prefixes.HTTP + this.host + "/file/" + fileID + "/details"
+            );
+            const details = detailsRes.data;
+            console.log(details);
+
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/file/" + fileID,
                 {
@@ -1119,7 +1125,7 @@ export class Client extends EventEmitter {
 
             const decrypted = nacl.secretbox.open(
                 Uint8Array.from(Buffer.from(resp.data)),
-                XUtils.decodeHex(resp.details.nonce),
+                XUtils.decodeHex(details.nonce),
                 XUtils.decodeHex(key)
             );
 
