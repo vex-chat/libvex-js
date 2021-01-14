@@ -270,7 +270,7 @@ describe("Perform client tests", () => {
         const { data, details } = fetchedFileRes;
 
         expect(_.isEqual(createdFile, data)).toBe(true);
-        expect(_.isEqual(createdDetails, details)).toBe(true);
+        expect(_.isEqual(createdDetails.nonce, details.nonce)).toBe(true);
 
         done();
     });

@@ -1100,7 +1100,6 @@ export class Client extends EventEmitter {
                 this.prefixes.HTTP + this.host + "/file/" + fileID + "/details"
             );
             const details = detailsRes.data;
-            console.log(details);
 
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/file/" + fileID,
@@ -1119,23 +1118,26 @@ export class Client extends EventEmitter {
                         };
                         this.emit("fileProgress", progress);
                     },
+                    responseType: "arraybuffer",
                 }
             );
-            const resp: XTypes.HTTP.IFileResponse = res.data;
 
             const decrypted = nacl.secretbox.open(
-                Uint8Array.from(Buffer.from(resp.data)),
+                Uint8Array.from(Buffer.from(res.data)),
                 XUtils.decodeHex(details.nonce),
                 XUtils.decodeHex(key)
             );
 
             if (decrypted) {
-                resp.data = Buffer.from(decrypted);
+                const resp: XTypes.HTTP.IFileResponse = {
+                    details,
+                    data: Buffer.from(decrypted),
+                };
                 return resp;
             }
             throw new Error("Decryption failed.");
         } catch (err) {
-            this.log.warn(err.toString());
+            this.log.error(err.toString());
             return null;
         }
     }
