@@ -692,6 +692,7 @@ export class Client extends EventEmitter {
 
     private deviceLists: Record<string, IDevice[]> = {};
     private userRecords: Record<string, IUser> = {};
+    private deviceRecords: Record<string, IDevice> = {};
 
     private isAlive: boolean = true;
     private reading: boolean = false;
@@ -1619,15 +1620,23 @@ export class Client extends EventEmitter {
     private async getDeviceByID(
         deviceID: string
     ): Promise<XTypes.SQL.IDevice | null> {
+        if (this.deviceRecords[deviceID]) {
+            this.log.info("Found device in local cache.");
+            return this.deviceRecords[deviceID];
+        }
+
         const device = await this.database.getDevice(deviceID);
         if (device) {
-            this.log.error("Found device in local cache.");
+            this.log.info("Found device in local db.");
+            this.deviceRecords[deviceID] = device;
             return device;
         }
         try {
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/device/" + deviceID
             );
+            this.log.info("Retrieved device from server.");
+            this.deviceRecords[deviceID] = res.data;
             await this.database.saveDevice(res.data);
             return res.data;
         } catch (err) {
@@ -1643,6 +1652,11 @@ export class Client extends EventEmitter {
                 this.prefixes.HTTP + this.host + "/deviceList",
                 userIDs
             );
+            const devices: XTypes.SQL.IDevice[] = res.data;
+            for (const device of devices) {
+                this.deviceRecords[device.deviceID] = device;
+            }
+
             return res.data;
         } catch (err) {
             return [];
@@ -1659,7 +1673,13 @@ export class Client extends EventEmitter {
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/user/" + userID + "/devices"
             );
-            this.deviceLists[userID] = res.data;
+            const devices: XTypes.SQL.IDevice[] = res.data;
+            this.deviceLists[userID] = devices;
+
+            for (const device of devices) {
+                this.deviceRecords[device.deviceID] = device;
+            }
+
             return res.data;
         } catch (err) {
             return null;
