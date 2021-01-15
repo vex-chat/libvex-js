@@ -1376,38 +1376,30 @@ export class Client extends EventEmitter {
         this.log.info("Sending to userlist " + JSON.stringify(userList));
         const mailID = uuid.v4();
         const promises: Array<Promise<void>> = [];
-        for (const user of userList) {
-            const deviceList = await this.getUserDeviceList(user.userID);
-            this.log.info(
-                "user " +
-                    user.username +
-                    " devicelist" +
-                    JSON.stringify(deviceList)
+
+        const userIDs = [...new Set(userList.map((user) => user.userID))];
+        const devices = await this.getMultiUserDeviceList(userIDs);
+
+        for (const device of devices) {
+            promises.push(
+                this.sendMail(
+                    device.deviceID,
+                    XUtils.decodeUTF8(message),
+                    uuidToUint8(channelID),
+                    mailID,
+                    false
+                )
             );
-            if (!deviceList) {
-                throw new Error("Couldn't get devicelist for " + user.userID);
-            }
-            for (const device of deviceList) {
-                promises.push(
-                    this.sendMail(
-                        device.deviceID,
-                        XUtils.decodeUTF8(message),
-                        uuidToUint8(channelID),
-                        mailID,
-                        false
-                    )
-                );
-            }
-            Promise.allSettled(promises).then((results) => {
-                for (const result of results) {
-                    const { status } = result;
-                    if (status === "rejected") {
-                        this.log.warn("Message failed.");
-                        this.log.warn(result);
-                    }
-                }
-            });
         }
+        Promise.allSettled(promises).then((results) => {
+            for (const result of results) {
+                const { status } = result;
+                if (status === "rejected") {
+                    this.log.warn("Message failed.");
+                    this.log.warn(result);
+                }
+            }
+        });
     }
 
     private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
@@ -1618,6 +1610,20 @@ export class Client extends EventEmitter {
             return res.data;
         } catch (err) {
             return null;
+        }
+    }
+
+    private async getMultiUserDeviceList(
+        userIDs: string[]
+    ): Promise<XTypes.SQL.IDevice[]> {
+        try {
+            const res = await ax.post(
+                this.prefixes.HTTP + this.host + "/deviceList",
+                userIDs
+            );
+            return res.data;
+        } catch (err) {
+            return [];
         }
     }
 
