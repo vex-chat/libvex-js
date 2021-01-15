@@ -690,7 +690,8 @@ export class Client extends EventEmitter {
     private user?: XTypes.SQL.IUser;
     private device?: XTypes.SQL.IDevice;
 
-    private myDeviceList: XTypes.SQL.IDevice[] = [];
+    private deviceLists: Record<string, IDevice[]> = {};
+    private userRecords: Record<string, IUser> = {};
 
     private isAlive: boolean = true;
     private reading: boolean = false;
@@ -1384,10 +1385,8 @@ export class Client extends EventEmitter {
         message: string
     ): Promise<void> {
         const userList = await this.getUserList(channelID);
-        const userRecord: Record<string, IUser> = {};
-
         for (const user of userList) {
-            userRecord[user.userID] = user;
+            this.userRecords[user.userID] = user;
         }
 
         const mailID = uuid.v4();
@@ -1400,7 +1399,7 @@ export class Client extends EventEmitter {
             promises.push(
                 this.sendMail(
                     device,
-                    userRecord[device.owner],
+                    this.userRecords[device.owner],
                     XUtils.decodeUTF8(message),
                     uuidToUint8(channelID),
                     mailID,
@@ -1447,22 +1446,15 @@ export class Client extends EventEmitter {
 
     private async forward(message: IMessage) {
         const copy = { ...message };
-
         const msgBytes = Uint8Array.from(msgpack.encode(copy));
 
-        let retries = 0;
-        if (this.myDeviceList.length === 0) {
-            if (retries > 3) {
-                throw new Error("Couldn't retrieve own device list.");
-            }
+        const devices = await this.getUserDeviceList(this.getUser().userID);
 
-            const devices = await this.getUserDeviceList(this.getUser().userID);
-            if (devices) {
-                this.myDeviceList = devices;
-            }
-            retries++;
+        if (!devices) {
+            throw new Error("Couldn't get own devices.");
         }
-        for (const device of this.myDeviceList) {
+
+        for (const device of devices) {
             if (device.deviceID !== this.getDevice().deviceID) {
                 await this.sendMail(
                     device,
@@ -1660,10 +1652,14 @@ export class Client extends EventEmitter {
     private async getUserDeviceList(
         userID: string
     ): Promise<XTypes.SQL.IDevice[] | null> {
+        if (this.deviceLists[userID]) {
+            return this.deviceLists[userID];
+        }
         try {
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/user/" + userID + "/devices"
             );
+            this.deviceLists[userID] = res.data;
             return res.data;
         } catch (err) {
             return null;
@@ -1754,10 +1750,15 @@ export class Client extends EventEmitter {
     private async retrieveUserDBEntry(
         userIdentifier: string
     ): Promise<[XTypes.SQL.IUser | null, AxiosError | null]> {
+        if (this.userRecords[userIdentifier]) {
+            return [this.userRecords[userIdentifier], null];
+        }
+
         try {
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/user/" + userIdentifier
             );
+            this.userRecords[userIdentifier] = res.data;
             return [res.data, null];
         } catch (err) {
             return [null, err];

@@ -231,6 +231,7 @@ describe("Perform client tests", () => {
             received.includes("initial") && received.includes("subsequent");
 
         const onMessage = (message: IMessage) => {
+            console.log(message);
             if (!message.decrypted) {
                 throw new Error("Message failed to decrypt.");
             }
