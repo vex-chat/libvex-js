@@ -326,20 +326,6 @@ describe("Perform client tests", () => {
     });
 });
 
-afterAll(async (done) => {
-    const createdDirs = ["files", "avatars"];
-    for (const dir of createdDirs) {
-        fs.rmdirSync(dir, { recursive: true });
-    }
-    try {
-        await spire?.close();
-        done();
-    } catch (err) {
-        console.warn(err);
-        done();
-    }
-});
-
 /**
  * @hidden
  */
