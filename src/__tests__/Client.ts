@@ -5,7 +5,7 @@ import fs from "fs";
 import _ from "lodash";
 import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 
-let spire: Spire | null = null;
+const spire: Spire | null = null;
 let clientA: Client | null = null;
 
 beforeAll(async () => {

@@ -690,6 +690,8 @@ export class Client extends EventEmitter {
     private user?: XTypes.SQL.IUser;
     private device?: XTypes.SQL.IDevice;
 
+    private myDeviceList: XTypes.SQL.IDevice[] = [];
+
     private isAlive: boolean = true;
     private reading: boolean = false;
     private fetchingMail: boolean = false;
@@ -1323,6 +1325,14 @@ export class Client extends EventEmitter {
 
     private async sendMessage(userID: string, message: string): Promise<void> {
         try {
+            const [userEntry, err] = await this.retrieveUserDBEntry(userID);
+            if (err) {
+                throw err;
+            }
+            if (!userEntry) {
+                throw new Error("Couldn't get user entry.");
+            }
+
             let deviceList = await this.getUserDeviceList(userID);
             if (!deviceList) {
                 let retries = 0;
@@ -1340,6 +1350,7 @@ export class Client extends EventEmitter {
                 promises.push(
                     this.sendMail(
                         device,
+                        userEntry,
                         XUtils.decodeUTF8(message),
                         null,
                         mailID,
@@ -1373,6 +1384,12 @@ export class Client extends EventEmitter {
         message: string
     ): Promise<void> {
         const userList = await this.getUserList(channelID);
+        const userRecord: Record<string, IUser> = {};
+
+        for (const user of userList) {
+            userRecord[user.userID] = user;
+        }
+
         const mailID = uuid.v4();
         const promises: Array<Promise<void>> = [];
 
@@ -1383,6 +1400,7 @@ export class Client extends EventEmitter {
             promises.push(
                 this.sendMail(
                     device,
+                    userRecord[device.owner],
                     XUtils.decodeUTF8(message),
                     uuidToUint8(channelID),
                     mailID,
@@ -1432,18 +1450,28 @@ export class Client extends EventEmitter {
 
         const msgBytes = Uint8Array.from(msgpack.encode(copy));
 
-        let myDevices = await this.getUserDeviceList(this.getUser().userID);
         let retries = 0;
-        while (!myDevices) {
+        if (this.myDeviceList.length === 0) {
             if (retries > 3) {
-                throw new Error("Couldn't get own device list.");
+                throw new Error("Couldn't retrieve own device list.");
             }
-            myDevices = await this.getUserDeviceList(this.getUser().userID);
+
+            const devices = await this.getUserDeviceList(this.getUser().userID);
+            if (devices) {
+                this.myDeviceList = devices;
+            }
             retries++;
         }
-        for (const device of myDevices) {
+        for (const device of this.myDeviceList) {
             if (device.deviceID !== this.getDevice().deviceID) {
-                await this.sendMail(device, msgBytes, null, copy.mailID, true);
+                await this.sendMail(
+                    device,
+                    this.getUser(),
+                    msgBytes,
+                    null,
+                    copy.mailID,
+                    true
+                );
             }
         }
     }
@@ -1451,6 +1479,7 @@ export class Client extends EventEmitter {
     /* Sends encrypted mail to a user. */
     private async sendMail(
         device: IDevice,
+        user: IUser,
         msg: Uint8Array,
         group: Uint8Array | null,
         mailID: string | null,
@@ -1464,7 +1493,7 @@ export class Client extends EventEmitter {
 
         if (!session) {
             this.log.info("Creating new session for " + device.deviceID);
-            await this.createSession(device, msg, group, mailID, forward);
+            await this.createSession(device, user, msg, group, mailID, forward);
             return;
         } else {
             this.log.info(JSON.stringify(session));
@@ -1600,6 +1629,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.SQL.IDevice | null> {
         const device = await this.database.getDevice(deviceID);
         if (device) {
+            this.log.error("Found device in local cache.");
             return device;
         }
         try {
@@ -1751,6 +1781,7 @@ export class Client extends EventEmitter {
 
     private async createSession(
         device: IDevice,
+        user: IUser,
         message: Uint8Array,
         group: Uint8Array | null,
         /* this is passed through if the first message is 
@@ -1775,20 +1806,6 @@ export class Client extends EventEmitter {
                 " for " +
                 device.deviceID
         );
-
-        let [user, userErr] = await this.retrieveUserDBEntry(device.owner);
-
-        if (!user || userErr) {
-            let failed = 1;
-            // retry a couple times
-            while (!user) {
-                [user, userErr] = await this.retrieveUserDBEntry(device.owner);
-                failed++;
-                if (failed > 3) {
-                    throw new Error("Couldn't retrieve user");
-                }
-            }
-        }
 
         // my keys
         const IK_A = this.xKeyRing!.identityKeys.secretKey;
