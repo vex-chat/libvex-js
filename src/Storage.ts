@@ -412,6 +412,36 @@ export class Storage extends EventEmitter implements IStorage {
         }
     }
 
+    public async getDevice(deviceID: string) {
+        const rows = await this.db
+            .from("devices")
+            .select()
+            .where({ deviceID });
+        if (rows.length === 0) {
+            return null;
+        }
+        return rows[0];
+    }
+
+    public async saveDevice(device: XTypes.SQL.IDevice) {
+        if (this.closing) {
+            this.log.warn(
+                "Database is closing, saveDevice() will not complete."
+            );
+            return;
+        }
+        try {
+            await this.db("devices").insert(device);
+        } catch (err) {
+            if (err.errno === 19) {
+                this.log.warn("Attempted to insert duplicate deviceID");
+                return;
+            } else {
+                throw err;
+            }
+        }
+    }
+
     public async init() {
         this.log.info("Initializing database tables.");
         try {
@@ -431,6 +461,17 @@ export class Storage extends EventEmitter implements IStorage {
                     table.string("readerID");
                 });
             }
+
+            if (!(await this.db.schema.hasTable("devices"))) {
+                await this.db.schema.createTable("devices", (table) => {
+                    table.string("deviceID").primary();
+                    table.string("owner").index();
+                    table.string("signKey");
+                    table.string("name");
+                    table.string("lastLogin");
+                });
+            }
+
             if (!(await this.db.schema.hasTable("sessions"))) {
                 await this.db.schema.createTable("sessions", (table) => {
                     table.string("sessionID").primary();

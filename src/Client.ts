@@ -1339,7 +1339,7 @@ export class Client extends EventEmitter {
             for (const device of deviceList) {
                 promises.push(
                     this.sendMail(
-                        device.deviceID,
+                        device,
                         XUtils.decodeUTF8(message),
                         null,
                         mailID,
@@ -1373,7 +1373,6 @@ export class Client extends EventEmitter {
         message: string
     ): Promise<void> {
         const userList = await this.getUserList(channelID);
-        this.log.info("Sending to userlist " + JSON.stringify(userList));
         const mailID = uuid.v4();
         const promises: Array<Promise<void>> = [];
 
@@ -1383,7 +1382,7 @@ export class Client extends EventEmitter {
         for (const device of devices) {
             promises.push(
                 this.sendMail(
-                    device.deviceID,
+                    device,
                     XUtils.decodeUTF8(message),
                     uuidToUint8(channelID),
                     mailID,
@@ -1444,36 +1443,32 @@ export class Client extends EventEmitter {
         }
         for (const device of myDevices) {
             if (device.deviceID !== this.getDevice().deviceID) {
-                await this.sendMail(
-                    device.deviceID,
-                    msgBytes,
-                    null,
-                    copy.mailID,
-                    true
-                );
+                await this.sendMail(device, msgBytes, null, copy.mailID, true);
             }
         }
     }
 
     /* Sends encrypted mail to a user. */
     private async sendMail(
-        deviceID: string,
+        device: IDevice,
         msg: Uint8Array,
         group: Uint8Array | null,
         mailID: string | null,
         forward: boolean
     ): Promise<void> {
-        this.log.info("Sending mail to " + deviceID);
+        this.log.info("Sending mail to " + device.deviceID);
 
-        const session = await this.database.getSessionByDeviceID(deviceID);
+        const session = await this.database.getSessionByDeviceID(
+            device.deviceID
+        );
 
         if (!session) {
-            this.log.info("Creating new session for " + deviceID);
-            await this.createSession(deviceID, msg, group, mailID, forward);
+            this.log.info("Creating new session for " + device.deviceID);
+            await this.createSession(device, msg, group, mailID, forward);
             return;
         } else {
             this.log.info(JSON.stringify(session));
-            this.log.info("Found existing session for " + deviceID);
+            this.log.info("Found existing session for " + device.deviceID);
         }
 
         const nonce = xMakeNonce();
@@ -1483,7 +1478,7 @@ export class Client extends EventEmitter {
         const mail: XTypes.WS.IMail = {
             mailType: XTypes.WS.MailType.subsequent,
             mailID: mailID || uuid.v4(),
-            recipient: deviceID,
+            recipient: device.deviceID,
             cipher,
             nonce,
             extra,
@@ -1603,10 +1598,15 @@ export class Client extends EventEmitter {
     private async getDeviceByID(
         deviceID: string
     ): Promise<XTypes.SQL.IDevice | null> {
+        const device = await this.database.getDevice(deviceID);
+        if (device) {
+            return device;
+        }
         try {
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/device/" + deviceID
             );
+            await this.database.saveDevice(res.data);
             return res.data;
         } catch (err) {
             return null;
@@ -1750,7 +1750,7 @@ export class Client extends EventEmitter {
     }
 
     private async createSession(
-        deviceID: string,
+        device: IDevice,
         message: Uint8Array,
         group: Uint8Array | null,
         /* this is passed through if the first message is 
@@ -1762,7 +1762,7 @@ export class Client extends EventEmitter {
 
         this.log.info("Requesting key bundle.");
         try {
-            keyBundle = await this.retrieveKeyBundle(deviceID);
+            keyBundle = await this.retrieveKeyBundle(device.deviceID);
         } catch (err) {
             this.log.warn("Couldn't get key bundle:", err);
             return;
@@ -1773,24 +1773,16 @@ export class Client extends EventEmitter {
                 " retrieved keybundle #" +
                 keyBundle.otk?.index.toString() +
                 " for " +
-                deviceID
+                device.deviceID
         );
 
-        const deviceDetails = await this.getDeviceByID(deviceID);
-        if (!deviceDetails) {
-            throw new Error("Couldn't get device details.");
-        }
-        let [user, userErr] = await this.retrieveUserDBEntry(
-            deviceDetails.owner
-        );
+        let [user, userErr] = await this.retrieveUserDBEntry(device.owner);
 
         if (!user || userErr) {
             let failed = 1;
             // retry a couple times
             while (!user) {
-                [user, userErr] = await this.retrieveUserDBEntry(
-                    deviceDetails.owner
-                );
+                [user, userErr] = await this.retrieveUserDBEntry(device.owner);
                 failed++;
                 if (failed > 3) {
                     throw new Error("Couldn't retrieve user");
@@ -1830,7 +1822,7 @@ export class Client extends EventEmitter {
         this.log.info(
             this.toString() +
                 " Obtained PK for " +
-                deviceID +
+                device.deviceID +
                 " " +
                 XUtils.encodeHex(PK)
         );
@@ -1858,7 +1850,7 @@ export class Client extends EventEmitter {
         const mail: XTypes.WS.IMail = {
             mailType: XTypes.WS.MailType.initial,
             mailID: mailID || uuid.v4(),
-            recipient: deviceID,
+            recipient: device.deviceID,
             cipher,
             nonce,
             extra,
@@ -1894,7 +1886,7 @@ export class Client extends EventEmitter {
             publicKey: XUtils.encodeHex(PK),
             lastUsed: new Date(Date.now()),
             fingerprint: XUtils.encodeHex(AD),
-            deviceID,
+            deviceID: device.deviceID,
         };
 
         await this.database.saveSession(sessionEntry);

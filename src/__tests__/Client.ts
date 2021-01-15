@@ -15,8 +15,8 @@ beforeAll(async () => {
         inMemoryDb: true,
         logLevel: "error",
         dbLogLevel: "error",
-        unsafeHttp: true,
-        host: "localhost:16777",
+        // unsafeHttp: true,
+        // host: "localhost:16777",
     };
     clientA = await Client.create(SK, clientOptions);
     if (!clientA) {

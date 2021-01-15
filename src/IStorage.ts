@@ -118,7 +118,11 @@ export interface IStorage extends EventEmitter {
      * Any initializing you may need to do before the class is used.
      * For example, you could initialize the database schema here.
      */
+
     init: () => Promise<void>;
+    getDevice: (deviceID: string) => Promise<XTypes.SQL.IDevice | null>;
+    saveDevice: (device: XTypes.SQL.IDevice) => Promise<void>;
+
     /**
      * Emit this event when init has complete.
      *
