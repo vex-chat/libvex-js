@@ -151,6 +151,14 @@ interface IPermissions {
 /**
  * @ignore
  */
+interface IInvites {
+    redeem: (inviteID: string) => Promise<void>;
+    create: (serverID: string, duration: string) => Promise<XTypes.SQL.IInvite>;
+}
+
+/**
+ * @ignore
+ */
 interface IChannels {
     retrieve: (serverID: string) => Promise<XTypes.SQL.IChannel[]>;
     retrieveByID: (channelID: string) => Promise<XTypes.SQL.IChannel | null>;
@@ -547,6 +555,14 @@ export class Client extends EventEmitter {
     };
 
     /**
+     * The IInvites interface contains methods for dealing with invites.
+     */
+    public invites: IInvites = {
+        create: this.createInvite.bind(this),
+        redeem: this.redeemInvite.bind(this),
+    };
+
+    /**
      * The IMessages interface contains methods for dealing with messages.
      */
     public messages: IMessages = {
@@ -889,6 +905,38 @@ export class Client extends EventEmitter {
         return this.user?.username + "<" + this.device?.deviceID + ">";
     }
 
+    public async redeemInvite(inviteID: string) {
+        await ax.patch(this.prefixes.HTTP + this.host + "/invite/" + inviteID);
+    }
+
+    public async createInvite(serverID: string, duration: string) {
+        const token = await this.getToken("invite");
+
+        if (!token) {
+            throw new Error("Couldn't fetch token!");
+        }
+
+        const signed = XUtils.encodeHex(
+            nacl.sign(
+                Uint8Array.from(uuid.parse(token.key)),
+                this.signKeys.secretKey
+            )
+        );
+
+        const payload = {
+            serverID,
+            signed,
+            duration,
+        };
+
+        const res = await ax.post(
+            this.prefixes.HTTP + this.host + "/invite/" + serverID,
+            payload
+        );
+
+        return res.data;
+    }
+
     private async retrieveOrCreateDevice(): Promise<XTypes.SQL.IDevice> {
         let device: XTypes.SQL.IDevice;
         try {
@@ -984,7 +1032,7 @@ export class Client extends EventEmitter {
     }
 
     private async getToken(
-        type: "register" | "file" | "avatar" | "device"
+        type: "register" | "file" | "avatar" | "device" | "invite"
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
             const res = await ax.get(
@@ -2230,6 +2278,16 @@ export class Client extends EventEmitter {
                     );
                     if (!userEntry) {
                         throw new Error("Couldn't get user entry.");
+                    }
+
+                    this.userRecords[userEntry.userID] = userEntry;
+                    this.deviceRecords[deviceEntry.deviceID] = deviceEntry;
+
+                    const newDeviceList = await this.getUserDeviceList(
+                        userEntry.userID
+                    );
+                    if (newDeviceList) {
+                        this.deviceLists[userEntry.userID] = newDeviceList;
                     }
 
                     // save session
