@@ -1,11 +1,9 @@
 import { sleep } from "@extrahash/sleep";
 // tslint:disable-next-line: no-implicit-dependencies
-import { Spire } from "@vex-chat/spire";
 import fs from "fs";
 import _ from "lodash";
 import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 
-const spire: Spire | null = null;
 let clientA: Client | null = null;
 
 beforeAll(async () => {
@@ -15,18 +13,11 @@ beforeAll(async () => {
         inMemoryDb: true,
         logLevel: "warn",
         dbLogLevel: "warn",
-        unsafeHttp: true,
-        host: "localhost:16777",
     };
     clientA = await Client.create(SK, clientOptions);
     if (!clientA) {
         throw new Error("Couldn't create client.");
     }
-
-    // spire = new Spire({
-    //     dbType: "sqlite3mem",
-    //     logLevel: "warn",
-    // });
 });
 
 describe("Perform client tests", () => {
