@@ -194,21 +194,6 @@ describe("Perform client tests", () => {
 
         clientA!.on("message", onGroupMessage);
 
-        const userIDs: string[] = [
-            /*
-            "71ab7ca2-ad89-4de4-90d3-455b32c24fbd",
-            "acbc01dc-0207-40f8-b7ca-cded77a93bdf",
-            "17e059c2-37fc-471e-9f4c-6fb0027263da",
-         */
-        ];
-        for (const userID of userIDs) {
-            await clientA!.permissions.create({
-                userID,
-                resourceType: "server",
-                resourceID: createdServer!.serverID,
-            });
-        }
-
         await clientA!.messages.group(createdChannel!.channelID, "initial");
         await sleep(500);
         await clientA!.messages.group(createdChannel!.channelID, "subsequent");
