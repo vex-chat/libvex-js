@@ -162,6 +162,11 @@ describe("Perform client tests", () => {
             "1h"
         );
         await clientA?.invites.redeem(invite.inviteID);
+
+        const serverInviteLIst = await clientA?.invites.retrieve(
+            createdServer.serverID
+        );
+        console.log(serverInviteLIst);
         done();
     });
 

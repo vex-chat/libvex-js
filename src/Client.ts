@@ -154,6 +154,7 @@ interface IPermissions {
 interface IInvites {
     redeem: (inviteID: string) => Promise<void>;
     create: (serverID: string, duration: string) => Promise<XTypes.SQL.IInvite>;
+    retrieve: (serverID: string) => Promise<XTypes.SQL.IInvite[]>;
 }
 
 /**
@@ -560,6 +561,7 @@ export class Client extends EventEmitter {
     public invites: IInvites = {
         create: this.createInvite.bind(this),
         redeem: this.redeemInvite.bind(this),
+        retrieve: this.retrieveInvites.bind(this),
     };
 
     /**
@@ -907,6 +909,16 @@ export class Client extends EventEmitter {
 
     public async redeemInvite(inviteID: string) {
         await ax.patch(this.prefixes.HTTP + this.host + "/invite/" + inviteID);
+    }
+
+    public async retrieveInvites(
+        serverID: string
+    ): Promise<XTypes.SQL.IInvite[]> {
+        const res = await ax.get(
+            this.prefixes.HTTP + this.host + "/invite/" + serverID
+        );
+
+        return res.data;
     }
 
     public async createInvite(serverID: string, duration: string) {
