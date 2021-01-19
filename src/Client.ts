@@ -1018,7 +1018,7 @@ export class Client extends EventEmitter {
             preKeySignature: XUtils.encodeHex(this.xKeyRing.preKeys.signature),
             preKeyIndex: this.xKeyRing.preKeys.index!,
             password: this.password,
-            deviceName: `${os.platform()}-${os.release()}`,
+            deviceName: `${os.platform()}`,
         };
 
         try {
