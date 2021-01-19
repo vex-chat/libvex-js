@@ -141,11 +141,6 @@ interface IServers {
  */
 interface IPermissions {
     retrieve: () => Promise<XTypes.SQL.IPermission[]>;
-    create: (params: {
-        userID: string;
-        resourceType: string;
-        resourceID: string;
-    }) => Promise<XTypes.SQL.IPermission>;
 }
 
 /**
@@ -546,13 +541,6 @@ export class Client extends EventEmitter {
      */
     public permissions: IPermissions = {
         retrieve: this.getPermissions.bind(this),
-        /**
-         * Creates a new permission for the givern resourceID and userID.
-         * @param params: The new permission details.
-         *
-         * @returns - The list of IPermissions objects.
-         */
-        create: this.createPermission.bind(this),
     };
 
     /**
