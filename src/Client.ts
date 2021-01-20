@@ -14,6 +14,7 @@ import {
     XUtils,
 } from "@vex-chat/crypto";
 import { XTypes } from "@vex-chat/types";
+import axios from "axios";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
@@ -1061,30 +1062,49 @@ export class Client extends EventEmitter {
             this.signKeys.secretKey
         );
 
-        const payload = new FormData();
-        payload.set("signed", XUtils.encodeHex(signed));
-        payload.set("avatar", new Blob([avatar]));
+        if (FormData) {
+            const fpayload = new FormData();
+            fpayload.set("signed", XUtils.encodeHex(signed));
+            fpayload.set("avatar", new Blob([avatar]));
 
+            await ax.post(
+                this.prefixes.HTTP +
+                    this.host +
+                    "/avatar/" +
+                    this.me.user().userID,
+                fpayload,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                    onUploadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round(
+                            (progressEvent.loaded * 100) / progressEvent.total
+                        );
+                        const { loaded, total } = progressEvent;
+                        const progress: IFileProgress = {
+                            direction: "upload",
+                            token: token.key,
+                            progress: percentCompleted,
+                            loaded,
+                            total,
+                        };
+                        this.emit("fileProgress", progress);
+                    },
+                }
+            );
+            return;
+        }
+
+        const payload: { signed: string; file: string } = {
+            signed: XUtils.encodeHex(signed),
+            file: XUtils.encodeBase64(avatar),
+        };
         await ax.post(
-            this.prefixes.HTTP + this.host + "/avatar/" + this.me.user().userID,
-            payload,
-            {
-                headers: { "Content-Type": "multipart/form-data" },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round(
-                        (progressEvent.loaded * 100) / progressEvent.total
-                    );
-                    const { loaded, total } = progressEvent;
-                    const progress: IFileProgress = {
-                        direction: "upload",
-                        token: token.key,
-                        progress: percentCompleted,
-                        loaded,
-                        total,
-                    };
-                    this.emit("fileProgress", progress);
-                },
-            }
+            this.prefixes.HTTP +
+                this.host +
+                "/avatar/" +
+                this.me.user().userID +
+                "/json",
+            payload
         );
     }
 
@@ -1300,32 +1320,53 @@ export class Client extends EventEmitter {
             this.signKeys.secretKey
         );
 
-        const payload = new FormData();
-        payload.set("owner", this.getDevice().deviceID);
-        payload.set("signed", XUtils.encodeHex(signed));
-        payload.set("nonce", XUtils.encodeHex(nonce));
-        payload.set("file", new Blob([box]));
+        if (FormData) {
+            const fpayload = new FormData();
+            fpayload.set("owner", this.getDevice().deviceID);
+            fpayload.set("signed", XUtils.encodeHex(signed));
+            fpayload.set("nonce", XUtils.encodeHex(nonce));
+            fpayload.set("file", new Blob([box]));
 
-        const res = await ax.post(
-            this.prefixes.HTTP + this.host + "/file",
-            payload,
-            {
-                headers: { "Content-Type": "multipart/form-data" },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round(
-                        (progressEvent.loaded * 100) / progressEvent.total
-                    );
-                    const { loaded, total } = progressEvent;
-                    const progress: IFileProgress = {
-                        direction: "upload",
-                        token: token.key,
-                        progress: percentCompleted,
-                        loaded,
-                        total,
-                    };
-                    this.emit("fileProgress", progress);
-                },
-            }
+            const fres = await ax.post(
+                this.prefixes.HTTP + this.host + "/file",
+                fpayload,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                    onUploadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round(
+                            (progressEvent.loaded * 100) / progressEvent.total
+                        );
+                        const { loaded, total } = progressEvent;
+                        const progress: IFileProgress = {
+                            direction: "upload",
+                            token: token.key,
+                            progress: percentCompleted,
+                            loaded,
+                            total,
+                        };
+                        this.emit("fileProgress", progress);
+                    },
+                }
+            );
+            const createdFile: XTypes.SQL.IFile = fres.data;
+
+            return [createdFile, XUtils.encodeHex(key.secretKey)];
+        }
+
+        const payload: {
+            owner: string;
+            signed: string;
+            nonce: string;
+            file: string;
+        } = {
+            owner: this.getDevice().deviceID,
+            signed: XUtils.encodeHex(signed),
+            nonce: XUtils.encodeHex(nonce),
+            file: XUtils.encodeBase64(box),
+        };
+        const res = await axios.post(
+            this.prefixes.HTTP + this.host + "/file/json",
+            payload
         );
         const createdFile: XTypes.SQL.IFile = res.data;
 

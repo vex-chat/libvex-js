@@ -923,6 +923,13 @@
     winston "^3.3.3"
     ws "^7.4.0"
 
+"@vex-chat/types@^0.10.10":
+  version "0.10.10"
+  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.10.10.tgz#dac19f16a9849f65bd9a6f6991081897fd227587"
+  integrity sha512-f+p2sOhtNl4hnPMFS2wo1rx+58QnBOsY53phcg9KIT1NQae+rtxj6jorMZNYG1Ob1ohEklsMI+F5ZYnpWlr0eg==
+  dependencies:
+    tweetnacl "^1.0.3"
+
 "@vex-chat/types@^0.10.9":
   version "0.10.9"
   resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.10.9.tgz#82221bb35657a73ef8141b4605b8b9b32ddb7b7e"
