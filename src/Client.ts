@@ -1062,7 +1062,7 @@ export class Client extends EventEmitter {
             this.signKeys.secretKey
         );
 
-        if (FormData) {
+        if (typeof FormData !== "undefined") {
             const fpayload = new FormData();
             fpayload.set("signed", XUtils.encodeHex(signed));
             fpayload.set("avatar", new Blob([avatar]));
@@ -1320,7 +1320,7 @@ export class Client extends EventEmitter {
             this.signKeys.secretKey
         );
 
-        if (FormData) {
+        if (typeof FormData !== "undefined") {
             const fpayload = new FormData();
             fpayload.set("owner", this.getDevice().deviceID);
             fpayload.set("signed", XUtils.encodeHex(signed));
