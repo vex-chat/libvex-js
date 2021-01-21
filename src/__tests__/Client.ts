@@ -13,8 +13,8 @@ beforeAll(async () => {
         inMemoryDb: true,
         logLevel: "warn",
         dbLogLevel: "warn",
-        host: "localhost:16777",
-        unsafeHttp: true,
+        // host: "localhost:16777",
+        // unsafeHttp: true,
     };
     clientA = await Client.create(SK, clientOptions);
     if (!clientA) {
@@ -148,6 +148,15 @@ describe("Perform client tests", () => {
         done();
     });
 
+    test("Upload an emoji", async (done) => {
+        const buf = fs.readFileSync("./src/__tests__/triggered.png");
+        const emoji = await clientA!.emoji.create(buf, "triggered");
+        console.log(emoji);
+        const list = await clientA?.emoji.retrieveList();
+        expect([emoji]).toEqual(list);
+        done();
+    });
+
     test("Upload an avatar", async (done) => {
         const buf = fs.readFileSync("./src/__tests__/ghost.png");
         await clientA!.me.setAvatar(buf);
@@ -165,10 +174,9 @@ describe("Perform client tests", () => {
         );
         await clientA?.invites.redeem(invite.inviteID);
 
-        const serverInviteLIst = await clientA?.invites.retrieve(
+        const serverInviteList = await clientA?.invites.retrieve(
             createdServer.serverID
         );
-        console.log(serverInviteLIst);
         done();
     });
 

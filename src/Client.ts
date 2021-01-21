@@ -14,7 +14,6 @@ import {
     XUtils,
 } from "@vex-chat/crypto";
 import { XTypes } from "@vex-chat/types";
-import axios from "axios";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
@@ -193,6 +192,15 @@ interface IFiles {
         fileID: string,
         key: string
     ) => Promise<XTypes.HTTP.IFileResponse | null>;
+}
+
+/**
+ * @ignore
+ */
+interface IEmoji {
+    create: (emoji: Buffer, name: string) => Promise<XTypes.SQL.IEmoji | null>;
+    retrieveList: (userID?: string) => Promise<XTypes.SQL.IEmoji[]>;
+    retrieve: (emojiID: string) => Promise<XTypes.SQL.IEmoji | null>;
 }
 
 export interface IFileProgress {
@@ -497,6 +505,12 @@ export class Client extends EventEmitter {
          * @returns - The list of IUser objects.
          */
         familiars: this.getFamiliars.bind(this),
+    };
+
+    public emoji: IEmoji = {
+        create: this.uploadEmoji.bind(this),
+        retrieveList: this.retrieveEmojiList.bind(this),
+        retrieve: this.retrieveEmojiByID.bind(this),
     };
 
     public me: IMe = {
@@ -896,7 +910,7 @@ export class Client extends EventEmitter {
         return this.user?.username + "<" + this.device?.deviceID + ">";
     }
 
-    public async redeemInvite(
+    private async redeemInvite(
         inviteID: string
     ): Promise<XTypes.SQL.IPermission> {
         const res = await ax.patch(
@@ -905,7 +919,7 @@ export class Client extends EventEmitter {
         return res.data;
     }
 
-    public async retrieveInvites(
+    private async retrieveInvites(
         serverID: string
     ): Promise<XTypes.SQL.IInvite[]> {
         const res = await ax.get(
@@ -915,7 +929,7 @@ export class Client extends EventEmitter {
         return res.data;
     }
 
-    public async createInvite(serverID: string, duration: string) {
+    private async createInvite(serverID: string, duration: string) {
         const token = await this.getToken("invite");
 
         if (!token) {
@@ -941,6 +955,100 @@ export class Client extends EventEmitter {
         );
 
         return res.data;
+    }
+
+    private async retrieveEmojiList(
+        userID: string = this.getUser().userID
+    ): Promise<XTypes.SQL.IEmoji[]> {
+        const res = await ax.get(
+            this.prefixes.HTTP + this.host + "/user/" + userID + "/emoji"
+        );
+        return res.data;
+    }
+
+    private async retrieveEmojiByID(
+        emojiID: string
+    ): Promise<XTypes.SQL.IEmoji | null> {
+        const res = await ax.get(
+            this.prefixes.HTTP + this.host + "/emoji/" + emojiID + "/details"
+        );
+        // this is actually empty string
+        if (!res.data) {
+            return null;
+        }
+        return res.data;
+    }
+
+    private async uploadEmoji(
+        emoji: Buffer,
+        name: string
+    ): Promise<XTypes.SQL.IEmoji | null> {
+        const token = await this.getToken("emoji");
+        if (!token) {
+            this.log.warn("Failed to get token.");
+            return null;
+        }
+        const signed = nacl.sign(
+            Uint8Array.from(uuid.parse(token.key)),
+            this.signKeys.secretKey
+        );
+
+        if (typeof FormData !== "undefined") {
+            const fpayload = new FormData();
+            fpayload.set("signed", XUtils.encodeHex(signed));
+            fpayload.set("emoji", new Blob([emoji]));
+            fpayload.set("name", name);
+
+            try {
+                const res = await ax.post(
+                    this.prefixes.HTTP +
+                        this.host +
+                        "/emoji/" +
+                        this.me.user().userID,
+                    fpayload,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                        onUploadProgress: (progressEvent) => {
+                            const percentCompleted = Math.round(
+                                (progressEvent.loaded * 100) /
+                                    progressEvent.total
+                            );
+                            const { loaded, total } = progressEvent;
+                            const progress: IFileProgress = {
+                                direction: "upload",
+                                token: token.key,
+                                progress: percentCompleted,
+                                loaded,
+                                total,
+                            };
+                            this.emit("fileProgress", progress);
+                        },
+                    }
+                );
+                return res.data;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        const payload: { signed: string; file: string; name: string } = {
+            signed: XUtils.encodeHex(signed),
+            file: XUtils.encodeBase64(emoji),
+            name,
+        };
+        try {
+            const res = await ax.post(
+                this.prefixes.HTTP +
+                    this.host +
+                    "/emoji/" +
+                    this.me.user().userID +
+                    "/json",
+                payload
+            );
+            return res.data;
+        } catch (err) {
+            return null;
+        }
     }
 
     private async retrieveOrCreateDevice(): Promise<XTypes.SQL.IDevice> {
@@ -1038,7 +1146,7 @@ export class Client extends EventEmitter {
     }
 
     private async getToken(
-        type: "register" | "file" | "avatar" | "device" | "invite"
+        type: "register" | "file" | "avatar" | "device" | "invite" | "emoji"
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
             const res = await ax.get(
@@ -1106,36 +1214,6 @@ export class Client extends EventEmitter {
                 "/json",
             payload
         );
-    }
-
-    private createPermission(params: {
-        userID: string;
-        resourceType: string;
-        resourceID: string;
-    }): Promise<XTypes.SQL.IPermission> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "permissions",
-                action: "CREATE",
-                data: params,
-            };
-            this.send(outMsg);
-        });
     }
 
     /**
@@ -1348,9 +1426,9 @@ export class Client extends EventEmitter {
                     },
                 }
             );
-            const createdFile: XTypes.SQL.IFile = fres.data;
+            const fcreatedFile: XTypes.SQL.IFile = fres.data;
 
-            return [createdFile, XUtils.encodeHex(key.secretKey)];
+            return [fcreatedFile, XUtils.encodeHex(key.secretKey)];
         }
 
         const payload: {
@@ -1364,7 +1442,7 @@ export class Client extends EventEmitter {
             nonce: XUtils.encodeHex(nonce),
             file: XUtils.encodeBase64(box),
         };
-        const res = await axios.post(
+        const res = await ax.post(
             this.prefixes.HTTP + this.host + "/file/json",
             payload
         );
@@ -2449,7 +2527,7 @@ export class Client extends EventEmitter {
             );
             this.conn.on("open", () => {
                 this.log.info("Connection opened.");
-                this.pingInterval = setInterval(this.ping.bind(this), 5000);
+                this.pingInterval = setInterval(this.ping.bind(this), 15000);
             });
 
             this.conn.on("close", () => {
