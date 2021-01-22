@@ -61,6 +61,22 @@ export interface IStorage extends EventEmitter {
      */
     getGroupHistory: (channelID: string) => Promise<IMessage[]>;
     /**
+     * Deletes the history for a userID or channelID older than a
+     * specified duration, if duration is not included, all history
+     * is deleted.
+     *
+     * @param channelOrUserID the channelID to delete history for.
+     * @param duration the duration as a string eg. 1h or 7d or 30m
+     */
+    deleteHistory: (
+        channelOrUserID: string,
+        olderThan?: string
+    ) => Promise<void>;
+    /**
+     * Deletes all history.
+     */
+    purgeHistory: () => Promise<void>;
+    /**
      * Saves a main set of prekeys or a onetime set of prekeys,
      * as indicated by the oneTime parameter.
      */

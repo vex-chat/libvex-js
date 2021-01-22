@@ -52,6 +52,7 @@
         "knex": "^0.21.15",
         "lodash": "^4.17.20",
         "msgpack-lite": "^0.1.26",
+        "parse-duration": "^0.4.4",
         "sqlite3": "^5.0.0",
         "tweetnacl": "^1.0.3",
         "uuid": "^8.3.1",

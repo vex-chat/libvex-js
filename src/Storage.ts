@@ -3,6 +3,7 @@ import { XKeyConvert, XUtils } from "@vex-chat/crypto";
 import { XTypes } from "@vex-chat/types";
 import { EventEmitter } from "events";
 import knex from "knex";
+import parseDuration from "parse-duration";
 import nacl from "tweetnacl";
 import winston from "winston";
 import { IClientOptions, IMessage } from ".";
@@ -421,6 +422,40 @@ export class Storage extends EventEmitter implements IStorage {
             return null;
         }
         return rows[0];
+    }
+
+    public async purgeHistory(): Promise<void> {
+        await this.db.from("messages").truncate();
+    }
+
+    public async deleteHistory(
+        channelOrUserID: string,
+        olderThan?: string
+    ): Promise<void> {
+        if (!olderThan) {
+            await this.db
+                .from("messages")
+                .where({ group: channelOrUserID })
+                .orWhere({ group: null, authorID: channelOrUserID })
+                .orWhere({ group: null, readerID: channelOrUserID })
+                .delete();
+        } else {
+            const duration = parseDuration(olderThan);
+            if (!duration) {
+                throw new Error(
+                    "Bad duration. See parse-duration library for more details."
+                );
+            }
+            console.log(duration);
+            const res = await this.db
+                .from("messages")
+                .where(
+                    "time",
+                    "<",
+                    new Date(Date.now() - duration).toISOString()
+                );
+            console.log(res);
+        }
     }
 
     public async saveDevice(device: XTypes.SQL.IDevice) {

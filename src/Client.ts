@@ -17,7 +17,6 @@ import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
 import chalk from "chalk";
 import { EventEmitter } from "events";
-import { times } from "lodash";
 import msgpack from "msgpack-lite";
 import os from "os";
 import nacl from "tweetnacl";
@@ -124,6 +123,8 @@ interface IMessages {
     group: (channelID: string, message: string) => Promise<void>;
     retrieve: (userID: string) => Promise<IMessage[]>;
     retrieveGroup: (channelID: string) => Promise<IMessage[]>;
+    delete: (userOrChannelID: string, duration?: string) => Promise<void>;
+    purge: () => Promise<void>;
 }
 
 /**
@@ -620,6 +621,8 @@ export class Client extends EventEmitter {
          * @returns - The list of IMessage objects.
          */
         retrieveGroup: this.getGroupHistory.bind(this),
+        delete: this.deleteHistory.bind(this),
+        purge: this.purgeHistory.bind(this),
     };
 
     /**
@@ -1590,6 +1593,17 @@ export class Client extends EventEmitter {
         );
 
         return messages;
+    }
+
+    private async deleteHistory(
+        channelOrUserID: string,
+        olderThan?: string
+    ): Promise<void> {
+        await this.database.deleteHistory(channelOrUserID, olderThan);
+    }
+
+    private async purgeHistory(): Promise<void> {
+        await this.database.purgeHistory();
     }
 
     private async getMessageHistory(userID: string): Promise<IMessage[]> {

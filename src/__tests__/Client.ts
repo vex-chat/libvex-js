@@ -209,6 +209,24 @@ describe("Perform client tests", () => {
         await sleep(500);
         await clientA!.messages.group(createdChannel!.channelID, "subsequent");
     });
+
+    test("Message history operations", async (done) => {
+        const history = await clientA?.messages.retrieve(
+            clientA.me.user().userID
+        );
+        if (!history) {
+            throw new Error("No history found!");
+        }
+        console.log(history.length);
+
+        await clientA?.messages.delete(clientA.me.user().userID);
+
+        const postHistory = await clientA?.messages.retrieve(
+            clientA.me.user().userID
+        );
+        expect(postHistory?.length).toBe(0);
+        done();
+    });
 });
 
 /**
