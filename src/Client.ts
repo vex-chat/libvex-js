@@ -134,6 +134,7 @@ interface IServers {
     retrieveByID: (serverID: string) => Promise<XTypes.SQL.IServer | null>;
     create: (name: string) => Promise<XTypes.SQL.IServer>;
     delete: (serverID: string) => Promise<void>;
+    leave: (serverID: string) => Promise<void>;
 }
 
 /**
@@ -192,6 +193,7 @@ interface IDevices {
         username: string,
         password: string
     ) => Promise<XTypes.SQL.IDevice | null>;
+    delete: (deviceID: string) => Promise<void>;
 }
 
 /**
@@ -546,6 +548,7 @@ export class Client extends EventEmitter {
     public devices: IDevices = {
         retrieve: this.getDeviceByID.bind(this),
         register: this.registerDevice.bind(this),
+        delete: this.deleteDevice.bind(this),
     };
 
     /**
@@ -672,6 +675,7 @@ export class Client extends EventEmitter {
          * @param serverID: The unique serverID to delete.
          */
         delete: this.deleteServer.bind(this),
+        leave: this.leaveServer.bind(this),
     };
 
     public channels: IChannels = {
@@ -997,6 +1001,15 @@ export class Client extends EventEmitter {
             return null;
         }
         return res.data;
+    }
+
+    private async leaveServer(serverID: string): Promise<void> {
+        const permissionList = await this.permissions.retrieve();
+        for (const permission of permissionList) {
+            if (permission.resourceID === serverID) {
+                await this.deletePermission(permission.permissionID);
+            }
+        }
     }
 
     private async kickUser(userID: string, serverID: string): Promise<void> {
@@ -1904,6 +1917,20 @@ export class Client extends EventEmitter {
         } catch (err) {
             return null;
         }
+    }
+
+    private async deleteDevice(deviceID: string): Promise<void> {
+        if (deviceID === this.getDevice().deviceID) {
+            throw new Error("You can't delete the device you're logged in to.");
+        }
+        await ax.delete(
+            this.prefixes.HTTP +
+                this.host +
+                "/user/" +
+                this.getUser().userID +
+                "/devices/" +
+                deviceID
+        );
     }
 
     private async getMultiUserDeviceList(
