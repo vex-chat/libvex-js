@@ -428,6 +428,12 @@ export class Storage extends EventEmitter implements IStorage {
         await this.db.from("messages").truncate();
     }
 
+    public async purgeKeyData() {
+        await this.db.from("sessions").delete();
+        await this.db.from("oneTimeKeys").delete();
+        await this.db.from("preKeys").delete();
+    }
+
     public async deleteHistory(
         channelOrUserID: string,
         olderThan?: string
@@ -542,9 +548,6 @@ export class Storage extends EventEmitter implements IStorage {
                     table.string("signature");
                 });
             }
-
-            // make test read
-            await this.db.from("preKeys").select();
 
             this.ready = true;
             this.emit("ready");

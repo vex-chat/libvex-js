@@ -1114,6 +1114,9 @@ export class Client extends EventEmitter {
         } catch (err) {
             this.log.error(err.toString());
             if (err.response?.status === 404) {
+                // our device may have been deleted, let's clear out the session and otk table if it exists
+                await this.database.purgeKeyData();
+
                 this.log.info("Attempting to register device.");
                 const newDevice = await this.registerDevice();
                 if (newDevice) {

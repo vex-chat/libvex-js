@@ -77,6 +77,10 @@ export interface IStorage extends EventEmitter {
      */
     purgeHistory: () => Promise<void>;
     /**
+     * Deletes all sessions, one time keys, and prekeys.
+     */
+    purgeKeyData: () => Promise<void>;
+    /**
      * Saves a main set of prekeys or a onetime set of prekeys,
      * as indicated by the oneTime parameter.
      */
