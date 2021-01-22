@@ -2156,7 +2156,8 @@ export class Client extends EventEmitter {
     private async readMail(
         mail: XTypes.WS.IMail,
         header: Uint8Array,
-        transmissionID: string
+        transmissionID: string,
+        timestamp: string
     ) {
         await this.sendReceipt(mail.nonce, transmissionID);
         while (this.reading) {
@@ -2228,7 +2229,7 @@ export class Client extends EventEmitter {
                                   recipient: mail.recipient,
                                   message: XUtils.encodeUTF8(decrypted),
                                   direction: "incoming",
-                                  timestamp: new Date(Date.now()),
+                                  timestamp: new Date(timestamp),
                                   decrypted: true,
                                   group: mail.group
                                       ? uuid.stringify(mail.group)
@@ -2251,7 +2252,7 @@ export class Client extends EventEmitter {
                         recipient: mail.recipient,
                         message: "",
                         direction: "incoming",
-                        timestamp: new Date(Date.now()),
+                        timestamp: new Date(timestamp),
                         decrypted: false,
                         group: mail.group ? uuid.stringify(mail.group) : null,
                         forward: mail.forward,
@@ -2378,7 +2379,7 @@ export class Client extends EventEmitter {
                               recipient: mail.recipient,
                               message: XUtils.encodeUTF8(unsealed),
                               direction: "incoming",
-                              timestamp: new Date(Date.now()),
+                              timestamp: new Date(timestamp),
                               decrypted: true,
                               group: mail.group
                                   ? uuid.stringify(mail.group)
@@ -2604,10 +2605,17 @@ export class Client extends EventEmitter {
             this.log.warn("error negotiating OTKs:" + err.toString());
         }
 
+        let count = 0;
         while (true) {
             try {
                 await this.getMail();
+                count++;
                 this.fetchingMail = false;
+
+                if (count > 10) {
+                    this.negotiateOTK();
+                    count = 0;
+                }
             } catch (err) {
                 this.log.warn("Problem fetching mail" + err.toString());
             }
@@ -2640,7 +2648,8 @@ export class Client extends EventEmitter {
                             this.readMail(
                                 (msg as XTypes.WS.ISucessMsg).data,
                                 header,
-                                transmissionID
+                                transmissionID,
+                                (msg as XTypes.WS.ISucessMsg).timestamp!
                             );
                         } catch (err) {
                             this.log.warn(
