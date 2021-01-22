@@ -139,8 +139,19 @@ interface IServers {
 /**
  * @ignore
  */
+interface IModeration {
+    kick: (userID: string, serverID: string) => Promise<void>;
+    fetchPermissionList: (
+        serverID: string
+    ) => Promise<XTypes.SQL.IPermission[]>;
+}
+
+/**
+ * @ignore
+ */
 interface IPermissions {
     retrieve: () => Promise<XTypes.SQL.IPermission[]>;
+    delete: (permissionID: string) => Promise<void>;
 }
 
 /**
@@ -556,6 +567,15 @@ export class Client extends EventEmitter {
      */
     public permissions: IPermissions = {
         retrieve: this.getPermissions.bind(this),
+        delete: this.deletePermission.bind(this),
+    };
+
+    /**
+     * The IModeration object contains all methods for dealing with permissions.
+     */
+    public moderation: IModeration = {
+        kick: this.kickUser.bind(this),
+        fetchPermissionList: this.fetchPermissionList.bind(this),
     };
 
     /**
@@ -979,6 +999,17 @@ export class Client extends EventEmitter {
         return res.data;
     }
 
+    private async kickUser(userID: string, serverID: string): Promise<void> {
+        const permissionList = await this.fetchPermissionList(serverID);
+        for (const permission of permissionList) {
+            if (userID === permission.userID) {
+                await this.deletePermission(permission.permissionID);
+                return;
+            }
+        }
+        throw new Error("Couldn't kick user.");
+    }
+
     private async uploadEmoji(
         emoji: Buffer,
         name: string
@@ -1221,6 +1252,39 @@ export class Client extends EventEmitter {
      *
      * @returns - The list of IPermissions objects.
      */
+    private fetchPermissionList(
+        serverID: string
+    ): Promise<XTypes.SQL.IPermission[]> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "permissionList",
+                action: "RETRIEVE",
+                data: serverID,
+            };
+            this.send(outMsg);
+        });
+    }
+
+    /**
+     * Gets all permissions for the logged in user.
+     *
+     * @returns - The list of IPermissions objects.
+     */
     private getPermissions(): Promise<XTypes.SQL.IPermission[]> {
         return new Promise((res, rej) => {
             const transmissionID = uuid.v4();
@@ -1241,6 +1305,32 @@ export class Client extends EventEmitter {
                 type: "resource",
                 resourceType: "permissions",
                 action: "RETRIEVE",
+            };
+            this.send(outMsg);
+        });
+    }
+
+    private async deletePermission(permissionID: string): Promise<void> {
+        return new Promise((res, rej) => {
+            const transmissionID = uuid.v4();
+            const callback = (packedMsg: Buffer) => {
+                const [header, msg] = XUtils.unpackMessage(packedMsg);
+                if (msg.transmissionID === transmissionID) {
+                    this.conn.off("message", callback);
+                    if (msg.type === "success") {
+                        res((msg as XTypes.WS.ISucessMsg).data);
+                    } else {
+                        rej(msg);
+                    }
+                }
+            };
+            this.conn.on("message", callback);
+            const outMsg: XTypes.WS.IResourceMsg = {
+                transmissionID,
+                type: "resource",
+                resourceType: "permissions",
+                action: "DELETE",
+                data: permissionID,
             };
             this.send(outMsg);
         });

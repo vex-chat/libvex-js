@@ -68,6 +68,7 @@ describe("Perform client tests", () => {
 
         // make another server to be used by channel tests
         createdServer = await clientA!.servers.create("Channel Test Server");
+
         done();
     });
 
