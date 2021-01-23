@@ -432,6 +432,7 @@ export class Storage extends EventEmitter implements IStorage {
         await this.db.from("sessions").delete();
         await this.db.from("oneTimeKeys").delete();
         await this.db.from("preKeys").delete();
+        await this.db.from("messages").delete();
     }
 
     public async deleteHistory(
