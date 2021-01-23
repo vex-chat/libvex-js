@@ -912,7 +912,7 @@ export class Client extends EventEmitter {
                 ),
                 preKeyIndex: this.xKeyRing.preKeys.index!,
                 password,
-                deviceName: `${os.platform()}-${os.release()}`,
+                deviceName: `${os.platform()}`,
             };
             try {
                 const res = await ax.post(
