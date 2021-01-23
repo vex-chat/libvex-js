@@ -872,7 +872,7 @@ export class Client extends EventEmitter {
      */
     public async connect(): Promise<void> {
         this.device = await this.retrieveOrCreateDevice();
-        this.log.info("init socket");
+        this.log.info("Starting websocket.");
         await this.initSocket();
     }
 
@@ -1781,7 +1781,6 @@ export class Client extends EventEmitter {
             await this.createSession(device, user, msg, group, mailID, forward);
             return;
         } else {
-            this.log.info(JSON.stringify(session));
             this.log.info("Found existing session for " + device.deviceID);
         }
 
@@ -2348,10 +2347,7 @@ export class Client extends EventEmitter {
 
                 if (decrypted) {
                     if (!mail.forward) {
-                        this.log.info(
-                            "Decryption successful: " +
-                                XUtils.encodeUTF8(decrypted)
-                        );
+                        this.log.info("Decryption successful.");
 
                         // emit the message
                         const message: IMessage = mail.forward
