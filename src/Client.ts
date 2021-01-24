@@ -876,14 +876,10 @@ export class Client extends EventEmitter {
      * Returns the authorization cookie details. Throws if you don't have a
      * valid authorization cookie.
      */
-    public async whoami(): Promise<ICensoredUser> {
+    public async whoami(): Promise<{ user: ICensoredUser; exp: number }> {
         const res = await ax.post(this.prefixes.HTTP + this.host + "/whoami");
-        const loggedInUser: ICensoredUser | null = res.data;
-
-        if (!loggedInUser) {
-            throw new Error("Auth cookie missing or expired. Log in again.");
-        }
-        return loggedInUser;
+        const whoami: { user: ICensoredUser; exp: number } = res.data;
+        return whoami;
     }
 
     /**
@@ -891,13 +887,13 @@ export class Client extends EventEmitter {
      * You can check whoami() to see before calling connect().
      */
     public async connect(): Promise<void> {
-        const loggedInUser: ICensoredUser = await this.whoami();
+        const { user } = await this.whoami();
 
-        if (!loggedInUser) {
+        if (!user) {
             throw new Error("Auth cookie missing or expired. Log in again.");
         }
 
-        this.setUser(loggedInUser);
+        this.setUser(user);
 
         this.device = await this.retrieveOrCreateDevice();
         this.log.info("Starting websocket.");
