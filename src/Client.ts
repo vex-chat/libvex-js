@@ -887,6 +887,10 @@ export class Client extends EventEmitter {
         return whoami;
     }
 
+    public async logout(): Promise<void> {
+        await ax.post(this.prefixes.HTTP + this.host + "/goodbye");
+    }
+
     /**
      * Connects your device to the chat. You must have an valid authorization cookie.
      * You can check whoami() to see before calling connect().
