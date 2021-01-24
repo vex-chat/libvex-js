@@ -876,9 +876,14 @@ export class Client extends EventEmitter {
      * Returns the authorization cookie details. Throws if you don't have a
      * valid authorization cookie.
      */
-    public async whoami(): Promise<{ user: ICensoredUser; exp: number }> {
+    public async whoami(): Promise<{
+        user: ICensoredUser;
+        exp: number;
+        token: string;
+    }> {
         const res = await ax.post(this.prefixes.HTTP + this.host + "/whoami");
-        const whoami: { user: ICensoredUser; exp: number } = res.data;
+        const whoami: { user: ICensoredUser; exp: number; token: string } =
+            res.data;
         return whoami;
     }
 
@@ -887,9 +892,10 @@ export class Client extends EventEmitter {
      * You can check whoami() to see before calling connect().
      */
     public async connect(): Promise<void> {
-        const { user } = await this.whoami();
+        const { user, token } = await this.whoami();
+        this.token = token;
 
-        if (!user) {
+        if (!user || !token) {
             throw new Error("Auth cookie missing or expired. Log in again.");
         }
 
