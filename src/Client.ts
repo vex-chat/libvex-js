@@ -753,8 +753,6 @@ export class Client extends EventEmitter {
 
     private manuallyClosing: boolean = false;
 
-    private username: string | null = null;
-    private password: string | null = null;
     private token: string | null = null;
 
     private prefixes:
@@ -858,8 +856,6 @@ export class Client extends EventEmitter {
             const { user, token }: { user: IUser; token: string } = res.data;
             this.user = user;
             this.token = token;
-            this.username = username;
-            this.password = password;
         } catch (err) {
             console.error(err.toString());
             return err;
@@ -900,7 +896,7 @@ export class Client extends EventEmitter {
                     this.signKeys.secretKey
                 )
             );
-            const regMsg: XTypes.HTTP.IDevicePayload = {
+            const regMsg: XTypes.HTTP.IRegistrationPayload = {
                 username,
                 signKey,
                 signed,
@@ -1137,28 +1133,19 @@ export class Client extends EventEmitter {
             await sleep(100);
         }
 
-        if (!this.username || !this.password) {
-            throw new Error("login() must be called before connect()");
-        }
-
         const token = await this.getToken("device");
 
         const [userDetails, err] = await this.retrieveUserDBEntry(
-            this.username
+            this.user!.username
         );
         if (!userDetails) {
-            throw new Error("Username not found " + this.username);
+            throw new Error("Username not found " + this.user!.username);
         }
         if (err) {
             throw err;
         }
-
         if (!token) {
             throw new Error("Couldn't fetch token.");
-        }
-
-        if (!this.password) {
-            throw new Error("login() must be called before connect()");
         }
 
         const signKey = this.getKeys().public;
@@ -1176,7 +1163,6 @@ export class Client extends EventEmitter {
             preKey: XUtils.encodeHex(this.xKeyRing.preKeys.keyPair.publicKey),
             preKeySignature: XUtils.encodeHex(this.xKeyRing.preKeys.signature),
             preKeyIndex: this.xKeyRing.preKeys.index!,
-            password: this.password,
             deviceName: `${os.platform()}`,
         };
 
@@ -1267,7 +1253,7 @@ export class Client extends EventEmitter {
     }
 
     /**
-     * Gets all permissions for the logged in user.
+     * Gets a list of permissions for a server.
      *
      * @returns - The list of IPermissions objects.
      */
