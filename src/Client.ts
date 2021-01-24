@@ -873,14 +873,28 @@ export class Client extends EventEmitter {
     }
 
     /**
-     * Connects your device to the chat. You must have called login() first successfully.
+     * Returns the authorization cookie details. Throws if you don't have a
+     * valid authorization cookie.
      */
-    public async connect(): Promise<void> {
+    public async whoami(): Promise<ICensoredUser> {
         const res = await ax.post(this.prefixes.HTTP + this.host + "/whoami");
         const loggedInUser: ICensoredUser | null = res.data;
 
         if (!loggedInUser) {
-            throw new Error("You must have a session cookie! Login first.");
+            throw new Error("Auth cookie missing or expired. Log in again.");
+        }
+        return loggedInUser;
+    }
+
+    /**
+     * Connects your device to the chat. You must have an valid authorization cookie.
+     * You can check whoami() to see before calling connect().
+     */
+    public async connect(): Promise<void> {
+        const loggedInUser: ICensoredUser = await this.whoami();
+
+        if (!loggedInUser) {
+            throw new Error("Auth cookie missing or expired. Log in again.");
         }
 
         this.setUser(loggedInUser);
