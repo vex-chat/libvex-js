@@ -32,6 +32,12 @@ import { uuidToUint8 } from "./utils/uint8uuid";
 
 ax.defaults.withCredentials = true;
 
+interface ICensoredUser {
+    lastSeen: string;
+    userID: string;
+    username: string;
+}
+
 // tslint:disable-next-line: no-var-requires
 
 /**
@@ -71,7 +77,7 @@ export interface IDevice extends XTypes.SQL.IDevice {}
 /**
  * IUser is a single user on the vex platform.
  */
-export interface IUser extends XTypes.SQL.IUser {}
+export interface IUser extends ICensoredUser {}
 
 /**
  * ISession is an end to end encryption session with another peer.
@@ -102,7 +108,7 @@ export interface IFileRes extends XTypes.HTTP.IFileResponse {}
  * @ignore
  */
 interface IMe {
-    user: () => XTypes.SQL.IUser;
+    user: () => ICensoredUser;
     device: () => XTypes.SQL.IDevice;
     setAvatar: (avatar: Buffer) => Promise<void>;
 }
@@ -735,7 +741,7 @@ export class Client extends EventEmitter {
 
     private xKeyRing?: XTypes.CRYPTO.IXKeyRing;
 
-    private user?: XTypes.SQL.IUser;
+    private user?: ICensoredUser;
     private device?: XTypes.SQL.IDevice;
 
     private deviceLists: Record<string, IDevice[]> = {};
@@ -853,8 +859,11 @@ export class Client extends EventEmitter {
                 this.prefixes.HTTP + this.host + "/auth",
                 { username, password }
             );
-            const { user, token }: { user: IUser; token: string } = res.data;
-            this.user = user;
+            const {
+                user,
+                token,
+            }: { user: ICensoredUser; token: string } = res.data;
+            this.setUser(user);
             this.token = token;
         } catch (err) {
             console.error(err.toString());
@@ -867,6 +876,15 @@ export class Client extends EventEmitter {
      * Connects your device to the chat. You must have called login() first successfully.
      */
     public async connect(): Promise<void> {
+        const res = await ax.post(this.prefixes.HTTP + this.host + "/whoami");
+        const loggedInUser: ICensoredUser | null = res.data;
+
+        if (!loggedInUser) {
+            throw new Error("You must have a session cookie! Login first.");
+        }
+
+        this.setUser(loggedInUser);
+
         this.device = await this.retrieveOrCreateDevice();
         this.log.info("Starting websocket.");
         await this.initSocket();
@@ -883,7 +901,7 @@ export class Client extends EventEmitter {
     public async register(
         username: string,
         password: string
-    ): Promise<[XTypes.SQL.IUser | null, Error | null]> {
+    ): Promise<[ICensoredUser | null, Error | null]> {
         while (!this.xKeyRing) {
             await sleep(100);
         }
@@ -2033,7 +2051,7 @@ export class Client extends EventEmitter {
 
     /* Get the currently logged in user. You cannot call this until 
     after the auth event is emitted. */
-    private getUser(): XTypes.SQL.IUser {
+    private getUser(): ICensoredUser {
         if (!this.user) {
             throw new Error(
                 "You must wait until the auth event is emitted before fetching user details."
@@ -2051,7 +2069,7 @@ export class Client extends EventEmitter {
         return this.device;
     }
 
-    private setUser(user: XTypes.SQL.IUser): void {
+    private setUser(user: ICensoredUser): void {
         this.user = user;
     }
 
@@ -2060,7 +2078,7 @@ export class Client extends EventEmitter {
     and finally falls back to username. */
     private async retrieveUserDBEntry(
         userIdentifier: string
-    ): Promise<[XTypes.SQL.IUser | null, AxiosError | null]> {
+    ): Promise<[ICensoredUser | null, AxiosError | null]> {
         if (this.userRecords[userIdentifier]) {
             return [this.userRecords[userIdentifier], null];
         }
