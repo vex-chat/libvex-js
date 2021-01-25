@@ -872,7 +872,6 @@ export class Client extends EventEmitter {
                 }
             }
 
-            console.log("AUTH COOKIE", authCookie);
             if (authCookie) {
                 ax.defaults.headers.cookie = authCookie;
             }
