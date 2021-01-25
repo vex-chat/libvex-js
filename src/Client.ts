@@ -763,6 +763,8 @@ export class Client extends EventEmitter {
 
     private token: string | null = null;
 
+    private forwarded: string[] = [];
+
     private prefixes:
         | { HTTP: "http://"; WS: "ws://" }
         | { HTTP: "https://"; WS: "wss://" };
@@ -1789,6 +1791,15 @@ export class Client extends EventEmitter {
 
     private async forward(message: IMessage) {
         const copy = { ...message };
+
+        if (this.forwarded.includes(copy.mailID)) {
+            return;
+        }
+        this.forwarded.push(copy.mailID);
+        if (this.forwarded.length > 1000) {
+            this.forwarded.shift();
+        }
+
         const msgBytes = Uint8Array.from(msgpack.encode(copy));
 
         const devices = await this.getUserDeviceList(this.getUser().userID);
@@ -1796,19 +1807,30 @@ export class Client extends EventEmitter {
         if (!devices) {
             throw new Error("Couldn't get own devices.");
         }
-
+        const promises = [];
         for (const device of devices) {
             if (device.deviceID !== this.getDevice().deviceID) {
-                await this.sendMail(
-                    device,
-                    this.getUser(),
-                    msgBytes,
-                    null,
-                    copy.mailID,
-                    true
+                promises.push(
+                    this.sendMail(
+                        device,
+                        this.getUser(),
+                        msgBytes,
+                        null,
+                        copy.mailID,
+                        true
+                    )
                 );
             }
         }
+        Promise.allSettled(promises).then((results) => {
+            for (const result of results) {
+                const { status } = result;
+                if (status === "rejected") {
+                    this.log.warn("Message failed.");
+                    this.log.warn(result);
+                }
+            }
+        });
     }
 
     /* Sends encrypted mail to a user. */
