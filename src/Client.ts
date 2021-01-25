@@ -2418,33 +2418,29 @@ export class Client extends EventEmitter {
                     if (!mail.forward) {
                         this.log.info("Decryption successful.");
                         const plaintext = XUtils.encodeUTF8(decrypted);
-                        if (protocolMsgRegex.test(plaintext)) {
-                            console.log("Received protocol message.");
-                        } else {
-                            // emit the message
-                            const message: IMessage = mail.forward
-                                ? {
-                                      ...msgpack.decode(decrypted),
-                                      forward: true,
-                                  }
-                                : {
-                                      nonce: XUtils.encodeHex(mail.nonce),
-                                      mailID: mail.mailID,
-                                      sender: mail.sender,
-                                      recipient: mail.recipient,
-                                      message: XUtils.encodeUTF8(decrypted),
-                                      direction: "incoming",
-                                      timestamp: new Date(timestamp),
-                                      decrypted: true,
-                                      group: mail.group
-                                          ? uuid.stringify(mail.group)
-                                          : null,
-                                      forward: mail.forward,
-                                      authorID: mail.authorID,
-                                      readerID: mail.readerID,
-                                  };
-                            this.emit("message", message);
-                        }
+                        // emit the message
+                        const message: IMessage = mail.forward
+                            ? {
+                                  ...msgpack.decode(decrypted),
+                                  forward: true,
+                              }
+                            : {
+                                  nonce: XUtils.encodeHex(mail.nonce),
+                                  mailID: mail.mailID,
+                                  sender: mail.sender,
+                                  recipient: mail.recipient,
+                                  message: XUtils.encodeUTF8(decrypted),
+                                  direction: "incoming",
+                                  timestamp: new Date(timestamp),
+                                  decrypted: true,
+                                  group: mail.group
+                                      ? uuid.stringify(mail.group)
+                                      : null,
+                                  forward: mail.forward,
+                                  authorID: mail.authorID,
+                                  readerID: mail.readerID,
+                              };
+                        this.emit("message", message);
                     }
                     await this.database.markSessionUsed(session.sessionID);
                 } else {
@@ -2575,30 +2571,26 @@ export class Client extends EventEmitter {
                     }
                     const plaintext = XUtils.encodeUTF8(unsealed);
 
-                    if (protocolMsgRegex.test(plaintext)) {
-                        console.log("Recevied protocol message.");
-                    } else {
-                        // emit the message
-                        const message: IMessage = mail.forward
-                            ? { ...msgpack.decode(unsealed), forward: true }
-                            : {
-                                  nonce: XUtils.encodeHex(mail.nonce),
-                                  mailID: mail.mailID,
-                                  sender: mail.sender,
-                                  recipient: mail.recipient,
-                                  message: plaintext,
-                                  direction: "incoming",
-                                  timestamp: new Date(timestamp),
-                                  decrypted: true,
-                                  group: mail.group
-                                      ? uuid.stringify(mail.group)
-                                      : null,
-                                  forward: mail.forward,
-                                  authorID: mail.authorID,
-                                  readerID: mail.readerID,
-                              };
-                        this.emit("message", message);
-                    }
+                    // emit the message
+                    const message: IMessage = mail.forward
+                        ? { ...msgpack.decode(unsealed), forward: true }
+                        : {
+                              nonce: XUtils.encodeHex(mail.nonce),
+                              mailID: mail.mailID,
+                              sender: mail.sender,
+                              recipient: mail.recipient,
+                              message: plaintext,
+                              direction: "incoming",
+                              timestamp: new Date(timestamp),
+                              decrypted: true,
+                              group: mail.group
+                                  ? uuid.stringify(mail.group)
+                                  : null,
+                              forward: mail.forward,
+                              authorID: mail.authorID,
+                              readerID: mail.readerID,
+                          };
+                    this.emit("message", message);
 
                     // discard onetimekey
                     await this.database.deleteOneTimeKey(preKeyIndex);
