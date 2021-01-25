@@ -931,6 +931,7 @@ export class Client extends EventEmitter {
         this.setUser(user);
 
         this.device = await this.retrieveOrCreateDevice();
+
         this.log.info("Starting websocket.");
         await this.initSocket();
     }
@@ -1184,10 +1185,10 @@ export class Client extends EventEmitter {
                     throw new Error("Error registering device.");
                 }
             } else {
-                return err;
+                throw err;
             }
         }
-        this.log.info("Created device " + JSON.stringify(device));
+        this.log.info("Got device " + JSON.stringify(device));
         return device;
     }
 
