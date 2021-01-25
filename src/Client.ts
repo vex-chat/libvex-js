@@ -2392,7 +2392,7 @@ export class Client extends EventEmitter {
                         "Couldn't find session public key " +
                             XUtils.encodeHex(publicKey)
                     );
-                    await healSession();
+                    // await healSession();
                     return;
                 }
                 this.log.info("Session found for " + mail.sender);
@@ -2404,7 +2404,7 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match)."
                     );
-                    await healSession();
+                    // await healSession();
                     return;
                 }
 
