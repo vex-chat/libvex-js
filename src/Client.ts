@@ -863,6 +863,20 @@ export class Client extends EventEmitter {
                 user,
                 token,
             }: { user: ICensoredUser; token: string } = res.data;
+
+            const cookies = res.headers["set-cookie"];
+            let authCookie: string | null = null;
+            for (const cookie of cookies) {
+                if (cookie.includes("auth")) {
+                    authCookie = cookie;
+                }
+            }
+
+            console.log("AUTH COOKIE", authCookie);
+            if (authCookie) {
+                ax.defaults.headers.cookie = authCookie;
+            }
+
             this.setUser(user);
             this.token = token;
         } catch (err) {
@@ -881,7 +895,14 @@ export class Client extends EventEmitter {
         exp: number;
         token: string;
     }> {
-        const res = await ax.post(this.prefixes.HTTP + this.host + "/whoami");
+        const res = await ax.post(
+            this.prefixes.HTTP + this.host + "/whoami",
+            null,
+            {
+                withCredentials: true,
+            }
+        );
+
         const whoami: { user: ICensoredUser; exp: number; token: string } =
             res.data;
         return whoami;
