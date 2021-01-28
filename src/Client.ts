@@ -15,6 +15,7 @@ import {
 } from "@vex-chat/crypto";
 import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
+import { isBrowser, isNode } from "browser-or-node";
 import chalk from "chalk";
 import { EventEmitter } from "events";
 import msgpack from "msgpack-lite";
@@ -29,7 +30,6 @@ import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
-import { isNode, isBrowser } from "browser-or-node";
 
 if (isBrowser) {
     ax.defaults.withCredentials = true;
@@ -820,6 +820,19 @@ export class Client extends EventEmitter {
         // silence the error for connecting to junk ws
         // tslint:disable-next-line: no-empty
         this.conn.onerror = () => {};
+
+        this.log.info("Client debug information:");
+        this.log.info(
+            JSON.stringify({
+                publicKey: this.getKeys().public,
+                host: this.getHost(),
+                dbPath: this.dbPath,
+                environment: {
+                    isBrowser,
+                    isNode,
+                },
+            })
+        );
     }
 
     public getHost() {
