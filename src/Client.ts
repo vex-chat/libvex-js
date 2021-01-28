@@ -32,6 +32,8 @@ import { uuidToUint8 } from "./utils/uint8uuid";
 
 ax.defaults.withCredentials = true;
 
+const protocolMsgRegex = /��\w+:\w+��/g;
+
 interface ICensoredUser {
     lastSeen: string;
     userID: string;
@@ -761,6 +763,8 @@ export class Client extends EventEmitter {
 
     private token: string | null = null;
 
+    private forwarded: string[] = [];
+
     private prefixes:
         | { HTTP: "http://"; WS: "ws://" }
         | { HTTP: "https://"; WS: "wss://" };
@@ -867,6 +871,22 @@ export class Client extends EventEmitter {
                 user,
                 token,
             }: { user: ICensoredUser; token: string } = res.data;
+
+            const cookies = res.headers["set-cookie"];
+            let authCookie: string | null = null;
+
+            if (cookies) {
+                for (const cookie of cookies) {
+                    if (cookie.includes("auth")) {
+                        authCookie = cookie;
+                    }
+                }
+            }
+
+            if (authCookie) {
+                ax.defaults.headers.cookie = authCookie;
+            }
+
             this.setUser(user);
             this.token = token;
         } catch (err) {
@@ -885,7 +905,14 @@ export class Client extends EventEmitter {
         exp: number;
         token: string;
     }> {
-        const res = await ax.post(this.prefixes.HTTP + this.host + "/whoami");
+        const res = await ax.post(
+            this.prefixes.HTTP + this.host + "/whoami",
+            null,
+            {
+                withCredentials: true,
+            }
+        );
+
         const whoami: { user: ICensoredUser; exp: number; token: string } =
             res.data;
         return whoami;
@@ -910,6 +937,7 @@ export class Client extends EventEmitter {
         this.setUser(user);
 
         this.device = await this.retrieveOrCreateDevice();
+
         this.log.info("Starting websocket.");
         await this.initSocket();
     }
@@ -1163,10 +1191,10 @@ export class Client extends EventEmitter {
                     throw new Error("Error registering device.");
                 }
             } else {
-                return err;
+                throw err;
             }
         }
-        this.log.info("Created device " + JSON.stringify(device));
+        this.log.info("Got device " + JSON.stringify(device));
         return device;
     }
 
@@ -1767,6 +1795,15 @@ export class Client extends EventEmitter {
 
     private async forward(message: IMessage) {
         const copy = { ...message };
+
+        if (this.forwarded.includes(copy.mailID)) {
+            return;
+        }
+        this.forwarded.push(copy.mailID);
+        if (this.forwarded.length > 1000) {
+            this.forwarded.shift();
+        }
+
         const msgBytes = Uint8Array.from(msgpack.encode(copy));
 
         const devices = await this.getUserDeviceList(this.getUser().userID);
@@ -1774,19 +1811,30 @@ export class Client extends EventEmitter {
         if (!devices) {
             throw new Error("Couldn't get own devices.");
         }
-
+        const promises = [];
         for (const device of devices) {
             if (device.deviceID !== this.getDevice().deviceID) {
-                await this.sendMail(
-                    device,
-                    this.getUser(),
-                    msgBytes,
-                    null,
-                    copy.mailID,
-                    true
+                promises.push(
+                    this.sendMail(
+                        device,
+                        this.getUser(),
+                        msgBytes,
+                        null,
+                        copy.mailID,
+                        true
+                    )
                 );
             }
         }
+        Promise.allSettled(promises).then((results) => {
+            for (const result of results) {
+                const { status } = result;
+                if (status === "rejected") {
+                    this.log.warn("Message failed.");
+                    this.log.warn(result);
+                }
+            }
+        });
     }
 
     /* Sends encrypted mail to a user. */
@@ -1796,7 +1844,8 @@ export class Client extends EventEmitter {
         msg: Uint8Array,
         group: Uint8Array | null,
         mailID: string | null,
-        forward: boolean
+        forward: boolean,
+        retry = false
     ): Promise<void> {
         this.log.info("Sending mail to " + device.deviceID);
 
@@ -1804,7 +1853,7 @@ export class Client extends EventEmitter {
             device.deviceID
         );
 
-        if (!session) {
+        if (!session || retry) {
             this.log.info("Creating new session for " + device.deviceID);
             await this.createSession(device, user, msg, group, mailID, forward);
             return;
@@ -2325,6 +2374,23 @@ export class Client extends EventEmitter {
             await sleep(100);
         }
         this.reading = true;
+
+        const healSession = async () => {
+            console.log("Requesting retry of " + mail.mailID);
+            const deviceEntry = await this.getDeviceByID(mail.sender);
+            const [user, err] = await this.retrieveUserDBEntry(mail.authorID);
+            if (deviceEntry && user) {
+                await this.createSession(
+                    deviceEntry,
+                    user,
+                    XUtils.decodeUTF8(`��RETRY_REQUEST:${mail.mailID}��`),
+                    mail.group,
+                    uuid.v4(),
+                    false
+                );
+            }
+        };
+
         this.log.info("Received mail from " + mail.sender);
         switch (mail.mailType) {
             case XTypes.WS.MailType.subsequent:
@@ -2353,6 +2419,7 @@ export class Client extends EventEmitter {
                         "Couldn't find session public key " +
                             XUtils.encodeHex(publicKey)
                     );
+                    // await healSession();
                     return;
                 }
                 this.log.info("Session found for " + mail.sender);
@@ -2362,8 +2429,9 @@ export class Client extends EventEmitter {
 
                 if (!XUtils.bytesEqual(HMAC, header)) {
                     this.log.warn(
-                        "Message authentication failed (HMAC does not match."
+                        "Message authentication failed (HMAC does not match)."
                     );
+                    // await healSession();
                     return;
                 }
 
@@ -2376,10 +2444,13 @@ export class Client extends EventEmitter {
                 if (decrypted) {
                     if (!mail.forward) {
                         this.log.info("Decryption successful.");
-
+                        const plaintext = XUtils.encodeUTF8(decrypted);
                         // emit the message
                         const message: IMessage = mail.forward
-                            ? { ...msgpack.decode(decrypted), forward: true }
+                            ? {
+                                  ...msgpack.decode(decrypted),
+                                  forward: true,
+                              }
                             : {
                                   nonce: XUtils.encodeHex(mail.nonce),
                                   mailID: mail.mailID,
@@ -2401,6 +2472,8 @@ export class Client extends EventEmitter {
                     await this.database.markSessionUsed(session.sessionID);
                 } else {
                     this.log.info("Decryption failed.");
+
+                    await healSession();
 
                     // emit the message
                     const message: IMessage = {
@@ -2521,11 +2594,9 @@ export class Client extends EventEmitter {
                 );
                 if (unsealed) {
                     if (!mail.forward) {
-                        this.log.info(
-                            "Decryption successful " +
-                                XUtils.encodeUTF8(unsealed)
-                        );
+                        this.log.info("Decryption successful.");
                     }
+                    const plaintext = XUtils.encodeUTF8(unsealed);
 
                     // emit the message
                     const message: IMessage = mail.forward
@@ -2535,7 +2606,7 @@ export class Client extends EventEmitter {
                               mailID: mail.mailID,
                               sender: mail.sender,
                               recipient: mail.recipient,
-                              message: XUtils.encodeUTF8(unsealed),
+                              message: plaintext,
                               direction: "incoming",
                               timestamp: new Date(timestamp),
                               decrypted: true,
@@ -2546,7 +2617,6 @@ export class Client extends EventEmitter {
                               authorID: mail.authorID,
                               readerID: mail.readerID,
                           };
-
                     this.emit("message", message);
 
                     // discard onetimekey
@@ -2643,6 +2713,10 @@ export class Client extends EventEmitter {
                 break;
             case "permission":
                 this.emit("permission", msg.data as IPermission);
+                break;
+            case "retryRequest":
+                const messageID = msg.data;
+
                 break;
             default:
                 this.log.info("Unsupported notification event " + msg.event);
