@@ -151,9 +151,15 @@ describe("Perform client tests", () => {
 
     test("Upload an emoji", async (done) => {
         const buf = fs.readFileSync("./src/__tests__/triggered.png");
-        const emoji = await clientA!.emoji.create(buf, "triggered");
-        console.log(emoji);
-        const list = await clientA?.emoji.retrieveList();
+        const emoji = await clientA!.emoji.create(
+            buf,
+            "triggered",
+            createdServer!.serverID
+        );
+        if (!emoji) {
+            throw new Error("Couldn't create emoji.");
+        }
+        const list = await clientA?.emoji.retrieveList(createdServer!.serverID);
         expect([emoji]).toEqual(list);
         done();
     });

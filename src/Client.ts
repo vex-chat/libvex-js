@@ -38,7 +38,7 @@ if (isBrowser) {
 const protocolMsgRegex = /��\w+:\w+��/g;
 
 interface ICensoredUser {
-    lastSeen: string;
+    lastSeen: number;
     userID: string;
     username: string;
 }
@@ -223,8 +223,12 @@ interface IFiles {
  * @ignore
  */
 interface IEmoji {
-    create: (emoji: Buffer, name: string) => Promise<XTypes.SQL.IEmoji | null>;
-    retrieveList: (userID?: string) => Promise<XTypes.SQL.IEmoji[]>;
+    create: (
+        emoji: Buffer,
+        name: string,
+        serverID: string
+    ) => Promise<XTypes.SQL.IEmoji | null>;
+    retrieveList: (serverID: string) => Promise<XTypes.SQL.IEmoji[]>;
     retrieve: (emojiID: string) => Promise<XTypes.SQL.IEmoji | null>;
 }
 
@@ -1074,10 +1078,10 @@ export class Client extends EventEmitter {
     }
 
     private async retrieveEmojiList(
-        userID: string = this.getUser().userID
+        serverID: string
     ): Promise<XTypes.SQL.IEmoji[]> {
         const res = await ax.get(
-            this.prefixes.HTTP + this.host + "/user/" + userID + "/emoji"
+            this.prefixes.HTTP + this.host + "/server/" + serverID + "/emoji"
         );
         return res.data;
     }
@@ -1117,7 +1121,8 @@ export class Client extends EventEmitter {
 
     private async uploadEmoji(
         emoji: Buffer,
-        name: string
+        name: string,
+        serverID: string
     ): Promise<XTypes.SQL.IEmoji | null> {
         const token = await this.getToken("emoji");
         if (!token) {
@@ -1137,10 +1142,7 @@ export class Client extends EventEmitter {
 
             try {
                 const res = await ax.post(
-                    this.prefixes.HTTP +
-                        this.host +
-                        "/emoji/" +
-                        this.me.user().userID,
+                    this.prefixes.HTTP + this.host + "/emoji/" + serverID,
                     fpayload,
                     {
                         headers: { "Content-Type": "multipart/form-data" },
@@ -1174,11 +1176,7 @@ export class Client extends EventEmitter {
         };
         try {
             const res = await ax.post(
-                this.prefixes.HTTP +
-                    this.host +
-                    "/emoji/" +
-                    this.me.user().userID +
-                    "/json",
+                this.prefixes.HTTP + this.host + "/emoji/" + serverID + "/json",
                 payload
             );
             return res.data;
