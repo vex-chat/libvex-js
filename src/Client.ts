@@ -29,8 +29,11 @@ import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
+import { isNode, isBrowser } from "browser-or-node";
 
-ax.defaults.withCredentials = true;
+if (isBrowser) {
+    ax.defaults.withCredentials = true;
+}
 
 const protocolMsgRegex = /��\w+:\w+��/g;
 
@@ -872,19 +875,21 @@ export class Client extends EventEmitter {
                 token,
             }: { user: ICensoredUser; token: string } = res.data;
 
-            const cookies = res.headers["set-cookie"];
-            let authCookie: string | null = null;
+            if (isNode) {
+                const cookies = res.headers["set-cookie"];
+                let authCookie: string | null = null;
 
-            if (cookies) {
-                for (const cookie of cookies) {
-                    if (cookie.includes("auth")) {
-                        authCookie = cookie;
+                if (cookies) {
+                    for (const cookie of cookies) {
+                        if (cookie.includes("auth")) {
+                            authCookie = cookie;
+                        }
                     }
                 }
-            }
 
-            if (authCookie) {
-                ax.defaults.headers.cookie = authCookie;
+                if (authCookie) {
+                    ax.defaults.headers.cookie = authCookie;
+                }
             }
 
             this.setUser(user);
