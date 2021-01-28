@@ -815,6 +815,10 @@ export class Client extends EventEmitter {
         this.conn.onerror = () => {};
     }
 
+    public getHost() {
+        return this.prefixes.HTTP + this.host;
+    }
+
     /**
      * Manually closes the client. Emits the closed event on successful shutdown.
      */
