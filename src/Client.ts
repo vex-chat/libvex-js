@@ -1198,6 +1198,8 @@ export class Client extends EventEmitter {
         } catch (err) {
             this.log.error(err.toString());
             if (err.response?.status === 404) {
+                // just in case
+                await this.database.purgeKeyData();
                 this.log.info("Attempting to register device.");
 
                 const newDevice = await this.registerDevice();
