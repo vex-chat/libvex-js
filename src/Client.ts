@@ -821,17 +821,22 @@ export class Client extends EventEmitter {
         // tslint:disable-next-line: no-empty
         this.conn.onerror = () => {};
 
-        this.log.info("Client debug information:");
         this.log.info(
-            JSON.stringify({
-                publicKey: this.getKeys().public,
-                host: this.getHost(),
-                dbPath: this.dbPath,
-                environment: {
-                    isBrowser,
-                    isNode,
-                },
-            })
+            "Client debug information: " +
+                JSON.stringify(
+                    {
+                        publicKey: this.getKeys().public,
+                        host: this.getHost(),
+                        dbPath: this.dbPath,
+                        environment: {
+                            isBrowser,
+                            isNode,
+                        },
+                        options,
+                    },
+                    null,
+                    4
+                )
         );
     }
 
@@ -1191,17 +1196,12 @@ export class Client extends EventEmitter {
                     "/device/" +
                     XUtils.encodeHex(this.signKeys.publicKey)
             );
-            this.log.info(
-                "response from get device " + JSON.stringify(res.data, null, 4)
-            );
             device = res.data;
         } catch (err) {
             this.log.error(err.toString());
             if (err.response?.status === 404) {
-                // our device may have been deleted, let's clear out the session and otk table if it exists
-                await this.database.purgeKeyData();
-
                 this.log.info("Attempting to register device.");
+
                 const newDevice = await this.registerDevice();
                 if (newDevice) {
                     device = newDevice;
@@ -1212,7 +1212,7 @@ export class Client extends EventEmitter {
                 throw err;
             }
         }
-        this.log.info("Got device " + JSON.stringify(device));
+        this.log.info("Got device " + JSON.stringify(device, null, 4));
         return device;
     }
 

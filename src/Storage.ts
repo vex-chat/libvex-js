@@ -511,6 +511,7 @@ export class Storage extends EventEmitter implements IStorage {
                     table.string("signKey");
                     table.string("name");
                     table.string("lastLogin");
+                    table.boolean("deleted");
                 });
             }
 
