@@ -53,187 +53,187 @@ describe("Perform client tests", () => {
         await clientA!.connect();
     });
 
-    test("Server operations", async (done) => {
-        const server = await clientA!.servers.create("Test Server");
-        const serverList = await clientA!.servers.retrieve();
+    // test("Server operations", async (done) => {
+    //     const server = await clientA!.servers.create("Test Server");
+    //     const serverList = await clientA!.servers.retrieve();
 
-        const [knownServer] = serverList;
-        expect(server.serverID === knownServer.serverID).toBe(true);
+    //     const [knownServer] = serverList;
+    //     expect(server.serverID === knownServer.serverID).toBe(true);
 
-        const retrieveByIDServer = await clientA!.servers.retrieveByID(
-            server.serverID
-        );
-        expect(server.serverID === retrieveByIDServer?.serverID).toBe(true);
+    //     const retrieveByIDServer = await clientA!.servers.retrieveByID(
+    //         server.serverID
+    //     );
+    //     expect(server.serverID === retrieveByIDServer?.serverID).toBe(true);
 
-        await clientA!.servers.delete(server.serverID);
+    //     await clientA!.servers.delete(server.serverID);
 
-        // make another server to be used by channel tests
-        createdServer = await clientA!.servers.create("Channel Test Server");
+    //     // make another server to be used by channel tests
+    //     createdServer = await clientA!.servers.create("Channel Test Server");
 
-        done();
-    });
+    //     done();
+    // });
 
-    test("Channel operations", async (done) => {
-        const servers = await clientA!.servers.retrieve();
-        const [testServer] = servers;
+    // test("Channel operations", async (done) => {
+    //     const servers = await clientA!.servers.retrieve();
+    //     const [testServer] = servers;
 
-        const channel = await clientA!.channels.create(
-            "Test Channel",
-            testServer.serverID
-        );
+    //     const channel = await clientA!.channels.create(
+    //         "Test Channel",
+    //         testServer.serverID
+    //     );
 
-        await clientA!.channels.delete(channel.channelID);
+    //     await clientA!.channels.delete(channel.channelID);
 
-        const channels = await clientA!.channels.retrieve(testServer.serverID);
-        expect(channels.length).toBe(1);
+    //     const channels = await clientA!.channels.retrieve(testServer.serverID);
+    //     expect(channels.length).toBe(1);
 
-        createdChannel = channels[0];
+    //     createdChannel = channels[0];
 
-        const retrievedByIDChannel = await clientA!.channels.retrieveByID(
-            channels[0].channelID
-        );
-        expect(channels[0].channelID === retrievedByIDChannel?.channelID).toBe(
-            true
-        );
-        done();
-    });
+    //     const retrievedByIDChannel = await clientA!.channels.retrieveByID(
+    //         channels[0].channelID
+    //     );
+    //     expect(channels[0].channelID === retrievedByIDChannel?.channelID).toBe(
+    //         true
+    //     );
+    //     done();
+    // });
 
-    test("Direct messaging", async (done) => {
-        const received: string[] = [];
+    // test("Direct messaging", async (done) => {
+    //     const received: string[] = [];
 
-        const receivedAllExpected = () =>
-            received.includes("initial") && received.includes("subsequent");
+    //     const receivedAllExpected = () =>
+    //         received.includes("initial") && received.includes("subsequent");
 
-        const onMessage = (message: IMessage) => {
-            if (!message.decrypted) {
-                throw new Error("Message failed to decrypt.");
-            }
-            if (
-                message.direction === "incoming" &&
-                message.decrypted &&
-                message.group === null
-            ) {
-                received.push(message.message);
-                if (receivedAllExpected()) {
-                    clientA!.off("message", onMessage);
-                    done();
-                }
-            }
-        };
-        clientA!.on("message", onMessage);
+    //     const onMessage = (message: IMessage) => {
+    //         if (!message.decrypted) {
+    //             throw new Error("Message failed to decrypt.");
+    //         }
+    //         if (
+    //             message.direction === "incoming" &&
+    //             message.decrypted &&
+    //             message.group === null
+    //         ) {
+    //             received.push(message.message);
+    //             if (receivedAllExpected()) {
+    //                 clientA!.off("message", onMessage);
+    //                 done();
+    //             }
+    //         }
+    //     };
+    //     clientA!.on("message", onMessage);
 
-        const me = clientA!.me.user();
+    //     const me = clientA!.me.user();
 
-        await clientA!.messages.send(me.userID, "initial");
-        await sleep(500);
-        await clientA!.messages.send(me.userID, "subsequent");
-    });
+    //     await clientA!.messages.send(me.userID, "initial");
+    //     await sleep(500);
+    //     await clientA!.messages.send(me.userID, "subsequent");
+    // });
 
-    test("File operations", async (done) => {
-        const createdFile = Buffer.alloc(1000);
-        createdFile.fill(0);
+    // test("File operations", async (done) => {
+    //     const createdFile = Buffer.alloc(1000);
+    //     createdFile.fill(0);
 
-        const [createdDetails, key] = await clientA!.files.create(createdFile);
-        const fetchedFileRes = await clientA!.files.retrieve(
-            createdDetails.fileID,
-            key
-        );
-        if (!fetchedFileRes) {
-            throw new Error("Error fetching file.");
-        }
+    //     const [createdDetails, key] = await clientA!.files.create(createdFile);
+    //     const fetchedFileRes = await clientA!.files.retrieve(
+    //         createdDetails.fileID,
+    //         key
+    //     );
+    //     if (!fetchedFileRes) {
+    //         throw new Error("Error fetching file.");
+    //     }
 
-        const { data, details } = fetchedFileRes;
+    //     const { data, details } = fetchedFileRes;
 
-        expect(_.isEqual(createdFile, data)).toBe(true);
-        expect(_.isEqual(createdDetails.nonce, details.nonce)).toBe(true);
+    //     expect(_.isEqual(createdFile, data)).toBe(true);
+    //     expect(_.isEqual(createdDetails.nonce, details.nonce)).toBe(true);
 
-        done();
-    });
+    //     done();
+    // });
 
-    test("Upload an emoji", async (done) => {
-        const buf = fs.readFileSync("./src/__tests__/triggered.png");
-        const emoji = await clientA!.emoji.create(
-            buf,
-            "triggered",
-            createdServer!.serverID
-        );
-        if (!emoji) {
-            throw new Error("Couldn't create emoji.");
-        }
-        const list = await clientA?.emoji.retrieveList(createdServer!.serverID);
-        expect([emoji]).toEqual(list);
-        done();
-    });
+    // test("Upload an emoji", async (done) => {
+    //     const buf = fs.readFileSync("./src/__tests__/triggered.png");
+    //     const emoji = await clientA!.emoji.create(
+    //         buf,
+    //         "triggered",
+    //         createdServer!.serverID
+    //     );
+    //     if (!emoji) {
+    //         throw new Error("Couldn't create emoji.");
+    //     }
+    //     const list = await clientA?.emoji.retrieveList(createdServer!.serverID);
+    //     expect([emoji]).toEqual(list);
+    //     done();
+    // });
 
-    test("Upload an avatar", async (done) => {
-        const buf = fs.readFileSync("./src/__tests__/ghost.png");
-        await clientA!.me.setAvatar(buf);
-        done();
-    });
+    // test("Upload an avatar", async (done) => {
+    //     const buf = fs.readFileSync("./src/__tests__/ghost.png");
+    //     await clientA!.me.setAvatar(buf);
+    //     done();
+    // });
 
-    test("Create invite", async (done) => {
-        if (!createdServer) {
-            throw new Error("Server not created, can't do invite test.");
-        }
+    // test("Create invite", async (done) => {
+    //     if (!createdServer) {
+    //         throw new Error("Server not created, can't do invite test.");
+    //     }
 
-        const invite = await clientA!.invites.create(
-            createdServer.serverID,
-            "1h"
-        );
-        await clientA?.invites.redeem(invite.inviteID);
+    //     const invite = await clientA!.invites.create(
+    //         createdServer.serverID,
+    //         "1h"
+    //     );
+    //     await clientA?.invites.redeem(invite.inviteID);
 
-        const serverInviteList = await clientA?.invites.retrieve(
-            createdServer.serverID
-        );
-        done();
-    });
+    //     const serverInviteList = await clientA?.invites.retrieve(
+    //         createdServer.serverID
+    //     );
+    //     done();
+    // });
 
-    test("Group messaging", async (done) => {
-        const received: string[] = [];
+    // test("Group messaging", async (done) => {
+    //     const received: string[] = [];
 
-        const receivedAllExpected = () =>
-            received.includes("initial") && received.includes("subsequent");
+    //     const receivedAllExpected = () =>
+    //         received.includes("initial") && received.includes("subsequent");
 
-        const onGroupMessage = (message: IMessage) => {
-            if (!message.decrypted) {
-                throw new Error("Message failed to decrypt.");
-            }
-            if (
-                message.direction === "incoming" &&
-                message.decrypted &&
-                message.group !== null
-            ) {
-                received.push(message.message);
-                if (receivedAllExpected()) {
-                    done();
-                }
-            }
-        };
+    //     const onGroupMessage = (message: IMessage) => {
+    //         if (!message.decrypted) {
+    //             throw new Error("Message failed to decrypt.");
+    //         }
+    //         if (
+    //             message.direction === "incoming" &&
+    //             message.decrypted &&
+    //             message.group !== null
+    //         ) {
+    //             received.push(message.message);
+    //             if (receivedAllExpected()) {
+    //                 done();
+    //             }
+    //         }
+    //     };
 
-        clientA!.on("message", onGroupMessage);
+    //     clientA!.on("message", onGroupMessage);
 
-        await clientA!.messages.group(createdChannel!.channelID, "initial");
-        await sleep(500);
-        await clientA!.messages.group(createdChannel!.channelID, "subsequent");
-    });
+    //     await clientA!.messages.group(createdChannel!.channelID, "initial");
+    //     await sleep(500);
+    //     await clientA!.messages.group(createdChannel!.channelID, "subsequent");
+    // });
 
-    test("Message history operations", async (done) => {
-        const history = await clientA?.messages.retrieve(
-            clientA.me.user().userID
-        );
-        if (!history) {
-            throw new Error("No history found!");
-        }
-        console.log(history.length);
+    // test("Message history operations", async (done) => {
+    //     const history = await clientA?.messages.retrieve(
+    //         clientA.me.user().userID
+    //     );
+    //     if (!history) {
+    //         throw new Error("No history found!");
+    //     }
+    //     console.log(history.length);
 
-        await clientA?.messages.delete(clientA.me.user().userID);
+    //     await clientA?.messages.delete(clientA.me.user().userID);
 
-        const postHistory = await clientA?.messages.retrieve(
-            clientA.me.user().userID
-        );
-        expect(postHistory?.length).toBe(0);
-        done();
-    });
+    //     const postHistory = await clientA?.messages.retrieve(
+    //         clientA.me.user().userID
+    //     );
+    //     expect(postHistory?.length).toBe(0);
+    //     done();
+    // });
 
     test("Register a second device", async (done) => {
         const clientB = await Client.create(undefined, clientOptions);
@@ -253,6 +253,7 @@ describe("Perform client tests", () => {
 
         clientB.on("message", (message) => {
             received.push(message.message + "B");
+            console.log(received);
             if (receivedAllExpected()) {
                 done();
             }
@@ -260,12 +261,14 @@ describe("Perform client tests", () => {
 
         clientA?.on("message", (message) => {
             received.push(message.message + "A");
+            console.log(received);
             if (receivedAllExpected()) {
                 done();
             }
         });
 
         otherUser.messages.send(clientA!.me.user().userID, "initial");
+        await sleep(500);
         otherUser.messages.send(clientA!.me.user().userID, "subsequent");
     });
 });
