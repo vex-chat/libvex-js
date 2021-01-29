@@ -6,16 +6,17 @@ import { Client, IChannel, IClientOptions, IMessage, IServer, IUser } from "..";
 
 let clientA: Client | null = null;
 
+const clientOptions: IClientOptions = {
+    inMemoryDb: true,
+    logLevel: "info",
+    dbLogLevel: "warn",
+    host: "localhost:16777",
+    unsafeHttp: true,
+};
+
 beforeAll(async () => {
     const SK = Client.generateSecretKey();
 
-    const clientOptions: IClientOptions = {
-        inMemoryDb: true,
-        logLevel: "warn",
-        dbLogLevel: "warn",
-        // host: "localhost:16777",
-        // unsafeHttp: true,
-    };
     clientA = await Client.create(SK, clientOptions);
     if (!clientA) {
         throw new Error("Couldn't create client.");
@@ -232,6 +233,40 @@ describe("Perform client tests", () => {
         );
         expect(postHistory?.length).toBe(0);
         done();
+    });
+
+    test("Register a second device", async (done) => {
+        const clientB = await Client.create(undefined, clientOptions);
+        await clientB.login(username, password);
+        await clientB.connect();
+
+        const otherUser = await Client.create(undefined, clientOptions);
+        await otherUser.login(username, password);
+        await otherUser.connect();
+
+        const received: string[] = [];
+        const receivedAllExpected = () =>
+            received.includes("initialA") &&
+            received.includes("subsequentA") &&
+            received.includes("initialB") &&
+            received.includes("subsequentB");
+
+        clientB.on("message", (message) => {
+            received.push(message.message + "B");
+            if (receivedAllExpected()) {
+                done();
+            }
+        });
+
+        clientA?.on("message", (message) => {
+            received.push(message.message + "A");
+            if (receivedAllExpected()) {
+                done();
+            }
+        });
+
+        otherUser.messages.send(clientA!.me.user().userID, "initial");
+        otherUser.messages.send(clientA!.me.user().userID, "subsequent");
     });
 });
 

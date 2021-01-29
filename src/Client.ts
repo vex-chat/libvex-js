@@ -1756,11 +1756,19 @@ export class Client extends EventEmitter {
             this.userRecords[user.userID] = user;
         }
 
+        this.log.info(
+            "Sending to userlist:\n" + JSON.stringify(userList, null, 4)
+        );
+
         const mailID = uuid.v4();
         const promises: Array<Promise<void>> = [];
 
         const userIDs = [...new Set(userList.map((user) => user.userID))];
         const devices = await this.getMultiUserDeviceList(userIDs);
+
+        this.log.info(
+            "Retrieved devicelist:\n" + JSON.stringify(devices, null, 4)
+        );
 
         for (const device of devices) {
             promises.push(
@@ -1865,7 +1873,13 @@ export class Client extends EventEmitter {
         forward: boolean,
         retry = false
     ): Promise<void> {
-        this.log.info("Sending mail to " + device.deviceID);
+        this.log.info(
+            "Sending mail to user: \n" + JSON.stringify(user, null, 4)
+        );
+        this.log.info(
+            "Sending mail to device:\n " +
+                JSON.stringify(device.deviceID, null, 4)
+        );
 
         const session = await this.database.getSessionByDeviceID(
             device.deviceID
@@ -2212,7 +2226,10 @@ export class Client extends EventEmitter {
     ): Promise<void> {
         let keyBundle: XTypes.WS.IKeyBundle;
 
-        this.log.info("Requesting key bundle.");
+        this.log.info(
+            "Requesting key bundle for device: " +
+                JSON.stringify(device, null, 4)
+        );
         try {
             keyBundle = await this.retrieveKeyBundle(device.deviceID);
         } catch (err) {
@@ -2244,6 +2261,19 @@ export class Client extends EventEmitter {
         const DH3 = xDH(EK_A, SPK_B);
         const DH4 = OPK_B ? xDH(EK_A, OPK_B) : null;
 
+        this.log.info(
+            JSON.stringify(
+                {
+                    DH1: XUtils.encodeHex(DH1),
+                    DH2: XUtils.encodeHex(DH2),
+                    DH3: XUtils.encodeHex(DH3),
+                    DH4: DH4 ? XUtils.encodeHex(DH4) : null,
+                },
+                null,
+                4
+            )
+        );
+
         // initial key material
         const IKM = DH4 ? xConcat(DH1, DH2, DH3, DH4) : xConcat(DH1, DH2, DH3);
 
@@ -2254,7 +2284,7 @@ export class Client extends EventEmitter {
 
         // shared secret key
         const SK = xKDF(IKM);
-        this.log.info("Obtained SK.");
+        this.log.info("Obtained SK, " + XUtils.encodeHex(SK));
 
         const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
         this.log.info(
@@ -2542,6 +2572,14 @@ export class Client extends EventEmitter {
                     );
                 }
 
+                this.log.info("signKey: " + XUtils.encodeHex(signKey));
+                this.log.info("preKey: " + XUtils.encodeHex(ephKey));
+                if (otk) {
+                    this.log.info(
+                        "OTK: " + XUtils.encodeHex(otk.keyPair.publicKey)
+                    );
+                }
+
                 if (otk?.index !== preKeyIndex && preKeyIndex !== 0) {
                     this.log.warn(
                         "OTK index mismatch, received " +
@@ -2568,6 +2606,19 @@ export class Client extends EventEmitter {
                 const DH3 = xDH(SPK_B, EK_A);
                 const DH4 = OPK_B ? xDH(OPK_B, EK_A) : null;
 
+                this.log.info(
+                    JSON.stringify(
+                        {
+                            DH1: XUtils.encodeHex(DH1),
+                            DH2: XUtils.encodeHex(DH2),
+                            DH3: XUtils.encodeHex(DH3),
+                            DH4: DH4 ? XUtils.encodeHex(DH4) : null,
+                        },
+                        null,
+                        4
+                    )
+                );
+
                 // initial key material
                 const IKM = DH4
                     ? xConcat(DH1, DH2, DH3, DH4)
@@ -2575,7 +2626,12 @@ export class Client extends EventEmitter {
 
                 // shared secret key
                 const SK = xKDF(IKM);
-                this.log.info("Obtained SK.");
+                this.log.info(
+                    "Obtained SK for " +
+                        mail.sender +
+                        ", " +
+                        XUtils.encodeHex(SK)
+                );
 
                 // shared public key
                 const PK = nacl.box.keyPair.fromSecretKey(SK).publicKey;
@@ -2601,7 +2657,7 @@ export class Client extends EventEmitter {
                         "Mail authentication failed (HMAC did not match)."
                     );
                     console.warn(mail);
-                    // return;
+                    return;
                 }
                 this.log.info("Mail authenticated successfully.");
 
@@ -2761,8 +2817,16 @@ export class Client extends EventEmitter {
         };
 
         this.log.info(
-            "Keyring populated, public key: " +
-                XUtils.encodeHex(this.signKeys.publicKey)
+            "Keyring populated:\n" +
+                JSON.stringify(
+                    {
+                        signKey: XUtils.encodeHex(this.signKeys.publicKey),
+                        preKey: XUtils.encodeHex(preKeys.keyPair.publicKey),
+                        ephemeralKey: XUtils.encodeHex(ephemeralKeys.publicKey),
+                    },
+                    null,
+                    4
+                )
         );
     }
 
