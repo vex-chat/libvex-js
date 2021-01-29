@@ -240,8 +240,10 @@ describe("Perform client tests", () => {
         await clientB.login(username, password);
         await clientB.connect();
 
+        const otherUsername = Client.randomUsername();
         const otherUser = await Client.create(undefined, clientOptions);
-        await otherUser.login(username, password);
+        await otherUser.register(otherUsername, password);
+        await otherUser.login(otherUsername, password);
         await otherUser.connect();
 
         const received: string[] = [];

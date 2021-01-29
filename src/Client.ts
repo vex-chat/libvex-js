@@ -19,6 +19,7 @@ import { isBrowser, isNode } from "browser-or-node";
 import chalk from "chalk";
 import { EventEmitter } from "events";
 import msgpack from "msgpack-lite";
+import objectHash from "object-hash";
 import os from "os";
 import nacl from "tweetnacl";
 import * as uuid from "uuid";
@@ -1197,6 +1198,8 @@ export class Client extends EventEmitter {
             if (err.response?.status === 404) {
                 // just in case
                 await this.database.purgeKeyData();
+                await this.populateKeyRing();
+
                 this.log.info("Attempting to register device.");
 
                 const newDevice = await this.registerDevice();
@@ -1917,6 +1920,8 @@ export class Client extends EventEmitter {
         };
 
         const hmac = xHMAC(mail, session.SK);
+        this.log.info("Mail hash: " + objectHash(mail));
+        this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
 
         const outMsg: IMessage = forward
             ? { ...msgpack.decode(msg), forward: true }
@@ -2258,19 +2263,6 @@ export class Client extends EventEmitter {
         const DH3 = xDH(EK_A, SPK_B);
         const DH4 = OPK_B ? xDH(EK_A, OPK_B) : null;
 
-        this.log.info(
-            JSON.stringify(
-                {
-                    DH1: XUtils.encodeHex(DH1),
-                    DH2: XUtils.encodeHex(DH2),
-                    DH3: XUtils.encodeHex(DH3),
-                    DH4: DH4 ? XUtils.encodeHex(DH4) : null,
-                },
-                null,
-                4
-            )
-        );
-
         // initial key material
         const IKM = DH4 ? xConcat(DH1, DH2, DH3, DH4) : xConcat(DH1, DH2, DH3);
 
@@ -2327,6 +2319,7 @@ export class Client extends EventEmitter {
         };
 
         const hmac = xHMAC(mail, SK);
+        this.log.info("Mail hash: " + objectHash(mail));
         this.log.info("Generated hmac: " + XUtils.encodeHex(hmac));
 
         const msg: XTypes.WS.IResourceMsg = {
@@ -2471,6 +2464,8 @@ export class Client extends EventEmitter {
                 this.log.info("Mail nonce " + XUtils.encodeHex(mail.nonce));
 
                 const HMAC = xHMAC(mail, session.SK);
+                this.log.info("Mail hash: " + objectHash(mail));
+                this.log.info("Calculated hmac: " + XUtils.encodeHex(HMAC));
 
                 if (!XUtils.bytesEqual(HMAC, header)) {
                     this.log.warn(
@@ -2603,19 +2598,6 @@ export class Client extends EventEmitter {
                 const DH3 = xDH(SPK_B, EK_A);
                 const DH4 = OPK_B ? xDH(OPK_B, EK_A) : null;
 
-                this.log.info(
-                    JSON.stringify(
-                        {
-                            DH1: XUtils.encodeHex(DH1),
-                            DH2: XUtils.encodeHex(DH2),
-                            DH3: XUtils.encodeHex(DH3),
-                            DH4: DH4 ? XUtils.encodeHex(DH4) : null,
-                        },
-                        null,
-                        4
-                    )
-                );
-
                 // initial key material
                 const IKM = DH4
                     ? xConcat(DH1, DH2, DH3, DH4)
@@ -2641,6 +2623,7 @@ export class Client extends EventEmitter {
                 );
 
                 const hmac = xHMAC(mail, SK);
+                this.log.info("Mail hash: " + objectHash(mail));
                 this.log.info("Calculated hmac: " + XUtils.encodeHex(hmac));
 
                 // associated data
@@ -2802,6 +2785,7 @@ export class Client extends EventEmitter {
 
         let preKeys = await this.database.getPreKeys();
         if (!preKeys) {
+            this.log.warn("No prekeys found in database, creating a new one.");
             preKeys = this.createPreKey();
             await this.database.savePreKeys(preKeys, false);
         }
