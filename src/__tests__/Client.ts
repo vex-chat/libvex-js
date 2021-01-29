@@ -8,7 +8,7 @@ let clientA: Client | null = null;
 
 const clientOptions: IClientOptions = {
     inMemoryDb: true,
-    logLevel: "info",
+    logLevel: "warn",
     dbLogLevel: "warn",
     // host: "localhost:16777",
     // unsafeHttp: true,
@@ -262,7 +262,6 @@ describe("Perform client tests", () => {
             received.includes("forwardSubsequentB");
 
         clientB.on("message", (message) => {
-            console.log(message);
             received.push(message.message + "B");
             console.log(received);
             if (receivedAllExpected()) {

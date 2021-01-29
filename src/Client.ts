@@ -737,6 +737,8 @@ export class Client extends EventEmitter {
      */
     public hasLoggedIn: boolean = false;
 
+    public sending: Record<string, IDevice> = {};
+
     private database: IStorage;
     private dbPath: string;
     private conn: WebSocket;
@@ -1877,6 +1879,14 @@ export class Client extends EventEmitter {
         forward: boolean,
         retry = false
     ): Promise<void> {
+        while (this.sending[device.deviceID] !== undefined) {
+            this.log.warn(
+                "Sending in progress to device ID " +
+                    device.deviceID +
+                    ", waiting."
+            );
+            await sleep(100);
+        }
         this.log.info(
             "Sending mail to user: \n" + JSON.stringify(user, null, 4)
         );
@@ -1884,6 +1894,7 @@ export class Client extends EventEmitter {
             "Sending mail to device:\n " +
                 JSON.stringify(device.deviceID, null, 4)
         );
+        this.sending[device.deviceID] = device;
 
         const session = await this.database.getSessionByDeviceID(
             device.deviceID
@@ -1963,6 +1974,7 @@ export class Client extends EventEmitter {
             this.conn.on("message", callback);
             this.send(msgb, hmac);
         });
+        delete this.sending[device.deviceID];
     }
 
     private async getSessionList() {
@@ -2375,7 +2387,7 @@ export class Client extends EventEmitter {
         this.emit("message", emitMsg);
 
         // send mail and wait for response
-        return new Promise((res, rej) => {
+        await new Promise((res, rej) => {
             const callback = (packedMsg: Buffer) => {
                 const [header, receivedMsg] = XUtils.unpackMessage(packedMsg);
                 if (receivedMsg.transmissionID === msg.transmissionID) {
@@ -2394,6 +2406,7 @@ export class Client extends EventEmitter {
             this.send(msg, hmac);
             this.log.info("Mail sent.");
         });
+        delete this.sending[device.deviceID];
     }
 
     private sendReceipt(nonce: Uint8Array, transmissionID: string) {
