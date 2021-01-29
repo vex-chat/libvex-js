@@ -8,10 +8,10 @@ let clientA: Client | null = null;
 
 const clientOptions: IClientOptions = {
     inMemoryDb: true,
-    logLevel: "error",
-    dbLogLevel: "error",
-    host: "localhost:16777",
-    unsafeHttp: true,
+    logLevel: "info",
+    dbLogLevel: "warn",
+    // host: "localhost:16777",
+    // unsafeHttp: true,
 };
 
 beforeAll(async () => {
@@ -236,6 +236,7 @@ describe("Perform client tests", () => {
     });
 
     test("Register a second device", async (done) => {
+        jest.setTimeout(10000);
         const clientB = await Client.create(undefined, {
             ...clientOptions,
             logLevel: "info",
@@ -254,26 +255,26 @@ describe("Perform client tests", () => {
         const received: string[] = [];
         const receivedAllExpected = () =>
             received.includes("initialA") &&
-            received.includes("subsequentA") &&
             received.includes("initialB") &&
+            received.includes("subsequentA") &&
             received.includes("subsequentB") &&
-            received.includes("forwardInitialA") &&
-            received.includes("forwardSubsequentA") &&
             received.includes("forwardInitialB") &&
             received.includes("forwardSubsequentB");
 
         clientB.on("message", (message) => {
-            if (message.direction === "incoming") {
-                received.push(message.message + "B");
-                console.log(received);
-                if (receivedAllExpected()) {
-                    done();
-                }
+            console.log(message);
+            received.push(message.message + "B");
+            console.log(received);
+            if (receivedAllExpected()) {
+                done();
             }
         });
 
         clientA?.on("message", (message) => {
-            if (message.direction === "incoming") {
+            if (
+                message.direction === "incoming" ||
+                message.authorID === clientA?.me.user().userID
+            ) {
                 received.push(message.message + "A");
                 console.log(received);
                 if (receivedAllExpected()) {
@@ -285,10 +286,13 @@ describe("Perform client tests", () => {
         otherUser.messages.send(clientA!.me.user().userID, "initial");
         await sleep(500);
         otherUser.messages.send(clientA!.me.user().userID, "subsequent");
-
-        clientB.messages.send(clientA!.me.user().userID, "forwardInitial");
         await sleep(500);
-        clientB.messages.send(clientA!.me.user().userID, "forwardSubsequent");
+        clientA!.messages.send(otherUser!.me.user().userID, "forwardInitial");
+        await sleep(500);
+        clientA!.messages.send(
+            otherUser!.me.user().userID,
+            "forwardSubsequent"
+        );
     });
 });
 

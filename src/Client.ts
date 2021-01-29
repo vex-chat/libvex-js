@@ -1833,6 +1833,10 @@ export class Client extends EventEmitter {
         const msgBytes = Uint8Array.from(msgpack.encode(copy));
 
         const devices = await this.getUserDeviceList(this.getUser().userID);
+        this.log.info(
+            "Forwarding to my other devices, deviceList length is " +
+                devices?.length
+        );
 
         if (!devices) {
             throw new Error("Couldn't get own devices.");
@@ -2082,9 +2086,9 @@ export class Client extends EventEmitter {
     private async getUserDeviceList(
         userID: string
     ): Promise<XTypes.SQL.IDevice[] | null> {
-        if (this.deviceLists[userID]) {
-            return this.deviceLists[userID];
-        }
+        // if (this.deviceLists[userID]) {
+        //     return this.deviceLists[userID];
+        // }
         try {
             const res = await ax.get(
                 this.prefixes.HTTP + this.host + "/user/" + userID + "/devices"
@@ -2482,33 +2486,35 @@ export class Client extends EventEmitter {
                 );
 
                 if (decrypted) {
+                    this.log.info("Decryption successful.");
+                    let plaintext = "";
                     if (!mail.forward) {
-                        this.log.info("Decryption successful.");
-                        const plaintext = XUtils.encodeUTF8(decrypted);
-                        // emit the message
-                        const message: IMessage = mail.forward
-                            ? {
-                                  ...msgpack.decode(decrypted),
-                                  forward: true,
-                              }
-                            : {
-                                  nonce: XUtils.encodeHex(mail.nonce),
-                                  mailID: mail.mailID,
-                                  sender: mail.sender,
-                                  recipient: mail.recipient,
-                                  message: XUtils.encodeUTF8(decrypted),
-                                  direction: "incoming",
-                                  timestamp: new Date(timestamp),
-                                  decrypted: true,
-                                  group: mail.group
-                                      ? uuid.stringify(mail.group)
-                                      : null,
-                                  forward: mail.forward,
-                                  authorID: mail.authorID,
-                                  readerID: mail.readerID,
-                              };
-                        this.emit("message", message);
+                        plaintext = XUtils.encodeUTF8(decrypted);
                     }
+                    // emit the message
+                    const message: IMessage = mail.forward
+                        ? {
+                              ...msgpack.decode(decrypted),
+                              forward: true,
+                          }
+                        : {
+                              nonce: XUtils.encodeHex(mail.nonce),
+                              mailID: mail.mailID,
+                              sender: mail.sender,
+                              recipient: mail.recipient,
+                              message: XUtils.encodeUTF8(decrypted),
+                              direction: "incoming",
+                              timestamp: new Date(timestamp),
+                              decrypted: true,
+                              group: mail.group
+                                  ? uuid.stringify(mail.group)
+                                  : null,
+                              forward: mail.forward,
+                              authorID: mail.authorID,
+                              readerID: mail.readerID,
+                          };
+                    this.emit("message", message);
+
                     await this.database.markSessionUsed(session.sessionID);
                 } else {
                     this.log.info("Decryption failed.");
