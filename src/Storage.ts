@@ -429,10 +429,10 @@ export class Storage extends EventEmitter implements IStorage {
     }
 
     public async purgeKeyData() {
-        await this.db.from("sessions").delete();
-        await this.db.from("oneTimeKeys").delete();
-        await this.db.from("preKeys").delete();
-        await this.db.from("messages").delete();
+        await this.db.from("sessions").truncate();
+        await this.db.from("oneTimeKeys").truncate();
+        await this.db.from("preKeys").truncate();
+        await this.db.from("messages").truncate();
     }
 
     public async deleteHistory(
