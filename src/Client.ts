@@ -2647,32 +2647,34 @@ export class Client extends EventEmitter {
                     SK
                 );
                 if (unsealed) {
+                    this.log.info("Decryption successful.");
+
+                    let plaintext = "";
                     if (!mail.forward) {
-                        this.log.info("Decryption successful.");
-
-                        const plaintext = XUtils.encodeUTF8(unsealed);
-
-                        // emit the message
-                        const message: IMessage = mail.forward
-                            ? { ...msgpack.decode(unsealed), forward: true }
-                            : {
-                                  nonce: XUtils.encodeHex(mail.nonce),
-                                  mailID: mail.mailID,
-                                  sender: mail.sender,
-                                  recipient: mail.recipient,
-                                  message: plaintext,
-                                  direction: "incoming",
-                                  timestamp: new Date(timestamp),
-                                  decrypted: true,
-                                  group: mail.group
-                                      ? uuid.stringify(mail.group)
-                                      : null,
-                                  forward: mail.forward,
-                                  authorID: mail.authorID,
-                                  readerID: mail.readerID,
-                              };
-                        this.emit("message", message);
+                        plaintext = XUtils.encodeUTF8(unsealed);
                     }
+
+                    // emit the message
+                    const message: IMessage = mail.forward
+                        ? { ...msgpack.decode(unsealed), forward: true }
+                        : {
+                              nonce: XUtils.encodeHex(mail.nonce),
+                              mailID: mail.mailID,
+                              sender: mail.sender,
+                              recipient: mail.recipient,
+                              message: plaintext,
+                              direction: "incoming",
+                              timestamp: new Date(timestamp),
+                              decrypted: true,
+                              group: mail.group
+                                  ? uuid.stringify(mail.group)
+                                  : null,
+                              forward: mail.forward,
+                              authorID: mail.authorID,
+                              readerID: mail.readerID,
+                          };
+
+                    this.emit("message", message);
 
                     // discard onetimekey
                     await this.database.deleteOneTimeKey(preKeyIndex);

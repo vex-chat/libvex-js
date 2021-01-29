@@ -8,10 +8,10 @@ let clientA: Client | null = null;
 
 const clientOptions: IClientOptions = {
     inMemoryDb: true,
-    logLevel: "info",
-    dbLogLevel: "warn",
-    // host: "localhost:16777",
-    // unsafeHttp: true,
+    logLevel: "error",
+    dbLogLevel: "error",
+    host: "localhost:16777",
+    unsafeHttp: true,
 };
 
 beforeAll(async () => {
@@ -236,7 +236,10 @@ describe("Perform client tests", () => {
     });
 
     test("Register a second device", async (done) => {
-        const clientB = await Client.create(undefined, clientOptions);
+        const clientB = await Client.create(undefined, {
+            ...clientOptions,
+            logLevel: "info",
+        });
         await clientB.login(username, password);
         await clientB.connect();
 
@@ -253,27 +256,39 @@ describe("Perform client tests", () => {
             received.includes("initialA") &&
             received.includes("subsequentA") &&
             received.includes("initialB") &&
-            received.includes("subsequentB");
+            received.includes("subsequentB") &&
+            received.includes("forwardInitialA") &&
+            received.includes("forwardSubsequentA") &&
+            received.includes("forwardInitialB") &&
+            received.includes("forwardSubsequentB");
 
         clientB.on("message", (message) => {
-            received.push(message.message + "B");
-            console.log(received);
-            if (receivedAllExpected()) {
-                done();
+            if (message.direction === "incoming") {
+                received.push(message.message + "B");
+                console.log(received);
+                if (receivedAllExpected()) {
+                    done();
+                }
             }
         });
 
         clientA?.on("message", (message) => {
-            received.push(message.message + "A");
-            console.log(received);
-            if (receivedAllExpected()) {
-                done();
+            if (message.direction === "incoming") {
+                received.push(message.message + "A");
+                console.log(received);
+                if (receivedAllExpected()) {
+                    done();
+                }
             }
         });
 
         otherUser.messages.send(clientA!.me.user().userID, "initial");
         await sleep(500);
         otherUser.messages.send(clientA!.me.user().userID, "subsequent");
+
+        clientB.messages.send(clientA!.me.user().userID, "forwardInitial");
+        await sleep(500);
+        clientB.messages.send(clientA!.me.user().userID, "forwardSubsequent");
     });
 });
 
