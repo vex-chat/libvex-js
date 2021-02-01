@@ -35,6 +35,7 @@ import { uuidToUint8 } from "./utils/uint8uuid";
 
 if (isBrowser) {
     ax.defaults.withCredentials = true;
+    ax.defaults.responseType = "arraybuffer";
 }
 
 const protocolMsgRegex = /��\w+:\w+��/g;
@@ -889,14 +890,22 @@ export class Client extends EventEmitter {
         password: string
     ): Promise<Error | null> {
         try {
-            const res = await ax.post(this.getHost() + "/auth", {
-                username,
-                password,
-            });
+            const res = await ax.post(
+                this.getHost() + "/auth",
+                msgpack.encode({
+                    username,
+                    password,
+                }),
+                {
+                    headers: { "Content-Type": "application/msgpack" },
+                }
+            );
             const {
                 user,
                 token,
-            }: { user: ICensoredUser; token: string } = res.data;
+            }: { user: ICensoredUser; token: string } = msgpack.decode(
+                Buffer.from(res.data)
+            );
 
             if (isNode) {
                 const cookies = res.headers["set-cookie"];
@@ -937,8 +946,11 @@ export class Client extends EventEmitter {
             withCredentials: true,
         });
 
-        const whoami: { user: ICensoredUser; exp: number; token: string } =
-            res.data;
+        const whoami: {
+            user: ICensoredUser;
+            exp: number;
+            token: string;
+        } = msgpack.decode(Buffer.from(res.data));
         return whoami;
     }
 
@@ -1007,9 +1019,10 @@ export class Client extends EventEmitter {
             try {
                 const res = await ax.post(
                     this.getHost() + "/register/new",
-                    regMsg
+                    msgpack.encode(regMsg),
+                    { headers: { "Content-Type": "application/msgpack" } }
                 );
-                this.setUser(res.data);
+                this.setUser(msgpack.decode(Buffer.from(res.data)));
                 return [this.getUser(), null];
             } catch (err) {
                 if (err.response) {
@@ -1031,7 +1044,7 @@ export class Client extends EventEmitter {
         inviteID: string
     ): Promise<XTypes.SQL.IPermission> {
         const res = await ax.patch(this.getHost() + "/invite/" + inviteID);
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async retrieveInvites(
@@ -1039,7 +1052,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.SQL.IInvite[]> {
         const res = await ax.get(this.getHost() + "/invite/" + serverID);
 
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async createInvite(serverID: string, duration: string) {
@@ -1067,7 +1080,7 @@ export class Client extends EventEmitter {
             payload
         );
 
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async retrieveEmojiList(
@@ -1076,7 +1089,7 @@ export class Client extends EventEmitter {
         const res = await ax.get(
             this.getHost() + "/server/" + serverID + "/emoji"
         );
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async retrieveEmojiByID(
@@ -1089,7 +1102,7 @@ export class Client extends EventEmitter {
         if (!res.data) {
             return null;
         }
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async leaveServer(serverID: string): Promise<void> {
@@ -1156,7 +1169,7 @@ export class Client extends EventEmitter {
                         },
                     }
                 );
-                return res.data;
+                return msgpack.decode(Buffer.from(res.data));
             } catch (err) {
                 return null;
             }
@@ -1170,9 +1183,10 @@ export class Client extends EventEmitter {
         try {
             const res = await ax.post(
                 this.getHost() + "/emoji/" + serverID + "/json",
-                payload
+                msgpack.encode(payload),
+                { headers: { "Content-Type": "application/msgpack" } }
             );
-            return res.data;
+            return msgpack.decode(Buffer.from(res.data));
         } catch (err) {
             return null;
         }
@@ -1187,7 +1201,7 @@ export class Client extends EventEmitter {
                     "/device/" +
                     XUtils.encodeHex(this.signKeys.publicKey)
             );
-            device = res.data;
+            device = msgpack.decode(Buffer.from(res.data));
         } catch (err) {
             this.log.error(err.toString());
             if (err.response?.status === 404) {
@@ -1256,9 +1270,10 @@ export class Client extends EventEmitter {
                     "/user/" +
                     userDetails.userID +
                     "/devices",
-                devMsg
+                msgpack.encode(devMsg),
+                { headers: { "Content-Type": "application/msgpack" } }
             );
-            return res.data;
+            return msgpack.decode(Buffer.from(res.data));
         } catch (err) {
             throw err;
         }
@@ -1269,7 +1284,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
             const res = await ax.get(this.getHost() + "/token/" + type);
-            return res.data;
+            return msgpack.decode(Buffer.from(res.data));
         } catch (err) {
             this.log.warn(err.toString());
             return null;
@@ -1329,7 +1344,8 @@ export class Client extends EventEmitter {
                 "/avatar/" +
                 this.me.user().userID +
                 "/json",
-            payload
+            msgpack.encode(payload),
+            { headers: { "Content-Type": "application/msgpack" } }
         );
     }
 
@@ -1348,7 +1364,7 @@ export class Client extends EventEmitter {
                 serverID +
                 "/permissions"
         );
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     /**
@@ -1360,7 +1376,7 @@ export class Client extends EventEmitter {
         const res = await ax.get(
             this.getHost() + "/user/" + this.getUser().userID + "/permissions"
         );
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async deletePermission(permissionID: string): Promise<void> {
@@ -1375,7 +1391,8 @@ export class Client extends EventEmitter {
             const detailsRes = await ax.get(
                 this.getHost() + "/file/" + fileID + "/details"
             );
-            const details = detailsRes.data;
+            console.log(detailsRes.data);
+            const details = msgpack.decode(Buffer.from(detailsRes.data));
 
             const res = await ax.get(this.getHost() + "/file/" + fileID, {
                 onDownloadProgress: (progressEvent) => {
@@ -1392,11 +1409,11 @@ export class Client extends EventEmitter {
                     };
                     this.emit("fileProgress", progress);
                 },
-                responseType: "arraybuffer",
             });
+            const fileData = res.data;
 
             const decrypted = nacl.secretbox.open(
-                Uint8Array.from(Buffer.from(res.data)),
+                Uint8Array.from(Buffer.from(fileData)),
                 XUtils.decodeHex(details.nonce),
                 XUtils.decodeHex(key)
             );
@@ -1410,8 +1427,7 @@ export class Client extends EventEmitter {
             }
             throw new Error("Decryption failed.");
         } catch (err) {
-            this.log.error(err.toString());
-            return null;
+            throw err;
         }
     }
 
@@ -1496,7 +1512,9 @@ export class Client extends EventEmitter {
                     this.emit("fileProgress", progress);
                 },
             });
-            const fcreatedFile: XTypes.SQL.IFile = fres.data;
+            const fcreatedFile: XTypes.SQL.IFile = msgpack.decode(
+                Buffer.from(fres.data)
+            );
 
             return [fcreatedFile, XUtils.encodeHex(key.secretKey)];
         }
@@ -1512,15 +1530,21 @@ export class Client extends EventEmitter {
             nonce: XUtils.encodeHex(nonce),
             file: XUtils.encodeBase64(box),
         };
-        const res = await ax.post(this.getHost() + "/file/json", payload);
-        const createdFile: XTypes.SQL.IFile = res.data;
+        const res = await ax.post(
+            this.getHost() + "/file/json",
+            msgpack.encode(payload),
+            { headers: { "Content-Type": "application/msgpack" } }
+        );
+        const createdFile: XTypes.SQL.IFile = msgpack.decode(
+            Buffer.from(res.data)
+        );
 
         return [createdFile, XUtils.encodeHex(key.secretKey)];
     }
 
     private async getUserList(channelID: string): Promise<IUser[]> {
         const res = await ax.post(this.getHost() + "/userList/" + channelID);
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async markSessionVerified(sessionID: string) {
@@ -1658,7 +1682,7 @@ export class Client extends EventEmitter {
 
     private async createServer(name: string): Promise<XTypes.SQL.IServer> {
         const res = await ax.post(this.getHost() + "/server/" + btoa(name));
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async forward(message: IMessage) {
@@ -1825,7 +1849,7 @@ export class Client extends EventEmitter {
         const res = await ax.get(
             this.getHost() + "/user/" + this.getUser().userID + "/servers"
         );
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async createChannel(
@@ -1835,9 +1859,10 @@ export class Client extends EventEmitter {
         const body = { name };
         const res = await ax.post(
             this.getHost() + "/server/" + serverID + "/channels",
-            body
+            msgpack.encode(body),
+            { headers: { "Content-Type": "application/msgpack" } }
         );
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async getDeviceByID(
@@ -1857,9 +1882,10 @@ export class Client extends EventEmitter {
         try {
             const res = await ax.get(this.getHost() + "/device/" + deviceID);
             this.log.info("Retrieved device from server.");
-            this.deviceRecords[deviceID] = res.data;
-            await this.database.saveDevice(res.data);
-            return res.data;
+            const fetchedDevice = msgpack.decode(Buffer.from(res.data));
+            this.deviceRecords[deviceID] = fetchedDevice;
+            await this.database.saveDevice(fetchedDevice);
+            return fetchedDevice;
         } catch (err) {
             return null;
         }
@@ -1883,13 +1909,19 @@ export class Client extends EventEmitter {
         userIDs: string[]
     ): Promise<XTypes.SQL.IDevice[]> {
         try {
-            const res = await ax.post(this.getHost() + "/deviceList", userIDs);
-            const devices: XTypes.SQL.IDevice[] = res.data;
+            const res = await ax.post(
+                this.getHost() + "/deviceList",
+                msgpack.encode(userIDs),
+                { headers: { "Content-Type": "application/msgpack" } }
+            );
+            const devices: XTypes.SQL.IDevice[] = msgpack.decode(
+                Buffer.from(res.data)
+            );
             for (const device of devices) {
                 this.deviceRecords[device.deviceID] = device;
             }
 
-            return res.data;
+            return devices;
         } catch (err) {
             return [];
         }
@@ -1905,14 +1937,16 @@ export class Client extends EventEmitter {
             const res = await ax.get(
                 this.getHost() + "/user/" + userID + "/devices"
             );
-            const devices: XTypes.SQL.IDevice[] = res.data;
+            const devices: XTypes.SQL.IDevice[] = msgpack.decode(
+                Buffer.from(res.data)
+            );
             this.deviceLists[userID] = devices;
 
             for (const device of devices) {
                 this.deviceRecords[device.deviceID] = device;
             }
 
-            return res.data;
+            return devices;
         } catch (err) {
             return null;
         }
@@ -1923,7 +1957,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.SQL.IServer | null> {
         try {
             const res = await ax.get(this.getHost() + "/server/" + serverID);
-            return res.data;
+            return msgpack.decode(Buffer.from(res.data));
         } catch (err) {
             return null;
         }
@@ -1934,7 +1968,7 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.SQL.IChannel | null> {
         try {
             const res = await ax.get(this.getHost() + "/channel/" + channelID);
-            return res.data;
+            return msgpack.decode(Buffer.from(res.data));
         } catch (err) {
             return null;
         }
@@ -1946,7 +1980,7 @@ export class Client extends EventEmitter {
         const res = await ax.get(
             this.getHost() + "/server/" + serverID + "/channels"
         );
-        return res.data;
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     /* Get the currently logged in user. You cannot call this until 
@@ -1987,8 +2021,9 @@ export class Client extends EventEmitter {
             const res = await ax.get(
                 this.getHost() + "/user/" + userIdentifier
             );
-            this.userRecords[userIdentifier] = res.data;
-            return [res.data, null];
+            const userRecord = msgpack.decode(Buffer.from(res.data));
+            this.userRecords[userIdentifier] = userRecord;
+            return [userRecord, null];
         } catch (err) {
             return [null, err];
         }
@@ -2585,7 +2620,7 @@ export class Client extends EventEmitter {
         if (!preKeys) {
             this.log.warn("No prekeys found in database, creating a new one.");
             preKeys = this.createPreKey();
-            await this.database.savePreKeys(preKeys, false);
+            await this.database.savePreKeys([preKeys], false);
         }
 
         const ephemeralKeys = nacl.box.keyPair();
@@ -2856,10 +2891,11 @@ export class Client extends EventEmitter {
             this.conn.on("message", callback);
 
             const oneTimeKey: XTypes.CRYPTO.IPreKeys = this.createPreKey();
-            const preKeyIndex: number = await this.database.savePreKeys(
-                oneTimeKey,
+            const addedIndexes: number[] = await this.database.savePreKeys(
+                [oneTimeKey],
                 true
             );
+            const [preKeyIndex] = addedIndexes;
             oneTimeKey.index = preKeyIndex;
 
             this.send({

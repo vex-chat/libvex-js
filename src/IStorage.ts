@@ -85,9 +85,9 @@ export interface IStorage extends EventEmitter {
      * as indicated by the oneTime parameter.
      */
     savePreKeys: (
-        preKeys: XTypes.CRYPTO.IPreKeys,
+        preKeys: XTypes.CRYPTO.IPreKeys[],
         oneTime: boolean
-    ) => Promise<number>;
+    ) => Promise<number[]>;
     /**
      * Gets your set of main prekeys. You only have one at a time.
      * Returns null if the prekeys have not been saved yet.

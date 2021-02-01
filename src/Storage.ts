@@ -189,26 +189,35 @@ export class Storage extends EventEmitter implements IStorage {
     }
 
     public async savePreKeys(
-        preKeys: XTypes.CRYPTO.IPreKeys,
+        preKeys: XTypes.CRYPTO.IPreKeys[],
         oneTime: boolean
-    ): Promise<number> {
+    ): Promise<number[]> {
+        const addedIndexes: number[] = [];
+
         await this.untilReady();
         if (this.closing) {
             this.log.warn(
-                "Database is closing, getGroupHistory() will not complete."
+                "Database is closing, savePreKeys() will not complete."
             );
-            return -1;
+            return [-1];
         }
-        const index = await this.db(oneTime ? "oneTimeKeys" : "preKeys").insert(
-            {
-                privateKey: XUtils.encodeHex(preKeys.keyPair.secretKey),
-                publicKey: XUtils.encodeHex(preKeys.keyPair.publicKey),
-                signature: XUtils.encodeHex(preKeys.signature),
-            }
-        );
-        this.log.silly("savePreKeys() => " + JSON.stringify(index[0], null, 4));
 
-        return index[0];
+        for (const preKey of preKeys) {
+            const index = await this.db(
+                oneTime ? "oneTimeKeys" : "preKeys"
+            ).insert({
+                privateKey: XUtils.encodeHex(preKey.keyPair.secretKey),
+                publicKey: XUtils.encodeHex(preKey.keyPair.publicKey),
+                signature: XUtils.encodeHex(preKey.signature),
+            });
+            addedIndexes.push(index[0]);
+        }
+
+        this.log.silly(
+            "savePreKeys() => " + JSON.stringify(addedIndexes, null, 4)
+        );
+
+        return addedIndexes;
     }
 
     public async getSessionByPublicKey(
