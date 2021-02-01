@@ -16,6 +16,7 @@ import {
 import { XTypes } from "@vex-chat/types";
 import ax, { AxiosError } from "axios";
 import { isBrowser, isNode } from "browser-or-node";
+import btoa from "btoa";
 import chalk from "chalk";
 import { EventEmitter } from "events";
 import msgpack from "msgpack-lite";
@@ -888,10 +889,10 @@ export class Client extends EventEmitter {
         password: string
     ): Promise<Error | null> {
         try {
-            const res = await ax.post(
-                this.prefixes.HTTP + this.host + "/auth",
-                { username, password }
-            );
+            const res = await ax.post(this.getHost() + "/auth", {
+                username,
+                password,
+            });
             const {
                 user,
                 token,
@@ -932,13 +933,9 @@ export class Client extends EventEmitter {
         exp: number;
         token: string;
     }> {
-        const res = await ax.post(
-            this.prefixes.HTTP + this.host + "/whoami",
-            null,
-            {
-                withCredentials: true,
-            }
-        );
+        const res = await ax.post(this.getHost() + "/whoami", null, {
+            withCredentials: true,
+        });
 
         const whoami: { user: ICensoredUser; exp: number; token: string } =
             res.data;
@@ -946,7 +943,7 @@ export class Client extends EventEmitter {
     }
 
     public async logout(): Promise<void> {
-        await ax.post(this.prefixes.HTTP + this.host + "/goodbye");
+        await ax.post(this.getHost() + "/goodbye");
     }
 
     /**
@@ -1009,7 +1006,7 @@ export class Client extends EventEmitter {
             };
             try {
                 const res = await ax.post(
-                    this.prefixes.HTTP + this.host + "/register/new",
+                    this.getHost() + "/register/new",
                     regMsg
                 );
                 this.setUser(res.data);
@@ -1033,18 +1030,14 @@ export class Client extends EventEmitter {
     private async redeemInvite(
         inviteID: string
     ): Promise<XTypes.SQL.IPermission> {
-        const res = await ax.patch(
-            this.prefixes.HTTP + this.host + "/invite/" + inviteID
-        );
+        const res = await ax.patch(this.getHost() + "/invite/" + inviteID);
         return res.data;
     }
 
     private async retrieveInvites(
         serverID: string
     ): Promise<XTypes.SQL.IInvite[]> {
-        const res = await ax.get(
-            this.prefixes.HTTP + this.host + "/invite/" + serverID
-        );
+        const res = await ax.get(this.getHost() + "/invite/" + serverID);
 
         return res.data;
     }
@@ -1070,7 +1063,7 @@ export class Client extends EventEmitter {
         };
 
         const res = await ax.post(
-            this.prefixes.HTTP + this.host + "/invite/" + serverID,
+            this.getHost() + "/invite/" + serverID,
             payload
         );
 
@@ -1081,7 +1074,7 @@ export class Client extends EventEmitter {
         serverID: string
     ): Promise<XTypes.SQL.IEmoji[]> {
         const res = await ax.get(
-            this.prefixes.HTTP + this.host + "/server/" + serverID + "/emoji"
+            this.getHost() + "/server/" + serverID + "/emoji"
         );
         return res.data;
     }
@@ -1090,7 +1083,7 @@ export class Client extends EventEmitter {
         emojiID: string
     ): Promise<XTypes.SQL.IEmoji | null> {
         const res = await ax.get(
-            this.prefixes.HTTP + this.host + "/emoji/" + emojiID + "/details"
+            this.getHost() + "/emoji/" + emojiID + "/details"
         );
         // this is actually empty string
         if (!res.data) {
@@ -1142,7 +1135,7 @@ export class Client extends EventEmitter {
 
             try {
                 const res = await ax.post(
-                    this.prefixes.HTTP + this.host + "/emoji/" + serverID,
+                    this.getHost() + "/emoji/" + serverID,
                     fpayload,
                     {
                         headers: { "Content-Type": "multipart/form-data" },
@@ -1176,7 +1169,7 @@ export class Client extends EventEmitter {
         };
         try {
             const res = await ax.post(
-                this.prefixes.HTTP + this.host + "/emoji/" + serverID + "/json",
+                this.getHost() + "/emoji/" + serverID + "/json",
                 payload
             );
             return res.data;
@@ -1275,9 +1268,7 @@ export class Client extends EventEmitter {
         type: "register" | "file" | "avatar" | "device" | "invite" | "emoji"
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
-            const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/token/" + type
-            );
+            const res = await ax.get(this.getHost() + "/token/" + type);
             return res.data;
         } catch (err) {
             this.log.warn(err.toString());
@@ -1347,32 +1338,17 @@ export class Client extends EventEmitter {
      *
      * @returns - The list of IPermissions objects.
      */
-    private fetchPermissionList(
+    private async fetchPermissionList(
         serverID: string
     ): Promise<XTypes.SQL.IPermission[]> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "permissionList",
-                action: "RETRIEVE",
-                data: serverID,
-            };
-            this.send(outMsg);
-        });
+        const res = await ax.get(
+            this.prefixes.HTTP +
+                this.host +
+                "/server/" +
+                serverID +
+                "/permissions"
+        );
+        return res.data;
     }
 
     /**
@@ -1380,55 +1356,15 @@ export class Client extends EventEmitter {
      *
      * @returns - The list of IPermissions objects.
      */
-    private getPermissions(): Promise<XTypes.SQL.IPermission[]> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "permissions",
-                action: "RETRIEVE",
-            };
-            this.send(outMsg);
-        });
+    private async getPermissions(): Promise<XTypes.SQL.IPermission[]> {
+        const res = await ax.get(
+            this.getHost() + "/user/" + this.getUser().userID + "/permissions"
+        );
+        return res.data;
     }
 
     private async deletePermission(permissionID: string): Promise<void> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "permissions",
-                action: "DELETE",
-                data: permissionID,
-            };
-            this.send(outMsg);
-        });
+        await ax.delete(this.getHost() + "/permission/" + permissionID);
     }
 
     private async retrieveFile(
@@ -1437,30 +1373,27 @@ export class Client extends EventEmitter {
     ): Promise<XTypes.HTTP.IFileResponse | null> {
         try {
             const detailsRes = await ax.get(
-                this.prefixes.HTTP + this.host + "/file/" + fileID + "/details"
+                this.getHost() + "/file/" + fileID + "/details"
             );
             const details = detailsRes.data;
 
-            const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/file/" + fileID,
-                {
-                    onDownloadProgress: (progressEvent) => {
-                        const percentCompleted = Math.round(
-                            (progressEvent.loaded * 100) / progressEvent.total
-                        );
-                        const { loaded, total } = progressEvent;
-                        const progress: IFileProgress = {
-                            direction: "download",
-                            token: fileID,
-                            progress: percentCompleted,
-                            loaded,
-                            total,
-                        };
-                        this.emit("fileProgress", progress);
-                    },
-                    responseType: "arraybuffer",
-                }
-            );
+            const res = await ax.get(this.getHost() + "/file/" + fileID, {
+                onDownloadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round(
+                        (progressEvent.loaded * 100) / progressEvent.total
+                    );
+                    const { loaded, total } = progressEvent;
+                    const progress: IFileProgress = {
+                        direction: "download",
+                        token: fileID,
+                        progress: percentCompleted,
+                        loaded,
+                        total,
+                    };
+                    this.emit("fileProgress", progress);
+                },
+                responseType: "arraybuffer",
+            });
 
             const decrypted = nacl.secretbox.open(
                 Uint8Array.from(Buffer.from(res.data)),
@@ -1483,29 +1416,7 @@ export class Client extends EventEmitter {
     }
 
     private async deleteServer(serverID: string): Promise<void> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "servers",
-                action: "DELETE",
-                data: serverID,
-            };
-            this.send(outMsg);
-        });
+        await ax.delete(this.getHost() + "/server/" + serverID);
     }
 
     /**
@@ -1535,29 +1446,7 @@ export class Client extends EventEmitter {
     }
 
     private async deleteChannel(channelID: string): Promise<void> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "channels",
-                action: "DELETE",
-                data: channelID,
-            };
-            this.send(outMsg);
-        });
+        await ax.delete(this.getHost() + "/channel/" + channelID);
     }
 
     // returns the file details and the encryption key
@@ -1590,27 +1479,23 @@ export class Client extends EventEmitter {
             fpayload.set("nonce", XUtils.encodeHex(nonce));
             fpayload.set("file", new Blob([box]));
 
-            const fres = await ax.post(
-                this.prefixes.HTTP + this.host + "/file",
-                fpayload,
-                {
-                    headers: { "Content-Type": "multipart/form-data" },
-                    onUploadProgress: (progressEvent) => {
-                        const percentCompleted = Math.round(
-                            (progressEvent.loaded * 100) / progressEvent.total
-                        );
-                        const { loaded, total } = progressEvent;
-                        const progress: IFileProgress = {
-                            direction: "upload",
-                            token: token.key,
-                            progress: percentCompleted,
-                            loaded,
-                            total,
-                        };
-                        this.emit("fileProgress", progress);
-                    },
-                }
-            );
+            const fres = await ax.post(this.getHost() + "/file", fpayload, {
+                headers: { "Content-Type": "multipart/form-data" },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round(
+                        (progressEvent.loaded * 100) / progressEvent.total
+                    );
+                    const { loaded, total } = progressEvent;
+                    const progress: IFileProgress = {
+                        direction: "upload",
+                        token: token.key,
+                        progress: percentCompleted,
+                        loaded,
+                        total,
+                    };
+                    this.emit("fileProgress", progress);
+                },
+            });
             const fcreatedFile: XTypes.SQL.IFile = fres.data;
 
             return [fcreatedFile, XUtils.encodeHex(key.secretKey)];
@@ -1627,39 +1512,15 @@ export class Client extends EventEmitter {
             nonce: XUtils.encodeHex(nonce),
             file: XUtils.encodeBase64(box),
         };
-        const res = await ax.post(
-            this.prefixes.HTTP + this.host + "/file/json",
-            payload
-        );
+        const res = await ax.post(this.getHost() + "/file/json", payload);
         const createdFile: XTypes.SQL.IFile = res.data;
 
         return [createdFile, XUtils.encodeHex(key.secretKey)];
     }
 
-    private getUserList(channelID: string): Promise<IUser[]> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "userlist",
-                action: "RETRIEVE",
-                data: channelID,
-            };
-            this.send(outMsg);
-        });
+    private async getUserList(channelID: string): Promise<IUser[]> {
+        const res = await ax.post(this.getHost() + "/userList/" + channelID);
+        return res.data;
     }
 
     private async markSessionVerified(sessionID: string) {
@@ -1795,30 +1656,9 @@ export class Client extends EventEmitter {
         });
     }
 
-    private async createServer(name: string): Promise<XTypes.SQL.IChannel> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "servers",
-                action: "CREATE",
-                data: name,
-            };
-            this.send(outMsg);
-        });
+    private async createServer(name: string): Promise<XTypes.SQL.IServer> {
+        const res = await ax.post(this.getHost() + "/server/" + btoa(name));
+        return res.data;
     }
 
     private async forward(message: IMessage) {
@@ -1982,57 +1822,22 @@ export class Client extends EventEmitter {
     }
 
     private async getServerList(): Promise<XTypes.SQL.IServer[]> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "servers",
-                action: "RETRIEVE",
-            };
-            this.send(outMsg);
-        });
+        const res = await ax.get(
+            this.getHost() + "/user/" + this.getUser().userID + "/servers"
+        );
+        return res.data;
     }
 
     private async createChannel(
         name: string,
         serverID: string
     ): Promise<XTypes.SQL.IChannel> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "channels",
-                action: "CREATE",
-                data: { name, serverID },
-            };
-            this.send(outMsg);
-        });
+        const body = { name };
+        const res = await ax.post(
+            this.getHost() + "/server/" + serverID + "/channels",
+            body
+        );
+        return res.data;
     }
 
     private async getDeviceByID(
@@ -2050,9 +1855,7 @@ export class Client extends EventEmitter {
             return device;
         }
         try {
-            const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/device/" + deviceID
-            );
+            const res = await ax.get(this.getHost() + "/device/" + deviceID);
             this.log.info("Retrieved device from server.");
             this.deviceRecords[deviceID] = res.data;
             await this.database.saveDevice(res.data);
@@ -2080,10 +1883,7 @@ export class Client extends EventEmitter {
         userIDs: string[]
     ): Promise<XTypes.SQL.IDevice[]> {
         try {
-            const res = await ax.post(
-                this.prefixes.HTTP + this.host + "/deviceList",
-                userIDs
-            );
+            const res = await ax.post(this.getHost() + "/deviceList", userIDs);
             const devices: XTypes.SQL.IDevice[] = res.data;
             for (const device of devices) {
                 this.deviceRecords[device.deviceID] = device;
@@ -2103,7 +1903,7 @@ export class Client extends EventEmitter {
         // }
         try {
             const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/user/" + userID + "/devices"
+                this.getHost() + "/user/" + userID + "/devices"
             );
             const devices: XTypes.SQL.IDevice[] = res.data;
             this.deviceLists[userID] = devices;
@@ -2122,9 +1922,7 @@ export class Client extends EventEmitter {
         serverID: string
     ): Promise<XTypes.SQL.IServer | null> {
         try {
-            const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/server/" + serverID
-            );
+            const res = await ax.get(this.getHost() + "/server/" + serverID);
             return res.data;
         } catch (err) {
             return null;
@@ -2135,9 +1933,7 @@ export class Client extends EventEmitter {
         channelID: string
     ): Promise<XTypes.SQL.IChannel | null> {
         try {
-            const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/channel/" + channelID
-            );
+            const res = await ax.get(this.getHost() + "/channel/" + channelID);
             return res.data;
         } catch (err) {
             return null;
@@ -2147,29 +1943,10 @@ export class Client extends EventEmitter {
     private async getChannelList(
         serverID: string
     ): Promise<XTypes.SQL.IChannel[]> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "channels",
-                action: "RETRIEVE",
-                data: serverID,
-            };
-            this.send(outMsg);
-        });
+        const res = await ax.get(
+            this.getHost() + "/server/" + serverID + "/channels"
+        );
+        return res.data;
     }
 
     /* Get the currently logged in user. You cannot call this until 
@@ -2208,7 +1985,7 @@ export class Client extends EventEmitter {
 
         try {
             const res = await ax.get(
-                this.prefixes.HTTP + this.host + "/user/" + userIdentifier
+                this.getHost() + "/user/" + userIdentifier
             );
             this.userRecords[userIdentifier] = res.data;
             return [res.data, null];

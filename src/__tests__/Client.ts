@@ -10,8 +10,8 @@ const clientOptions: IClientOptions = {
     inMemoryDb: true,
     logLevel: "warn",
     dbLogLevel: "warn",
-    // host: "localhost:16777",
-    // unsafeHttp: true,
+    host: "localhost:16777",
+    unsafeHttp: true,
 };
 
 beforeAll(async () => {
@@ -54,22 +54,23 @@ describe("Perform client tests", () => {
     });
 
     test("Server operations", async (done) => {
+        const permissions = await clientA!.permissions.retrieve();
+        expect(permissions).toEqual([]);
+
         const server = await clientA!.servers.create("Test Server");
         const serverList = await clientA!.servers.retrieve();
-
         const [knownServer] = serverList;
-        expect(server.serverID === knownServer.serverID).toBe(true);
+        expect(server.serverID).toBe(knownServer.serverID);
 
         const retrieveByIDServer = await clientA!.servers.retrieveByID(
             server.serverID
         );
-        expect(server.serverID === retrieveByIDServer?.serverID).toBe(true);
+        expect(server.serverID).toEqual(retrieveByIDServer?.serverID);
 
         await clientA!.servers.delete(server.serverID);
 
         // make another server to be used by channel tests
         createdServer = await clientA!.servers.create("Channel Test Server");
-
         done();
     });
 
