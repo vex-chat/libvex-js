@@ -989,7 +989,8 @@ export class Client extends EventEmitter {
         );
 
         this.log.info("Starting websocket.");
-        await this.initSocket();
+        this.initSocket();
+        await this.negotiateOTK();
     }
 
     /**
@@ -2192,22 +2193,21 @@ export class Client extends EventEmitter {
         delete this.sending[device.deviceID];
     }
 
-    private sendReceipt(nonce: Uint8Array, transmissionID: string) {
+    private sendReceipt(nonce: Uint8Array) {
         const receipt: XTypes.WS.IReceiptMsg = {
             type: "receipt",
-            transmissionID,
+            transmissionID: uuid.v4(),
             nonce,
         };
         this.send(receipt);
     }
 
     private async readMail(
-        mail: XTypes.WS.IMail,
         header: Uint8Array,
-        transmissionID: string,
+        mail: XTypes.WS.IMail,
         timestamp: string
     ) {
-        await this.sendReceipt(mail.nonce, transmissionID);
+        await this.sendReceipt(mail.nonce);
         while (this.reading) {
             await sleep(100);
         }
@@ -2698,12 +2698,6 @@ export class Client extends EventEmitter {
     }
 
     private async postAuth() {
-        try {
-            await this.negotiateOTK();
-        } catch (err) {
-            this.log.warn("error negotiating OTKs:" + err.toString());
-        }
-
         let count = 0;
         while (true) {
             try {
@@ -2722,16 +2716,36 @@ export class Client extends EventEmitter {
         }
     }
 
-    private async _getMail(): Promise<void> {
-        const mail = await ax.get(
-            this.getHost() + "/device/" + this.getDevice().deviceID + "/mail"
-        );
-    }
-
     private async getMail(): Promise<void> {
         while (this.fetchingMail) {
             await sleep(500);
         }
+        this.fetchingMail = true;
+        this.log.info("fetching mail for device " + this.getDevice().deviceID);
+        try {
+            const res = await ax.post(
+                this.getHost() +
+                    "/device/" +
+                    this.getDevice().deviceID +
+                    "/mail"
+            );
+            const inbox: Array<[
+                Uint8Array,
+                XTypes.WS.IMail,
+                Date
+            ]> = msgpack.decode(Buffer.from(res.data));
+            this.log.info("Fetched mail: " + JSON.stringify(inbox, null, 4));
+            for (const mailDetails of inbox) {
+                const [mailHeader, mailBody, timestamp] = mailDetails;
+                await this.readMail(mailHeader, mailBody, timestamp.toString());
+            }
+        } catch (err) {
+            console.warn(err.toString());
+        }
+        this.fetchingMail = false;
+    }
+
+    private async _getMail(): Promise<void> {
         this.fetchingMail = true;
         this.log.info("fetching mail for device " + this.getDevice().deviceID);
         return new Promise((res, rej) => {
@@ -2751,9 +2765,8 @@ export class Client extends EventEmitter {
                         }
                         try {
                             this.readMail(
-                                (msg as XTypes.WS.ISucessMsg).data,
                                 header,
-                                transmissionID,
+                                (msg as XTypes.WS.ISucessMsg).data,
                                 (msg as XTypes.WS.ISucessMsg).timestamp!
                             );
                         } catch (err) {
