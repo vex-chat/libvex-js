@@ -969,10 +969,24 @@ export class Client extends EventEmitter {
         if (!user || !token) {
             throw new Error("Auth cookie missing or expired. Log in again.");
         }
-
         this.setUser(user);
 
         this.device = await this.retrieveOrCreateDevice();
+
+        const connectToken = await this.getToken("connect");
+        if (!connectToken) {
+            throw new Error("Couldn't get connect token.");
+        }
+        const signed = nacl.sign(
+            Uint8Array.from(uuid.parse(connectToken.key)),
+            this.signKeys.secretKey
+        );
+
+        await ax.post(
+            this.getHost() + "/device/" + this.device.deviceID + "/connect",
+            msgpack.encode({ signed }),
+            { headers: { "Content-Type": "application/msgpack" } }
+        );
 
         this.log.info("Starting websocket.");
         await this.initSocket();
@@ -1018,7 +1032,7 @@ export class Client extends EventEmitter {
             };
             try {
                 const res = await ax.post(
-                    this.getHost() + "/register/new",
+                    this.getHost() + "/register",
                     msgpack.encode(regMsg),
                     { headers: { "Content-Type": "application/msgpack" } }
                 );
@@ -1050,33 +1064,20 @@ export class Client extends EventEmitter {
     private async retrieveInvites(
         serverID: string
     ): Promise<XTypes.SQL.IInvite[]> {
-        const res = await ax.get(this.getHost() + "/invite/" + serverID);
-
+        const res = await ax.get(
+            this.getHost() + "/server/" + serverID + "/invites"
+        );
         return msgpack.decode(Buffer.from(res.data));
     }
 
     private async createInvite(serverID: string, duration: string) {
-        const token = await this.getToken("invite");
-
-        if (!token) {
-            throw new Error("Couldn't fetch token!");
-        }
-
-        const signed = XUtils.encodeHex(
-            nacl.sign(
-                Uint8Array.from(uuid.parse(token.key)),
-                this.signKeys.secretKey
-            )
-        );
-
         const payload = {
             serverID,
-            signed,
             duration,
         };
 
         const res = await ax.post(
-            this.getHost() + "/invite/" + serverID,
+            this.getHost() + "/server/" + serverID + "/invites",
             payload
         );
 
@@ -1130,19 +1131,8 @@ export class Client extends EventEmitter {
         name: string,
         serverID: string
     ): Promise<XTypes.SQL.IEmoji | null> {
-        const token = await this.getToken("emoji");
-        if (!token) {
-            this.log.warn("Failed to get token.");
-            return null;
-        }
-        const signed = nacl.sign(
-            Uint8Array.from(uuid.parse(token.key)),
-            this.signKeys.secretKey
-        );
-
         if (typeof FormData !== "undefined") {
             const fpayload = new FormData();
-            fpayload.set("signed", XUtils.encodeHex(signed));
             fpayload.set("emoji", new Blob([emoji]));
             fpayload.set("name", name);
 
@@ -1160,7 +1150,7 @@ export class Client extends EventEmitter {
                             const { loaded, total } = progressEvent;
                             const progress: IFileProgress = {
                                 direction: "upload",
-                                token: token.key,
+                                token: name,
                                 progress: percentCompleted,
                                 loaded,
                                 total,
@@ -1175,8 +1165,7 @@ export class Client extends EventEmitter {
             }
         }
 
-        const payload: { signed: string; file: string; name: string } = {
-            signed: XUtils.encodeHex(signed),
+        const payload: { file: string; name: string } = {
             file: XUtils.encodeBase64(emoji),
             name,
         };
@@ -1280,7 +1269,14 @@ export class Client extends EventEmitter {
     }
 
     private async getToken(
-        type: "register" | "file" | "avatar" | "device" | "invite" | "emoji"
+        type:
+            | "register"
+            | "file"
+            | "avatar"
+            | "device"
+            | "invite"
+            | "emoji"
+            | "connect"
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
             const res = await ax.get(this.getHost() + "/token/" + type);
@@ -1292,19 +1288,8 @@ export class Client extends EventEmitter {
     }
 
     private async uploadAvatar(avatar: Buffer): Promise<void> {
-        const token = await this.getToken("avatar");
-        if (!token) {
-            this.log.warn("Failed to get token.");
-            return;
-        }
-        const signed = nacl.sign(
-            Uint8Array.from(uuid.parse(token.key)),
-            this.signKeys.secretKey
-        );
-
         if (typeof FormData !== "undefined") {
             const fpayload = new FormData();
-            fpayload.set("signed", XUtils.encodeHex(signed));
             fpayload.set("avatar", new Blob([avatar]));
 
             await ax.post(
@@ -1322,7 +1307,7 @@ export class Client extends EventEmitter {
                         const { loaded, total } = progressEvent;
                         const progress: IFileProgress = {
                             direction: "upload",
-                            token: token.key,
+                            token: this.getUser().userID,
                             progress: percentCompleted,
                             loaded,
                             total,
@@ -1334,8 +1319,7 @@ export class Client extends EventEmitter {
             return;
         }
 
-        const payload: { signed: string; file: string } = {
-            signed: XUtils.encodeHex(signed),
+        const payload: { file: string } = {
             file: XUtils.encodeBase64(avatar),
         };
         await ax.post(
@@ -1391,7 +1375,6 @@ export class Client extends EventEmitter {
             const detailsRes = await ax.get(
                 this.getHost() + "/file/" + fileID + "/details"
             );
-            console.log(detailsRes.data);
             const details = msgpack.decode(Buffer.from(detailsRes.data));
 
             const res = await ax.get(this.getHost() + "/file/" + fileID, {
@@ -1469,10 +1452,6 @@ export class Client extends EventEmitter {
     private async createFile(
         file: Buffer
     ): Promise<[XTypes.SQL.IFile, string]> {
-        const token = await this.getToken("file");
-        if (!token) {
-            throw new Error("Wasn't able to get token.");
-        }
         this.log.info(
             "Creating file, size: " + formatBytes(Buffer.byteLength(file))
         );
@@ -1483,15 +1462,9 @@ export class Client extends EventEmitter {
 
         this.log.info("Encrypted size: " + formatBytes(Buffer.byteLength(box)));
 
-        const signed = nacl.sign(
-            Uint8Array.from(uuid.parse(token.key)),
-            this.signKeys.secretKey
-        );
-
         if (typeof FormData !== "undefined") {
             const fpayload = new FormData();
             fpayload.set("owner", this.getDevice().deviceID);
-            fpayload.set("signed", XUtils.encodeHex(signed));
             fpayload.set("nonce", XUtils.encodeHex(nonce));
             fpayload.set("file", new Blob([box]));
 
@@ -1504,7 +1477,7 @@ export class Client extends EventEmitter {
                     const { loaded, total } = progressEvent;
                     const progress: IFileProgress = {
                         direction: "upload",
-                        token: token.key,
+                        token: XUtils.encodeHex(nonce),
                         progress: percentCompleted,
                         loaded,
                         total,
@@ -1521,12 +1494,10 @@ export class Client extends EventEmitter {
 
         const payload: {
             owner: string;
-            signed: string;
             nonce: string;
             file: string;
         } = {
             owner: this.getDevice().deviceID,
-            signed: XUtils.encodeHex(signed),
             nonce: XUtils.encodeHex(nonce),
             file: XUtils.encodeBase64(box),
         };
@@ -2340,10 +2311,9 @@ export class Client extends EventEmitter {
                           };
                     this.emit("message", message);
 
-                    await this.database.markSessionUsed(session.sessionID);
+                    this.database.markSessionUsed(session.sessionID);
                 } else {
                     this.log.info("Decryption failed.");
-
                     await healSession();
 
                     // emit the message
@@ -2752,6 +2722,12 @@ export class Client extends EventEmitter {
         }
     }
 
+    private async _getMail(): Promise<void> {
+        const mail = await ax.get(
+            this.getHost() + "/device/" + this.getDevice().deviceID + "/mail"
+        );
+    }
+
     private async getMail(): Promise<void> {
         while (this.fetchingMail) {
             await sleep(500);
@@ -2824,56 +2800,23 @@ export class Client extends EventEmitter {
     private async retrieveKeyBundle(
         deviceID: string
     ): Promise<XTypes.WS.IKeyBundle> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "keyBundle",
-                action: "RETRIEVE",
-                data: deviceID,
-            };
-            this.send(outMsg);
-        });
+        const res = await ax.post(
+            this.getHost() + "/device/" + deviceID + "/keyBundle"
+        );
+        return msgpack.decode(Buffer.from(res.data));
     }
 
     private async getOTKCount(): Promise<number> {
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            this.send({
-                transmissionID,
-                type: "resource",
-                resourceType: "otk",
-                action: "RETRIEVE",
-            });
-        });
+        const res = await ax.get(
+            this.getHost() +
+                "/device/" +
+                this.getDevice().deviceID +
+                "/otk/count"
+        );
+        return msgpack.decode(Buffer.from(res.data)).count;
     }
 
-    private async _submitOTK(amount: number) {
+    private async submitOTK(amount: number) {
         const otks: XTypes.CRYPTO.IPreKeys[] = [];
 
         const t0 = performance.now();
@@ -2889,47 +2832,12 @@ export class Client extends EventEmitter {
         const savedKeys = await this.database.savePreKeys(otks, true);
 
         await ax.post(
-            this.getHost() + "/user/" + this.getUser().userID + "/otk",
+            this.getHost() + "/device/" + this.getDevice().deviceID + "/otk",
             msgpack.encode(savedKeys.map((key) => this.censorPreKey(key))),
             {
                 headers: { "Content-Type": "application/msgpack" },
             }
         );
-    }
-
-    private async submitOTK(): Promise<void> {
-        return new Promise(async (res, rej) => {
-            const transmissionID = uuid.v4();
-            const callback = (packedMessage: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMessage);
-                if (msg.transmissionID === transmissionID) {
-                    this.conn.off("message", callback);
-                    if (msg.type === "success") {
-                        res((msg as XTypes.WS.ISucessMsg).data);
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-
-            this.conn.on("message", callback);
-
-            const oneTimeKey: XTypes.CRYPTO.IPreKeys = this.createPreKey();
-            const savedKeys: XTypes.SQL.IPreKeys[] = await this.database.savePreKeys(
-                [oneTimeKey],
-                true
-            );
-            const [key] = savedKeys;
-            console.log(key);
-
-            this.send({
-                transmissionID,
-                type: "resource",
-                resourceType: "otk",
-                action: "CREATE",
-                data: this.censorPreKey(key),
-            });
-        });
     }
 
     private async negotiateOTK() {
@@ -2941,7 +2849,7 @@ export class Client extends EventEmitter {
             return;
         }
 
-        await this._submitOTK(needs);
+        await this.submitOTK(needs);
     }
 
     private respond(msg: XTypes.WS.IChallMsg) {

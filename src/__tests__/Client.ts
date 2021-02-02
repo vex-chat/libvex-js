@@ -8,7 +8,7 @@ let clientA: Client | null = null;
 
 const clientOptions: IClientOptions = {
     inMemoryDb: true,
-    logLevel: "warn",
+    logLevel: "info",
     dbLogLevel: "warn",
     host: "localhost:16777",
     unsafeHttp: true,
@@ -225,7 +225,6 @@ describe("Perform client tests", () => {
         if (!history) {
             throw new Error("No history found!");
         }
-        console.log(history.length);
 
         await clientA?.messages.delete(clientA.me.user().userID);
 
@@ -264,7 +263,6 @@ describe("Perform client tests", () => {
 
         clientB.on("message", (message) => {
             received.push(message.message + "B");
-            console.log(received);
             if (receivedAllExpected()) {
                 done();
             }
@@ -276,7 +274,6 @@ describe("Perform client tests", () => {
                 message.authorID === clientA?.me.user().userID
             ) {
                 received.push(message.message + "A");
-                console.log(received);
                 if (receivedAllExpected()) {
                     done();
                 }
