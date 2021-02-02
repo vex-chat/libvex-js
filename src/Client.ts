@@ -2873,6 +2873,30 @@ export class Client extends EventEmitter {
         });
     }
 
+    private async _submitOTK(amount: number) {
+        const otks: XTypes.CRYPTO.IPreKeys[] = [];
+
+        const t0 = performance.now();
+        for (let i = 0; i < amount; i++) {
+            otks[i] = this.createPreKey();
+        }
+        const t1 = performance.now();
+
+        this.log.info(
+            "Generated " + amount + " one time keys in " + (t1 - t0) + " ms."
+        );
+
+        const savedKeys = await this.database.savePreKeys(otks, true);
+
+        await ax.post(
+            this.getHost() + "/user/" + this.getUser().userID + "/otk",
+            msgpack.encode(savedKeys.map((key) => this.censorPreKey(key))),
+            {
+                headers: { "Content-Type": "application/msgpack" },
+            }
+        );
+    }
+
     private async submitOTK(): Promise<void> {
         return new Promise(async (res, rej) => {
             const transmissionID = uuid.v4();
@@ -2891,36 +2915,33 @@ export class Client extends EventEmitter {
             this.conn.on("message", callback);
 
             const oneTimeKey: XTypes.CRYPTO.IPreKeys = this.createPreKey();
-            const addedIndexes: number[] = await this.database.savePreKeys(
+            const savedKeys: XTypes.SQL.IPreKeys[] = await this.database.savePreKeys(
                 [oneTimeKey],
                 true
             );
-            const [preKeyIndex] = addedIndexes;
-            oneTimeKey.index = preKeyIndex;
+            const [key] = savedKeys;
+            console.log(key);
 
             this.send({
                 transmissionID,
                 type: "resource",
                 resourceType: "otk",
                 action: "CREATE",
-                data: this.censorPreKey(oneTimeKey),
+                data: this.censorPreKey(key),
             });
         });
     }
 
     private async negotiateOTK() {
-        let otkCount = await this.getOTKCount();
+        const otkCount = await this.getOTKCount();
         this.log.info("Server reported OTK: " + otkCount.toString());
         const needs = xConstants.MIN_OTK_SUPPLY - otkCount;
-        if (needs > 0) {
-            this.log.info("Filling server OTK supply.");
+        if (needs === 0) {
+            this.log.info("Server otk supply full.");
+            return;
         }
 
-        for (let i = 0; i < needs; i++) {
-            await this.submitOTK();
-            otkCount++;
-        }
-        this.log.info("Server OTK supply is full.");
+        await this._submitOTK(needs);
     }
 
     private respond(msg: XTypes.WS.IChallMsg) {
@@ -2930,18 +2951,6 @@ export class Client extends EventEmitter {
             signed: nacl.sign(msg.challenge, this.signKeys.secretKey),
         };
         this.send(response);
-    }
-
-    private censorPreKey(preKey: XTypes.CRYPTO.IPreKeys): XTypes.WS.IPreKeys {
-        if (!preKey.index) {
-            throw new Error("Key index is required.");
-        }
-        return {
-            publicKey: preKey.keyPair.publicKey,
-            signature: preKey.signature,
-            index: preKey.index,
-            deviceID: this.getDevice().deviceID,
-        };
     }
 
     private pong(transmissionID: string) {
@@ -2954,5 +2963,17 @@ export class Client extends EventEmitter {
         }
         this.setAlive(false);
         this.send({ transmissionID: uuid.v4(), type: "ping" });
+    }
+
+    private censorPreKey(preKey: XTypes.SQL.IPreKeys): XTypes.WS.IPreKeys {
+        if (!preKey.index) {
+            throw new Error("Key index is required.");
+        }
+        return {
+            publicKey: XUtils.decodeHex(preKey.publicKey),
+            signature: XUtils.decodeHex(preKey.signature),
+            index: preKey.index,
+            deviceID: this.getDevice().deviceID,
+        };
     }
 }

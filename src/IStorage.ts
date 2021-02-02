@@ -87,7 +87,7 @@ export interface IStorage extends EventEmitter {
     savePreKeys: (
         preKeys: XTypes.CRYPTO.IPreKeys[],
         oneTime: boolean
-    ) => Promise<number[]>;
+    ) => Promise<XTypes.SQL.IPreKeys[]>;
     /**
      * Gets your set of main prekeys. You only have one at a time.
      * Returns null if the prekeys have not been saved yet.

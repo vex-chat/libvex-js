@@ -191,7 +191,7 @@ export class Storage extends EventEmitter implements IStorage {
     public async savePreKeys(
         preKeys: XTypes.CRYPTO.IPreKeys[],
         oneTime: boolean
-    ): Promise<number[]> {
+    ): Promise<XTypes.SQL.IPreKeys[]> {
         const addedIndexes: number[] = [];
 
         await this.untilReady();
@@ -199,7 +199,7 @@ export class Storage extends EventEmitter implements IStorage {
             this.log.warn(
                 "Database is closing, savePreKeys() will not complete."
             );
-            return [-1];
+            return [];
         }
 
         for (const preKey of preKeys) {
@@ -213,11 +213,21 @@ export class Storage extends EventEmitter implements IStorage {
             addedIndexes.push(index[0]);
         }
 
+        const addedKeys: XTypes.SQL.IPreKeys[] = (
+            await this.db
+                .from(oneTime ? "oneTimeKeys" : "preKeys")
+                .select()
+                .whereIn("index", addedIndexes)
+        ).map((key: XTypes.SQL.IPreKeys) => {
+            delete key.privateKey;
+            return key;
+        });
+
         this.log.silly(
-            "savePreKeys() => " + JSON.stringify(addedIndexes, null, 4)
+            "savePreKeys() => " + JSON.stringify(addedKeys, null, 4)
         );
 
-        return addedIndexes;
+        return addedKeys;
     }
 
     public async getSessionByPublicKey(
