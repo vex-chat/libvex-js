@@ -195,26 +195,45 @@ export class Storage extends EventEmitter implements IStorage {
     }
 
     public async savePreKeys(
-        preKeys: XTypes.CRYPTO.IPreKeys,
+        preKeys: XTypes.CRYPTO.IPreKeys[],
         oneTime: boolean
-    ): Promise<number> {
+    ): Promise<XTypes.SQL.IPreKeys[]> {
+        const addedIndexes: number[] = [];
+
         await this.untilReady();
         if (this.closing) {
             this.log.warn(
-                "Database is closing, getGroupHistory() will not complete."
+                "Database is closing, savePreKeys() will not complete."
             );
-            return -1;
+            return [];
         }
-        const index = await this.db(oneTime ? "oneTimeKeys" : "preKeys").insert(
-            {
-                privateKey: XUtils.encodeHex(preKeys.keyPair.secretKey),
-                publicKey: XUtils.encodeHex(preKeys.keyPair.publicKey),
-                signature: XUtils.encodeHex(preKeys.signature),
-            }
-        );
-        this.log.silly("savePreKeys() => " + JSON.stringify(index[0], null, 4));
 
-        return index[0];
+        for (const preKey of preKeys) {
+            const index = await this.db(
+                oneTime ? "oneTimeKeys" : "preKeys"
+            ).insert({
+                privateKey: XUtils.encodeHex(preKey.keyPair.secretKey),
+                publicKey: XUtils.encodeHex(preKey.keyPair.publicKey),
+                signature: XUtils.encodeHex(preKey.signature),
+            });
+            addedIndexes.push(index[0]);
+        }
+
+        const addedKeys: XTypes.SQL.IPreKeys[] = (
+            await this.db
+                .from(oneTime ? "oneTimeKeys" : "preKeys")
+                .select()
+                .whereIn("index", addedIndexes)
+        ).map((key: XTypes.SQL.IPreKeys) => {
+            delete key.privateKey;
+            return key;
+        });
+
+        this.log.silly(
+            "savePreKeys() => " + JSON.stringify(addedKeys, null, 4)
+        );
+
+        return addedKeys;
     }
 
     public async getSessionByPublicKey(
