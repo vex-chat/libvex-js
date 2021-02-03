@@ -755,7 +755,6 @@ export class Client extends EventEmitter {
     private user?: ICensoredUser;
     private device?: XTypes.SQL.IDevice;
 
-    private deviceLists: Record<string, IDevice[]> = {};
     private userRecords: Record<string, IUser> = {};
     private deviceRecords: Record<string, IDevice> = {};
 
@@ -1902,9 +1901,6 @@ export class Client extends EventEmitter {
     private async getUserDeviceList(
         userID: string
     ): Promise<XTypes.SQL.IDevice[] | null> {
-        // if (this.deviceLists[userID]) {
-        //     return this.deviceLists[userID];
-        // }
         try {
             const res = await ax.get(
                 this.getHost() + "/user/" + userID + "/devices"
@@ -1912,8 +1908,6 @@ export class Client extends EventEmitter {
             const devices: XTypes.SQL.IDevice[] = msgpack.decode(
                 Buffer.from(res.data)
             );
-            this.deviceLists[userID] = devices;
-
             for (const device of devices) {
                 this.deviceRecords[device.deviceID] = device;
             }
@@ -2493,13 +2487,6 @@ export class Client extends EventEmitter {
 
                     this.userRecords[userEntry.userID] = userEntry;
                     this.deviceRecords[deviceEntry.deviceID] = deviceEntry;
-
-                    const newDeviceList = await this.getUserDeviceList(
-                        userEntry.userID
-                    );
-                    if (newDeviceList) {
-                        this.deviceLists[userEntry.userID] = newDeviceList;
-                    }
 
                     // save session
                     const newSession: XTypes.SQL.ISession = {
