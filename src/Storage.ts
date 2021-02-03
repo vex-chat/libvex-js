@@ -22,6 +22,7 @@ export class Storage extends EventEmitter implements IStorage {
     private db: knex<any, unknown[]>;
     private log: winston.Logger;
     private idKeys: nacl.BoxKeyPair;
+    private saveHistory: boolean;
 
     constructor(dbPath: string, SK: string, options?: IClientOptions) {
         super();
@@ -34,6 +35,7 @@ export class Storage extends EventEmitter implements IStorage {
             throw new Error("Can't convert SK!");
         }
 
+        this.saveHistory = options?.saveHistory || true;
         this.idKeys = idKeys;
         this.dbPath = dbPath;
 
@@ -56,6 +58,10 @@ export class Storage extends EventEmitter implements IStorage {
     }
 
     public async saveMessage(message: IMessage): Promise<void> {
+        if (!this.saveHistory) {
+            return;
+        }
+
         if (this.closing) {
             this.log.warn(
                 "Database is closing, saveMessage() will not complete."

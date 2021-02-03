@@ -264,6 +264,7 @@ export interface IClientOptions {
         | "debug"
         | "silly";
     unsafeHttp?: boolean;
+    saveHistory?: boolean;
 }
 
 // tslint:disable-next-line: interface-name
