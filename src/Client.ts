@@ -35,8 +35,9 @@ import { uuidToUint8 } from "./utils/uint8uuid";
 
 if (isBrowser) {
     ax.defaults.withCredentials = true;
-    ax.defaults.responseType = "arraybuffer";
 }
+
+ax.defaults.responseType = "arraybuffer";
 
 const protocolMsgRegex = /��\w+:\w+��/g;
 
@@ -944,6 +945,7 @@ export class Client extends EventEmitter {
     }> {
         const res = await ax.post(this.getHost() + "/whoami", null, {
             withCredentials: true,
+            responseType: "arraybuffer",
         });
 
         const whoami: {
