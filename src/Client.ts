@@ -911,13 +911,11 @@ export class Client extends EventEmitter {
                 Buffer.from(res.data)
             );
 
-            if (isNode) {
-                const cookies = res.headers["set-cookie"];
-                if (cookies) {
-                    for (const cookie of cookies) {
-                        if (cookie.includes("auth")) {
-                            this.addCookie(cookie);
-                        }
+            const cookies = res.headers["set-cookie"];
+            if (cookies) {
+                for (const cookie of cookies) {
+                    if (cookie.includes("auth")) {
+                        this.addCookie(cookie);
                     }
                 }
             }
@@ -986,13 +984,11 @@ export class Client extends EventEmitter {
             msgpack.encode({ signed }),
             { headers: { "Content-Type": "application/msgpack" } }
         );
-        if (isNode) {
-            const cookies = res.headers["set-cookie"];
-            if (cookies) {
-                for (const cookie of cookies) {
-                    if (cookie.includes("device")) {
-                        this.addCookie(cookie);
-                    }
+        const cookies = res.headers["set-cookie"];
+        if (cookies) {
+            for (const cookie of cookies) {
+                if (cookie.includes("device")) {
+                    this.addCookie(cookie);
                 }
             }
         }
@@ -1140,7 +1136,10 @@ export class Client extends EventEmitter {
     private addCookie(cookie: string) {
         if (!this.cookies.includes(cookie)) {
             this.cookies.push(cookie);
-            ax.defaults.headers.cookie = this.cookies.join(";");
+            this.log.info("cookies changed", this.getCookies());
+            if (isNode) {
+                ax.defaults.headers.cookie = this.cookies.join(";");
+            }
         }
     }
 
