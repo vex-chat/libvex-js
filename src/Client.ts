@@ -1009,6 +1009,7 @@ export class Client extends EventEmitter {
             await sleep(100);
         }
         const regKey = await this.getToken("register");
+        console.log("regKey", regKey);
         if (regKey) {
             const signKey = XUtils.encodeHex(this.signKeys.publicKey);
             const signed = XUtils.encodeHex(
@@ -1280,7 +1281,9 @@ export class Client extends EventEmitter {
             | "connect"
     ): Promise<XTypes.HTTP.IActionToken | null> {
         try {
-            const res = await ax.get(this.getHost() + "/token/" + type);
+            const res = await ax.get(this.getHost() + "/token/" + type, {
+                responseType: "arraybuffer",
+            });
             return msgpack.decode(Buffer.from(res.data));
         } catch (err) {
             this.log.warn(err.toString());
