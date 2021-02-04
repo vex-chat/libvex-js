@@ -34,10 +34,7 @@ import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
-if (isBrowser) {
-    ax.defaults.withCredentials = true;
-}
-
+ax.defaults.withCredentials = true;
 ax.defaults.responseType = "arraybuffer";
 
 const protocolMsgRegex = /��\w+:\w+��/g;
@@ -985,6 +982,7 @@ export class Client extends EventEmitter {
             { headers: { "Content-Type": "application/msgpack" } }
         );
         const cookies = res.headers["set-cookie"];
+        console.log("Current cookies", cookies);
         if (cookies) {
             for (const cookie of cookies) {
                 if (cookie.includes("device")) {
@@ -2633,11 +2631,7 @@ export class Client extends EventEmitter {
 
             this.conn = new WebSocket(
                 this.prefixes.WS + this.host + "/socket",
-                {
-                    headers: {
-                        cookie: this.getCookies(),
-                    },
-                }
+                { headers: { Cookie: "auth=" + this.token } }
             );
             this.conn.on("open", () => {
                 this.log.info("Connection opened.");
