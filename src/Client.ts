@@ -22,6 +22,7 @@ import { EventEmitter } from "events";
 import msgpack from "msgpack-lite";
 import objectHash from "object-hash";
 import os from "os";
+import { performance } from "perf_hooks";
 import nacl from "tweetnacl";
 import * as uuid from "uuid";
 import winston from "winston";
@@ -764,6 +765,8 @@ export class Client extends EventEmitter {
     private reading: boolean = false;
     private fetchingMail: boolean = false;
 
+    private cookies: string[] = [];
+
     private log: winston.Logger;
 
     private pingInterval: ReturnType<typeof setTimeout> | null = null;
@@ -910,18 +913,12 @@ export class Client extends EventEmitter {
 
             if (isNode) {
                 const cookies = res.headers["set-cookie"];
-                let authCookie: string | null = null;
-
                 if (cookies) {
                     for (const cookie of cookies) {
                         if (cookie.includes("auth")) {
-                            authCookie = cookie;
+                            this.addCookie(cookie);
                         }
                     }
-                }
-
-                if (authCookie) {
-                    ax.defaults.headers.cookie = authCookie;
                 }
             }
 
@@ -984,11 +981,21 @@ export class Client extends EventEmitter {
             this.signKeys.secretKey
         );
 
-        await ax.post(
+        const res = await ax.post(
             this.getHost() + "/device/" + this.device.deviceID + "/connect",
             msgpack.encode({ signed }),
             { headers: { "Content-Type": "application/msgpack" } }
         );
+        if (isNode) {
+            const cookies = res.headers["set-cookie"];
+            if (cookies) {
+                for (const cookie of cookies) {
+                    if (cookie.includes("device")) {
+                        this.addCookie(cookie);
+                    }
+                }
+            }
+        }
 
         this.log.info("Starting websocket.");
         this.initSocket();
@@ -1128,6 +1135,17 @@ export class Client extends EventEmitter {
             }
         }
         throw new Error("Couldn't kick user.");
+    }
+
+    private addCookie(cookie: string) {
+        if (!this.cookies.includes(cookie)) {
+            this.cookies.push(cookie);
+            ax.defaults.headers.cookie = this.cookies.join(";");
+        }
+    }
+
+    private getCookies() {
+        return this.cookies.join(";");
     }
 
     private async uploadEmoji(
@@ -2616,7 +2634,11 @@ export class Client extends EventEmitter {
 
             this.conn = new WebSocket(
                 this.prefixes.WS + this.host + "/socket",
-                { headers: { Cookie: "auth=" + this.token } }
+                {
+                    headers: {
+                        cookie: this.getCookies(),
+                    },
+                }
             );
             this.conn.on("open", () => {
                 this.log.info("Connection opened.");
