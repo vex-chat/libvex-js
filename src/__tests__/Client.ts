@@ -10,8 +10,8 @@ const clientOptions: IClientOptions = {
     inMemoryDb: true,
     logLevel: "error",
     dbLogLevel: "error",
-    host: "localhost:16777",
-    unsafeHttp: true,
+    // host: "localhost:16777",
+    // unsafeHttp: true,
 };
 
 beforeAll(async () => {

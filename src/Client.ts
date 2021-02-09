@@ -2741,12 +2741,31 @@ export class Client extends EventEmitter {
                 Uint8Array,
                 XTypes.WS.IMail,
                 Date
-            ]> = msgpack.decode(Buffer.from(res.data));
+            ]> = msgpack
+                .decode(Buffer.from(res.data))
+                .sort(
+                    (
+                        a: [Uint8Array, XTypes.WS.IMail, Date],
+                        b: [Uint8Array, XTypes.WS.IMail, Date]
+                    ) => b[2].getTime() - a[2].getTime()
+                );
             this.log.info("Fetched mail: " + JSON.stringify(inbox, null, 4));
+            const promises: Array<Promise<void>> = [];
             for (const mailDetails of inbox) {
                 const [mailHeader, mailBody, timestamp] = mailDetails;
-                await this.readMail(mailHeader, mailBody, timestamp.toString());
+                promises.push(
+                    this.readMail(mailHeader, mailBody, timestamp.toString())
+                );
             }
+            Promise.allSettled(promises).then((results) => {
+                for (const result of results) {
+                    const { status } = result;
+                    if (status === "rejected") {
+                        this.log.warn("Message read failed.");
+                        this.log.warn(result);
+                    }
+                }
+            });
         } catch (err) {
             console.warn(err.toString());
         }
