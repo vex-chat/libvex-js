@@ -19,6 +19,7 @@ import { isBrowser, isNode } from "browser-or-node";
 import btoa from "btoa";
 import chalk from "chalk";
 import { EventEmitter } from "events";
+import { first } from "lodash";
 import msgpack from "msgpack-lite";
 import objectHash from "object-hash";
 import os from "os";
@@ -32,6 +33,7 @@ import { Storage } from "./Storage";
 import { capitalize } from "./utils/capitalize";
 import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
+import { sqlSessionToCrypto } from "./utils/sqlSessionToCrypto";
 import { uuidToUint8 } from "./utils/uint8uuid";
 
 ax.defaults.withCredentials = true;
@@ -746,6 +748,8 @@ export class Client extends EventEmitter {
     private conn: WebSocket;
     private host: string;
 
+    private firstMailFetch = true;
+
     // these are created from one set of sign keys
     private signKeys: nacl.SignKeyPair;
     private idKeys: nacl.BoxKeyPair | null;
@@ -757,6 +761,7 @@ export class Client extends EventEmitter {
 
     private userRecords: Record<string, IUser> = {};
     private deviceRecords: Record<string, IDevice> = {};
+    private sessionRecords: Record<string, XTypes.CRYPTO.ISession> = {};
 
     private isAlive: boolean = true;
     private reading: boolean = false;
@@ -982,7 +987,6 @@ export class Client extends EventEmitter {
             { headers: { "Content-Type": "application/msgpack" } }
         );
         const cookies = res.headers["set-cookie"];
-        console.log("Current cookies", cookies);
         if (cookies) {
             for (const cookie of cookies) {
                 if (cookie.includes("device")) {
@@ -1012,7 +1016,6 @@ export class Client extends EventEmitter {
             await sleep(100);
         }
         const regKey = await this.getToken("register");
-        console.log("regKey", regKey);
         if (regKey) {
             const signKey = XUtils.encodeHex(this.signKeys.publicKey);
             const signed = XUtils.encodeHex(
@@ -2217,23 +2220,37 @@ export class Client extends EventEmitter {
         this.send(receipt);
     }
 
+    private async getSessionByPubkey(publicKey: Uint8Array) {
+        const strPubKey = XUtils.encodeHex(publicKey);
+        if (this.sessionRecords[strPubKey]) {
+            return this.sessionRecords[strPubKey];
+        }
+        const session = await this.database.getSessionByPublicKey(publicKey);
+        if (session) {
+            this.sessionRecords[strPubKey] = session;
+        }
+        return session;
+    }
+
     private async readMail(
         header: Uint8Array,
         mail: XTypes.WS.IMail,
         timestamp: string
     ) {
-        await this.sendReceipt(mail.nonce);
+        this.sendReceipt(mail.nonce);
+        let timeout = 1;
         while (this.reading) {
-            await sleep(100);
+            await sleep(timeout);
+            timeout *= 2;
         }
         this.reading = true;
 
         const healSession = async () => {
-            console.log("Requesting retry of " + mail.mailID);
+            this.log.info("Requesting retry of " + mail.mailID);
             const deviceEntry = await this.getDeviceByID(mail.sender);
             const [user, err] = await this.retrieveUserDBEntry(mail.authorID);
             if (deviceEntry && user) {
-                await this.createSession(
+                this.createSession(
                     deviceEntry,
                     user,
                     XUtils.decodeUTF8(`��RETRY_REQUEST:${mail.mailID}��`),
@@ -2251,18 +2268,14 @@ export class Client extends EventEmitter {
                     mail.mailType,
                     mail.extra
                 );
-                let session = await this.database.getSessionByPublicKey(
-                    publicKey
-                );
+                let session = await this.getSessionByPubkey(publicKey);
                 let retries = 0;
                 while (!session) {
                     if (retries > 3) {
                         break;
                     }
 
-                    session = await this.database.getSessionByPublicKey(
-                        publicKey
-                    );
+                    session = await this.getSessionByPubkey(publicKey);
                     retries++;
                     return;
                 }
@@ -2272,7 +2285,7 @@ export class Client extends EventEmitter {
                         "Couldn't find session public key " +
                             XUtils.encodeHex(publicKey)
                     );
-                    // await healSession();
+                    healSession();
                     return;
                 }
                 this.log.info("Session found for " + mail.sender);
@@ -2286,7 +2299,7 @@ export class Client extends EventEmitter {
                     this.log.warn(
                         "Message authentication failed (HMAC does not match)."
                     );
-                    // await healSession();
+                    healSession();
                     return;
                 }
 
@@ -2329,7 +2342,7 @@ export class Client extends EventEmitter {
                     this.database.markSessionUsed(session.sessionID);
                 } else {
                     this.log.info("Decryption failed.");
-                    await healSession();
+                    healSession();
 
                     // emit the message
                     const message: IMessage = {
@@ -2601,6 +2614,13 @@ export class Client extends EventEmitter {
             await this.database.savePreKeys([preKeys], false);
         }
 
+        const sessions = await this.database.getAllSessions();
+        for (const session of sessions) {
+            this.sessionRecords[session.publicKey] = sqlSessionToCrypto(
+                session
+            );
+        }
+
         const ephemeralKeys = nacl.box.keyPair();
 
         this.xKeyRing = {
@@ -2729,6 +2749,12 @@ export class Client extends EventEmitter {
             await sleep(500);
         }
         this.fetchingMail = true;
+
+        let firstFetch = false;
+        if (this.firstMailFetch) {
+            firstFetch = true;
+            this.firstMailFetch = false;
+        }
         this.log.info("fetching mail for device " + this.getDevice().deviceID);
         try {
             const res = await ax.post(
@@ -2749,7 +2775,6 @@ export class Client extends EventEmitter {
                         b: [Uint8Array, XTypes.WS.IMail, Date]
                     ) => b[2].getTime() - a[2].getTime()
                 );
-            this.log.info("Fetched mail: " + JSON.stringify(inbox, null, 4));
             const promises: Array<Promise<void>> = [];
             for (const mailDetails of inbox) {
                 const [mailHeader, mailBody, timestamp] = mailDetails;
@@ -2765,57 +2790,14 @@ export class Client extends EventEmitter {
                         this.log.warn(result);
                     }
                 }
+                if (firstFetch) {
+                    this.emit("gotMail");
+                }
             });
         } catch (err) {
             console.warn(err.toString());
         }
         this.fetchingMail = false;
-    }
-
-    private async _getMail(): Promise<void> {
-        this.fetchingMail = true;
-        this.log.info("fetching mail for device " + this.getDevice().deviceID);
-        return new Promise((res, rej) => {
-            const transmissionID = uuid.v4();
-            let mailReceived = 0;
-            const callback = (packedMsg: Buffer) => {
-                const [header, msg] = XUtils.unpackMessage(packedMsg);
-                if (msg.transmissionID === transmissionID) {
-                    if (msg.type === "success") {
-                        if (!(msg as XTypes.WS.ISucessMsg).data) {
-                            this.conn.off("message", callback);
-                            this.log.info(
-                                "Received " + mailReceived.toString() + " mail."
-                            );
-                            res();
-                            return;
-                        }
-                        try {
-                            this.readMail(
-                                header,
-                                (msg as XTypes.WS.ISucessMsg).data,
-                                (msg as XTypes.WS.ISucessMsg).timestamp!
-                            );
-                        } catch (err) {
-                            this.log.warn(
-                                "error reading mail:" + err.toString()
-                            );
-                        }
-                        mailReceived++;
-                    } else {
-                        rej(msg);
-                    }
-                }
-            };
-            this.conn.on("message", callback);
-            const outMsg: XTypes.WS.IResourceMsg = {
-                transmissionID,
-                type: "resource",
-                resourceType: "mail",
-                action: "RETRIEVE",
-            };
-            this.send(outMsg);
-        });
     }
 
     /* header is 32 bytes and is either empty

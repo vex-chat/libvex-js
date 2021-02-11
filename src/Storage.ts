@@ -9,6 +9,7 @@ import winston from "winston";
 import { IClientOptions, IMessage } from ".";
 import { IStorage } from "./IStorage";
 import { createLogger } from "./utils/createLogger";
+import { sqlSessionToCrypto } from "./utils/sqlSessionToCrypto";
 
 /**
  * The default IStorage() implementation, using knex and sqlite3 driver
@@ -261,15 +262,7 @@ export class Storage extends EventEmitter implements IStorage {
         }
         const [session] = rows;
 
-        const wsSession: XTypes.CRYPTO.ISession = {
-            sessionID: session.sessionID,
-            userID: session.userID,
-            mode: session.mode,
-            SK: XUtils.decodeHex(session.SK),
-            publicKey: XUtils.decodeHex(session.publicKey),
-            lastUsed: session.lastUsed,
-            fingerprint: XUtils.decodeHex(session.fingerprint),
-        };
+        const wsSession: XTypes.CRYPTO.ISession = sqlSessionToCrypto(session);
 
         this.log.debug(
             "getSessionByPublicKey() => " + JSON.stringify(wsSession, null, 4)
