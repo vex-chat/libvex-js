@@ -304,6 +304,9 @@ export declare interface Client {
      */
     on(event: "ready", callback: () => void): this;
 
+    // tslint:disable-next-line: unified-signatures
+    on(event: "decryptingMail", callback: () => void): this;
+
     /**
      * This is emitted when you are connected to the chat.
      *
@@ -2749,12 +2752,16 @@ export class Client extends EventEmitter {
             await sleep(500);
         }
         this.fetchingMail = true;
-
         let firstFetch = false;
         if (this.firstMailFetch) {
             firstFetch = true;
             this.firstMailFetch = false;
         }
+
+        if (firstFetch) {
+            this.emit("decryptingMail");
+        }
+
         this.log.info("fetching mail for device " + this.getDevice().deviceID);
         try {
             const res = await ax.post(
