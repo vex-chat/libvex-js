@@ -1,8 +1,10 @@
-import { sleep } from "@extrahash/sleep";
+// import { sleep } from "@extrahash/sleep";
+import { setTimeout as sleep } from "node:timers/promises";
 import { XKeyConvert, XUtils } from "@vex-chat/crypto";
-import { XTypes } from "@vex-chat/types";
+import * as XTypes from "@vex-chat/types";
 import { EventEmitter } from "events";
-import knex from "knex";
+// import knex from "knex";
+import knex, { Knex } from "knex";
 import parseDuration from "parse-duration";
 import nacl from "tweetnacl";
 import winston from "winston";
@@ -10,6 +12,10 @@ import { IClientOptions, IMessage } from ".";
 import { IStorage } from "./IStorage";
 import { createLogger } from "./utils/createLogger";
 import { sqlSessionToCrypto } from "./utils/sqlSessionToCrypto";
+
+interface IDbError extends Error {
+    errno?: number;
+}
 
 /**
  * The default IStorage() implementation, using knex and sqlite3 driver
@@ -20,7 +26,7 @@ export class Storage extends EventEmitter implements IStorage {
     public ready: boolean = false;
     private closing: boolean = false;
     private dbPath: string;
-    private db: knex<any, unknown[]>;
+    private db: Knex;
     private log: winston.Logger;
     private idKeys: nacl.BoxKeyPair;
     private saveHistory: boolean;
@@ -84,8 +90,9 @@ export class Storage extends EventEmitter implements IStorage {
         try {
             await this.db("messages").insert(copy);
         } catch (err) {
-            if (err.errno !== 19) {
-                throw err;
+            const dbErr = err as IDbError;
+            if (dbErr.errno !== 19) {
+                throw dbErr;
             }
             this.log.warn(
                 "Attempted to insert duplicate nonce into message table."
@@ -196,9 +203,9 @@ export class Storage extends EventEmitter implements IStorage {
     }
 
     public async savePreKeys(
-        preKeys: XTypes.CRYPTO.IPreKeys[],
+        preKeys: XTypes.IPreKeysCrypto[],
         oneTime: boolean
-    ): Promise<XTypes.SQL.IPreKeys[]> {
+    ): Promise<XTypes.IPreKeysSQL[]> {
         const addedIndexes: number[] = [];
 
         await this.untilReady();
@@ -220,12 +227,12 @@ export class Storage extends EventEmitter implements IStorage {
             addedIndexes.push(index[0]);
         }
 
-        const addedKeys: XTypes.SQL.IPreKeys[] = (
+        const addedKeys: XTypes.IPreKeysSQL[] = (
             await this.db
                 .from(oneTime ? "oneTimeKeys" : "preKeys")
                 .select()
                 .whereIn("index", addedIndexes)
-        ).map((key: XTypes.SQL.IPreKeys) => {
+        ).map((key: XTypes.IPreKeysSQL) => {
             delete key.privateKey;
             return key;
         });
@@ -239,7 +246,7 @@ export class Storage extends EventEmitter implements IStorage {
 
     public async getSessionByPublicKey(
         publicKey: Uint8Array
-    ): Promise<XTypes.CRYPTO.ISession | null> {
+    ): Promise<XTypes.ISessionCrypto | null> {
         if (this.closing) {
             this.log.warn(
                 "Database is closing, getGroupHistory() will not complete."
@@ -248,7 +255,7 @@ export class Storage extends EventEmitter implements IStorage {
         }
         const str = XUtils.encodeHex(publicKey);
 
-        const rows: XTypes.SQL.ISession[] = await this.db
+        const rows: XTypes.ISessionSQL[] = await this.db
             .from("sessions")
             .select()
             .where({ publicKey: str })
@@ -262,7 +269,7 @@ export class Storage extends EventEmitter implements IStorage {
         }
         const [session] = rows;
 
-        const wsSession: XTypes.CRYPTO.ISession = sqlSessionToCrypto(session);
+        const wsSession: XTypes.ISessionCrypto = sqlSessionToCrypto(session);
 
         this.log.debug(
             "getSessionByPublicKey() => " + JSON.stringify(wsSession, null, 4)
@@ -283,14 +290,14 @@ export class Storage extends EventEmitter implements IStorage {
             .where({ sessionID });
     }
 
-    public async getAllSessions(): Promise<XTypes.SQL.ISession[]> {
+    public async getAllSessions(): Promise<XTypes.ISessionSQL[]> {
         if (this.closing) {
             this.log.warn(
                 "Database is closing, getAllSessions() will not complete."
             );
             return [];
         }
-        const rows: XTypes.SQL.ISession[] = await this.db
+        const rows: XTypes.ISessionSQL[] = await this.db
             .from("sessions")
             .select()
             .orderBy("lastUsed", "desc");
@@ -307,14 +314,14 @@ export class Storage extends EventEmitter implements IStorage {
 
     public async getSessionByDeviceID(
         deviceID: string
-    ): Promise<XTypes.CRYPTO.ISession | null> {
+    ): Promise<XTypes.ISessionCrypto | null> {
         if (this.closing) {
             this.log.warn(
                 "Database is closing, getSessionByUserID() will not complete."
             );
             return null;
         }
-        const rows: XTypes.SQL.ISession[] = await this.db
+        const rows: XTypes.ISessionSQL[] = await this.db
             .from("sessions")
             .select()
             .where({ deviceID })
@@ -326,7 +333,7 @@ export class Storage extends EventEmitter implements IStorage {
         }
         const [session] = rows;
 
-        const wsSession: XTypes.CRYPTO.ISession = {
+        const wsSession: XTypes.ISessionCrypto = {
             sessionID: session.sessionID,
             userID: session.userID,
             mode: session.mode,
@@ -339,7 +346,7 @@ export class Storage extends EventEmitter implements IStorage {
         return wsSession;
     }
 
-    public async getPreKeys(): Promise<XTypes.CRYPTO.IPreKeys | null> {
+    public async getPreKeys(): Promise<XTypes.IPreKeysCrypto | null> {
         await this.untilReady();
         if (this.closing) {
             this.log.warn(
@@ -347,7 +354,7 @@ export class Storage extends EventEmitter implements IStorage {
             );
             return null;
         }
-        const rows: XTypes.SQL.IPreKeys[] = await this.db
+        const rows: XTypes.IPreKeysSQL[] = await this.db
             .from("preKeys")
             .select();
         if (rows.length === 0) {
@@ -355,7 +362,7 @@ export class Storage extends EventEmitter implements IStorage {
             return null;
         }
         const [preKeyInfo] = rows;
-        const preKeys: XTypes.CRYPTO.IPreKeys = {
+        const preKeys: XTypes.IPreKeysCrypto = {
             keyPair: nacl.box.keyPair.fromSecretKey(
                 XUtils.decodeHex(preKeyInfo.privateKey!)
             ),
@@ -367,7 +374,7 @@ export class Storage extends EventEmitter implements IStorage {
 
     public async getOneTimeKey(
         index: number
-    ): Promise<XTypes.CRYPTO.IPreKeys | null> {
+    ): Promise<XTypes.IPreKeysCrypto | null> {
         await this.untilReady();
         if (this.closing) {
             this.log.warn(
@@ -375,7 +382,7 @@ export class Storage extends EventEmitter implements IStorage {
             );
             return null;
         }
-        const rows: XTypes.SQL.IPreKeys[] = await this.db
+        const rows: XTypes.IPreKeysSQL[] = await this.db
             .from("oneTimeKeys")
             .select()
             .where({ index });
@@ -387,7 +394,7 @@ export class Storage extends EventEmitter implements IStorage {
         }
 
         const [otkInfo] = rows;
-        const otk: XTypes.CRYPTO.IPreKeys = {
+        const otk: XTypes.IPreKeysCrypto = {
             keyPair: nacl.box.keyPair.fromSecretKey(
                 XUtils.decodeHex(otkInfo.privateKey!)
             ),
@@ -412,7 +419,7 @@ export class Storage extends EventEmitter implements IStorage {
             .where({ index });
     }
 
-    public async saveSession(session: XTypes.SQL.ISession) {
+    public async saveSession(session: XTypes.ISessionSQL) {
         if (this.closing) {
             this.log.warn(
                 "Database is closing, deleteOneTimeKey() will not complete."
@@ -422,7 +429,8 @@ export class Storage extends EventEmitter implements IStorage {
         try {
             await this.db("sessions").insert(session);
         } catch (err) {
-            if (err.errno === 19) {
+            const dbErr = err as IDbError;
+            if (dbErr.errno === 19) {
                 this.log.warn("Attempted to insert duplicate SK");
                 return;
             } else {
@@ -483,7 +491,7 @@ export class Storage extends EventEmitter implements IStorage {
         }
     }
 
-    public async saveDevice(device: XTypes.SQL.IDevice) {
+    public async saveDevice(device: XTypes.IDevice) {
         if (this.closing) {
             this.log.warn(
                 "Database is closing, saveDevice() will not complete."
@@ -493,7 +501,8 @@ export class Storage extends EventEmitter implements IStorage {
         try {
             await this.db("devices").insert(device);
         } catch (err) {
-            if (err.errno === 19) {
+            const dbErr = err as IDbError;
+            if (dbErr.errno === 19) {
                 this.log.warn("Attempted to insert duplicate deviceID");
                 return;
             } else {
@@ -506,67 +515,82 @@ export class Storage extends EventEmitter implements IStorage {
         this.log.info("Initializing database tables.");
         try {
             if (!(await this.db.schema.hasTable("messages"))) {
-                await this.db.schema.createTable("messages", (table) => {
-                    table.string("nonce").primary();
-                    table.string("sender").index();
-                    table.string("recipient").index();
-                    table.string("group").index();
-                    table.string("mailID");
-                    table.string("message");
-                    table.string("direction");
-                    table.date("timestamp");
-                    table.boolean("decrypted");
-                    table.boolean("forward");
-                    table.string("authorID");
-                    table.string("readerID");
-                });
+                await this.db.schema.createTable(
+                    "messages",
+                    (table: Knex.CreateTableBuilder) => {
+                        table.string("nonce").primary();
+                        table.string("sender").index();
+                        table.string("recipient").index();
+                        table.string("group").index();
+                        table.string("mailID");
+                        table.string("message");
+                        table.string("direction");
+                        table.date("timestamp");
+                        table.boolean("decrypted");
+                        table.boolean("forward");
+                        table.string("authorID");
+                        table.string("readerID");
+                    }
+                );
             }
 
             if (!(await this.db.schema.hasTable("devices"))) {
-                await this.db.schema.createTable("devices", (table) => {
-                    table.string("deviceID").primary();
-                    table.string("owner").index();
-                    table.string("signKey");
-                    table.string("name");
-                    table.string("lastLogin");
-                    table.boolean("deleted");
-                });
+                await this.db.schema.createTable(
+                    "devices",
+                    (table: Knex.CreateTableBuilder) => {
+                        table.string("deviceID").primary();
+                        table.string("owner").index();
+                        table.string("signKey");
+                        table.string("name");
+                        table.string("lastLogin");
+                        table.boolean("deleted");
+                    }
+                );
             }
 
             if (!(await this.db.schema.hasTable("sessions"))) {
-                await this.db.schema.createTable("sessions", (table) => {
-                    table.string("sessionID").primary();
-                    table.string("userID");
-                    table.string("deviceID");
-                    table.string("SK").unique();
-                    table.string("publicKey");
-                    table.string("fingerprint");
-                    table.string("mode");
-                    table.date("lastUsed");
-                    table.boolean("verified");
-                });
+                await this.db.schema.createTable(
+                    "sessions",
+                    (table: Knex.CreateTableBuilder) => {
+                        table.string("sessionID").primary();
+                        table.string("userID");
+                        table.string("deviceID");
+                        table.string("SK").unique();
+                        table.string("publicKey");
+                        table.string("fingerprint");
+                        table.string("mode");
+                        table.date("lastUsed");
+                        table.boolean("verified");
+                    }
+                );
             }
             if (!(await this.db.schema.hasTable("preKeys"))) {
-                await this.db.schema.createTable("preKeys", (table) => {
-                    table.increments("index");
-                    table.string("keyID").unique();
-                    table.string("userID");
-                    table.string("deviceID");
-                    table.string("privateKey");
-                    table.string("publicKey");
-                    table.string("signature");
-                });
+                await this.db.schema.createTable(
+                    "preKeys",
+                    (table: Knex.CreateTableBuilder) => {
+                        table.increments("index");
+                        table.string("keyID").unique();
+                        table.string("userID");
+                        table.string("deviceID");
+                        table.string("privateKey");
+                        table.string("publicKey");
+                        table.string("signature");
+                    }
+                );
             }
             if (!(await this.db.schema.hasTable("oneTimeKeys"))) {
-                await this.db.schema.createTable("oneTimeKeys", (table) => {
-                    table.increments("index");
-                    table.string("keyID").unique();
-                    table.string("userID");
-                    table.string("deviceID");
-                    table.string("privateKey");
-                    table.string("publicKey");
-                    table.string("signature");
-                });
+                await this.db.schema.createTable(
+                    "oneTimeKeys",
+                    (table: Knex.CreateTableBuilder) => {
+                        table.increments("index");
+                        table.string("keyID").unique();
+                        table.string("userID");
+                        table.string("deviceID");
+                        table.string("privateKey");
+                        table.string("publicKey");
+                        table.string("signature");
+                    }
+                );
             }
 
             this.ready = true;
