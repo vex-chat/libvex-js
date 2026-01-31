@@ -15,7 +15,7 @@ import {
     XUtils,
 } from "@vex-chat/crypto";
 import * as XTypes from "@vex-chat/types";
-import ax, { AxiosError } from "axios";
+import ax, { AxiosError, AxiosInstance } from "axios";
 import { isBrowser, isNode } from "browser-or-node";
 import btoa from "btoa";
 import chalk from "chalk";
@@ -35,7 +35,7 @@ import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { sqlSessionToCrypto } from "./utils/sqlSessionToCrypto";
 import { uuidToUint8 } from "./utils/uint8uuid";
-
+import fs from "fs";
 ax.defaults.withCredentials = true;
 ax.defaults.responseType = "arraybuffer";
 
@@ -282,6 +282,7 @@ export interface IClientOptions {
         | "silly";
     unsafeHttp?: boolean;
     saveHistory?: boolean;
+    token?: string;
 }
 
 // tslint:disable-next-line: interface-name
@@ -796,12 +797,15 @@ export class Client extends EventEmitter {
     private manuallyClosing: boolean = false;
 
     private token: string | null = null;
+    private deviceToken: string | null = null;
 
     private forwarded: string[] = [];
 
     private prefixes:
         | { HTTP: "http://"; WS: "ws://" }
         | { HTTP: "https://"; WS: "wss://" };
+
+    private ax: AxiosInstance;
 
     private constructor(
         privateKey?: string,
@@ -819,6 +823,7 @@ export class Client extends EventEmitter {
         this.signKeys = privateKey
             ? nacl.sign.keyPair.fromSecretKey(XUtils.decodeHex(privateKey))
             : nacl.sign.keyPair();
+
         this.idKeys = XKeyConvert.convertKeyPair(this.signKeys);
 
         if (!this.idKeys) {
@@ -840,18 +845,70 @@ export class Client extends EventEmitter {
                   XUtils.encodeHex(this.signKeys.secretKey),
                   options
               );
-
         this.database.on("error", (error) => {
             this.log.error(error.toString());
             this.close(true);
         });
 
-        // we want to initialize this later with login()
+        // Create instance-specific axios with default config
+        this.ax = ax.create({
+            withCredentials: true,
+            responseType: "arraybuffer",
+        });
+
+        // This ensures the interceptor has access to the tokens
+        if (options?.token) {
+            this.token = options.token;
+            this.log.info("Token provided via options");
+        } else {
+            this.loadToken();
+            if (this.token) {
+                this.log.info("Token loaded from disk");
+            }
+        }
+
+        // Load device token
+        this.loadDeviceToken();
+        if (this.deviceToken) {
+            this.log.info("Device token loaded from disk");
+        }
+
+        // NOW add instance-specific request interceptor
+        // At this point, this.token and this.deviceToken are already set
+        this.ax.interceptors.request.use((config) => {
+            if (!config.headers) {
+                config.headers = {} as any;
+            }
+
+            if (this.token) {
+                config.headers["Authorization"] = `Bearer ${this.token}`;
+                console.log("✅ Setting Authorization header");
+            } else {
+                console.log("❌ NO AUTH TOKEN TO SET");
+            }
+
+            if (this.deviceToken) {
+                config.headers["X-Device-Token"] = this.deviceToken;
+                console.log(
+                    "✅ Setting X-Device-Token:",
+                    this.deviceToken.substring(0, 30) + "..."
+                );
+            } else {
+                console.log("❌ NO DEVICE TOKEN TO SET");
+            }
+
+            console.log("📤 Making request to:", config.url);
+            console.log("📋 Final headers:", Object.keys(config.headers));
+
+            return config;
+        });
+
+        // Initialize WebSocket with dummy connection (will be replaced on connect)
         this.conn = new WebSocket("ws://localhost:1234");
-        // silence the error for connecting to junk ws
-        // tslint:disable-next-line: no-empty
+        // Silence the error for connecting to junk ws
         this.conn.onerror = () => {};
 
+        // Log debug information
         this.log.info(
             "Client debug information: " +
                 JSON.stringify(
@@ -863,6 +920,8 @@ export class Client extends EventEmitter {
                             isBrowser,
                             isNode,
                         },
+                        hasAuthToken: this.token !== null,
+                        hasDeviceToken: this.deviceToken !== null,
                         options,
                     },
                     null,
@@ -871,10 +930,56 @@ export class Client extends EventEmitter {
         );
     }
 
+    private getTokenPath(): string {
+        const publicKey = XUtils.encodeHex(this.signKeys.publicKey);
+        return this.dbPath.replace(".sqlite", ".token");
+    }
+
+    private saveToken(): void {
+        if (this.token) {
+            const tokenPath = this.getTokenPath();
+            fs.writeFileSync(tokenPath, this.token, "utf8");
+        }
+    }
+
+    private loadToken(): void {
+        const tokenPath = this.getTokenPath();
+        if (fs.existsSync(tokenPath)) {
+            this.token = fs.readFileSync(tokenPath, "utf8");
+        }
+    }
+
+    public clearToken(): void {
+        this.token = null;
+        const tokenPath = this.getTokenPath();
+        if (fs.existsSync(tokenPath)) {
+            fs.unlinkSync(tokenPath);
+        }
+    }
+
     public getHost() {
         return this.prefixes.HTTP + this.host;
     }
 
+    private getDeviceTokenPath(): string {
+        const publicKey = XUtils.encodeHex(this.signKeys.publicKey);
+        // Save as <pubkey>.device.token
+        return this.dbPath.replace(".sqlite", ".device.token");
+    }
+
+    private saveDeviceToken(): void {
+        if (this.deviceToken) {
+            const tokenPath = this.getDeviceTokenPath();
+            fs.writeFileSync(tokenPath, this.deviceToken, "utf8");
+        }
+    }
+
+    private loadDeviceToken(): void {
+        const tokenPath = this.getDeviceTokenPath();
+        if (fs.existsSync(tokenPath)) {
+            this.deviceToken = fs.readFileSync(tokenPath, "utf8");
+        }
+    }
     /**
      * Manually closes the client. Emits the closed event on successful shutdown.
      */
@@ -915,7 +1020,7 @@ export class Client extends EventEmitter {
         password: string
     ): Promise<Error | null> {
         try {
-            const res = await ax.post(
+            const res = await this.ax.post(
                 this.getHost() + "/auth",
                 packer.pack({
                     username,
@@ -932,22 +1037,15 @@ export class Client extends EventEmitter {
                 Buffer.from(res.data)
             );
 
-            const cookies = res.headers["set-cookie"];
-            if (cookies) {
-                for (const cookie of cookies) {
-                    if (cookie.includes("auth")) {
-                        this.addCookie(cookie);
-                    }
-                }
-            }
-
             this.setUser(user);
             this.token = token;
+            this.saveToken(); // <-- Save it!
+
+            return null;
         } catch (err) {
             console.error(String(err));
             return err as Error;
         }
-        return null;
     }
 
     /**
@@ -959,21 +1057,16 @@ export class Client extends EventEmitter {
         exp: number;
         token: string;
     }> {
-        const res = await ax.post(this.getHost() + "/whoami", null, {
-            withCredentials: true,
+        const res = await this.ax.post(this.getHost() + "/whoami", null, {
             responseType: "arraybuffer",
         });
 
-        const whoami: {
-            user: ICensoredUser;
-            exp: number;
-            token: string;
-        } = packer.unpack(Buffer.from(res.data));
-        return whoami;
+        return packer.unpack(Buffer.from(res.data));
     }
 
     public async logout(): Promise<void> {
-        await ax.post(this.getHost() + "/goodbye");
+        await this.ax.post(this.getHost() + "/goodbye");
+        this.clearToken();
     }
 
     /**
@@ -981,13 +1074,19 @@ export class Client extends EventEmitter {
      * You can check whoami() to see before calling connect().
      */
     public async connect(): Promise<void> {
-        const { user, token } = await this.whoami();
-        this.token = token;
+        // Check if we already have a valid session
+        try {
+            const { user, token } = await this.whoami();
 
-        if (!user || !token) {
-            throw new Error("Auth cookie missing or expired. Log in again.");
+            if (!user || !token) {
+                throw new Error("Not authenticated. Call login() first.");
+            }
+
+            this.token = token; // Update token in case it was refreshed
+            this.setUser(user);
+        } catch (err) {
+            throw new Error("Not authenticated. Call login() first.");
         }
-        this.setUser(user);
 
         this.device = await this.retrieveOrCreateDevice();
 
@@ -995,23 +1094,23 @@ export class Client extends EventEmitter {
         if (!connectToken) {
             throw new Error("Couldn't get connect token.");
         }
+
         const signed = nacl.sign(
             Uint8Array.from(uuid.parse(connectToken.key)),
             this.signKeys.secretKey
         );
 
-        const res = await ax.post(
+        const res = await this.ax.post(
             this.getHost() + "/device/" + this.device.deviceID + "/connect",
             packer.pack({ signed }) as any,
             { headers: { "Content-Type": "application/msgpack" } }
         );
-        const cookies = res.headers["set-cookie"];
-        if (cookies) {
-            for (const cookie of cookies) {
-                if (cookie.includes("device")) {
-                    this.addCookie(cookie);
-                }
-            }
+
+        const connectData = packer.unpack(Buffer.from(res.data));
+        if (connectData && connectData.token) {
+            this.deviceToken = connectData.token;
+            this.saveDeviceToken();
+            this.log.info("Device authenticated with token.");
         }
 
         this.log.info("Starting websocket.");
@@ -1058,7 +1157,7 @@ export class Client extends EventEmitter {
                 deviceName: `${os.platform()}`,
             };
             try {
-                const res = await ax.post(
+                const res = await this.ax.post(
                     this.getHost() + "/register",
                     packer.pack(regMsg) as any,
                     { headers: { "Content-Type": "application/msgpack" } }
@@ -1087,12 +1186,12 @@ export class Client extends EventEmitter {
     }
 
     private async redeemInvite(inviteID: string): Promise<XTypes.IPermission> {
-        const res = await ax.patch(this.getHost() + "/invite/" + inviteID);
+        const res = await this.ax.patch(this.getHost() + "/invite/" + inviteID);
         return packer.unpack(Buffer.from(res.data));
     }
 
     private async retrieveInvites(serverID: string): Promise<XTypes.IInvite[]> {
-        const res = await ax.get(
+        const res = await this.ax.get(
             this.getHost() + "/server/" + serverID + "/invites"
         );
         return packer.unpack(Buffer.from(res.data));
@@ -1104,7 +1203,7 @@ export class Client extends EventEmitter {
             duration,
         };
 
-        const res = await ax.post(
+        const res = await this.ax.post(
             this.getHost() + "/server/" + serverID + "/invites",
             payload
         );
@@ -1115,7 +1214,7 @@ export class Client extends EventEmitter {
     private async retrieveEmojiList(
         serverID: string
     ): Promise<XTypes.IEmoji[]> {
-        const res = await ax.get(
+        const res = await this.ax.get(
             this.getHost() + "/server/" + serverID + "/emoji"
         );
         return packer.unpack(Buffer.from(res.data));
@@ -1124,7 +1223,7 @@ export class Client extends EventEmitter {
     private async retrieveEmojiByID(
         emojiID: string
     ): Promise<XTypes.IEmoji | null> {
-        const res = await ax.get(
+        const res = await this.ax.get(
             this.getHost() + "/emoji/" + emojiID + "/details"
         );
         // this is actually empty string
@@ -1154,20 +1253,26 @@ export class Client extends EventEmitter {
         throw new Error("Couldn't kick user.");
     }
 
-    private addCookie(cookie: string) {
-        if (!this.cookies.includes(cookie)) {
-            this.cookies.push(cookie);
-            this.log.info("cookies changed", this.getCookies());
-            if (isNode) {
-                // ax.defaults.headers.cookie = this.cookies.join(";");
-                ax.defaults.headers.common["Cookie"] = this.cookies.join(";");
-            }
-        }
-    }
+    // private addCookie(cookieHeader: string) {
+    //         const rawCookie = cookieHeader.split(";")[0];
+    //         const [key, value] = rawCookie.split("=");
 
-    private getCookies() {
-        return this.cookies.join(";");
-    }
+    //         if (!key || !value) return;
+
+    //         this.cookies = this.cookies.filter(c => c.split("=")[0] !== key);
+    //         this.cookies.push(rawCookie);
+    //         this.log.info("cookies updated:", this.getCookies());
+
+    //         if (isNode) {
+    //             // @ts-ignore
+    //             ax.defaults.headers.cookie = this.getCookies();
+    //         }
+    //     }
+
+    //     private getCookies() {
+    //             // Join with "; " (semicolon + space) for standard compliance
+    //             return this.cookies.join("; ");
+    //         }
 
     private async uploadEmoji(
         emoji: Buffer,
@@ -1180,7 +1285,7 @@ export class Client extends EventEmitter {
             fpayload.set("name", name);
 
             try {
-                const res = await ax.post(
+                const res = await this.ax.post(
                     this.getHost() + "/emoji/" + serverID,
                     fpayload,
                     {
@@ -1217,7 +1322,7 @@ export class Client extends EventEmitter {
             name,
         };
         try {
-            const res = await ax.post(
+            const res = await this.ax.post(
                 this.getHost() + "/emoji/" + serverID + "/json",
                 packer.pack(payload) as any,
                 { headers: { "Content-Type": "application/msgpack" } }
@@ -1231,7 +1336,7 @@ export class Client extends EventEmitter {
     private async retrieveOrCreateDevice(): Promise<XTypes.IDevice> {
         let device: XTypes.IDevice;
         try {
-            const res = await ax.get(
+            const res = await this.ax.get(
                 this.prefixes.HTTP +
                     this.host +
                     "/device/" +
@@ -1300,7 +1405,7 @@ export class Client extends EventEmitter {
         };
 
         try {
-            const res = await ax.post(
+            const res = await this.ax.post(
                 this.prefixes.HTTP +
                     this.host +
                     "/user/" +
@@ -1326,7 +1431,7 @@ export class Client extends EventEmitter {
             | "connect"
     ): Promise<XTypes.IActionToken | null> {
         try {
-            const res = await ax.get(this.getHost() + "/token/" + type, {
+            const res = await this.ax.get(this.getHost() + "/token/" + type, {
                 responseType: "arraybuffer",
             });
             return packer.unpack(Buffer.from(res.data));
@@ -1341,7 +1446,7 @@ export class Client extends EventEmitter {
             const fpayload = new FormData();
             fpayload.set("avatar", new Blob([avatar as any]));
 
-            await ax.post(
+            await this.ax.post(
                 this.prefixes.HTTP +
                     this.host +
                     "/avatar/" +
@@ -1376,7 +1481,7 @@ export class Client extends EventEmitter {
         const payload: { file: string } = {
             file: XUtils.encodeBase64((avatar as unknown) as Uint8Array),
         };
-        await ax.post(
+        await this.ax.post(
             this.prefixes.HTTP +
                 this.host +
                 "/avatar/" +
@@ -1395,7 +1500,7 @@ export class Client extends EventEmitter {
     private async fetchPermissionList(
         serverID: string
     ): Promise<XTypes.IPermission[]> {
-        const res = await ax.get(
+        const res = await this.ax.get(
             this.prefixes.HTTP +
                 this.host +
                 "/server/" +
@@ -1411,14 +1516,14 @@ export class Client extends EventEmitter {
      * @returns - The list of IPermissions objects.
      */
     private async getPermissions(): Promise<XTypes.IPermission[]> {
-        const res = await ax.get(
+        const res = await this.ax.get(
             this.getHost() + "/user/" + this.getUser().userID + "/permissions"
         );
         return packer.unpack(Buffer.from(res.data));
     }
 
     private async deletePermission(permissionID: string): Promise<void> {
-        await ax.delete(this.getHost() + "/permission/" + permissionID);
+        await this.ax.delete(this.getHost() + "/permission/" + permissionID);
     }
 
     private async retrieveFile(
@@ -1426,12 +1531,12 @@ export class Client extends EventEmitter {
         key: string
     ): Promise<XTypes.IFileResponse | null> {
         try {
-            const detailsRes = await ax.get(
+            const detailsRes = await this.ax.get(
                 this.getHost() + "/file/" + fileID + "/details"
             );
             const details = packer.unpack(Buffer.from(detailsRes.data));
 
-            const res = await ax.get(this.getHost() + "/file/" + fileID, {
+            const res = await this.ax.get(this.getHost() + "/file/" + fileID, {
                 onDownloadProgress: (progressEvent) => {
                     const total = progressEvent.total ?? 0;
                     const percentCompleted =
@@ -1472,7 +1577,7 @@ export class Client extends EventEmitter {
     }
 
     private async deleteServer(serverID: string): Promise<void> {
-        await ax.delete(this.getHost() + "/server/" + serverID);
+        await this.ax.delete(this.getHost() + "/server/" + serverID);
     }
 
     /**
@@ -1502,7 +1607,7 @@ export class Client extends EventEmitter {
     }
 
     private async deleteChannel(channelID: string): Promise<void> {
-        await ax.delete(this.getHost() + "/channel/" + channelID);
+        await this.ax.delete(this.getHost() + "/channel/" + channelID);
     }
 
     // returns the file details and the encryption key
@@ -1521,26 +1626,32 @@ export class Client extends EventEmitter {
             fpayload.set("nonce", XUtils.encodeHex(nonce));
             fpayload.set("file", new Blob([box as any]));
 
-            const fres = await ax.post(this.getHost() + "/file", fpayload, {
-                headers: { "Content-Type": "multipart/form-data" },
-                onUploadProgress: (progressEvent) => {
-                    const total = progressEvent.total ?? 0;
-                    const percentCompleted =
-                        total > 0
-                            ? Math.round((progressEvent.loaded * 100) / total)
-                            : 0;
+            const fres = await this.ax.post(
+                this.getHost() + "/file",
+                fpayload,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                    onUploadProgress: (progressEvent) => {
+                        const total = progressEvent.total ?? 0;
+                        const percentCompleted =
+                            total > 0
+                                ? Math.round(
+                                      (progressEvent.loaded * 100) / total
+                                  )
+                                : 0;
 
-                    const { loaded } = progressEvent;
-                    const progress: IFileProgress = {
-                        direction: "upload",
-                        token: XUtils.encodeHex(nonce),
-                        progress: percentCompleted,
-                        loaded,
-                        total,
-                    };
-                    this.emit("fileProgress", progress);
-                },
-            });
+                        const { loaded } = progressEvent;
+                        const progress: IFileProgress = {
+                            direction: "upload",
+                            token: XUtils.encodeHex(nonce),
+                            progress: percentCompleted,
+                            loaded,
+                            total,
+                        };
+                        this.emit("fileProgress", progress);
+                    },
+                }
+            );
             const fcreatedFile: XTypes.IFileSQL = packer.unpack(
                 Buffer.from(fres.data)
             );
@@ -1557,7 +1668,7 @@ export class Client extends EventEmitter {
             nonce: XUtils.encodeHex(nonce),
             file: XUtils.encodeBase64(box),
         };
-        const res = await ax.post(
+        const res = await this.ax.post(
             this.getHost() + "/file/json",
             packer.pack(payload) as any,
             { headers: { "Content-Type": "application/msgpack" } }
@@ -1570,7 +1681,9 @@ export class Client extends EventEmitter {
     }
 
     private async getUserList(channelID: string): Promise<IUser[]> {
-        const res = await ax.post(this.getHost() + "/userList/" + channelID);
+        const res = await this.ax.post(
+            this.getHost() + "/userList/" + channelID
+        );
         return packer.unpack(Buffer.from(res.data));
     }
 
@@ -1712,7 +1825,9 @@ export class Client extends EventEmitter {
     }
 
     private async createServer(name: string): Promise<XTypes.IServer> {
-        const res = await ax.post(this.getHost() + "/server/" + btoa(name));
+        const res = await this.ax.post(
+            this.getHost() + "/server/" + btoa(name)
+        );
         return packer.unpack(Buffer.from(res.data));
     }
 
@@ -1877,7 +1992,7 @@ export class Client extends EventEmitter {
     }
 
     private async getServerList(): Promise<XTypes.IServer[]> {
-        const res = await ax.get(
+        const res = await this.ax.get(
             this.getHost() + "/user/" + this.getUser().userID + "/servers"
         );
         return packer.unpack(Buffer.from(res.data));
@@ -1888,7 +2003,7 @@ export class Client extends EventEmitter {
         serverID: string
     ): Promise<XTypes.IChannel> {
         const body = { name };
-        const res = await ax.post(
+        const res = await this.ax.post(
             this.getHost() + "/server/" + serverID + "/channels",
             packer.pack(body) as any,
             { headers: { "Content-Type": "application/msgpack" } }
@@ -1911,7 +2026,9 @@ export class Client extends EventEmitter {
             return device;
         }
         try {
-            const res = await ax.get(this.getHost() + "/device/" + deviceID);
+            const res = await this.ax.get(
+                this.getHost() + "/device/" + deviceID
+            );
             this.log.info("Retrieved device from server.");
             const fetchedDevice = packer.unpack(Buffer.from(res.data));
             this.deviceRecords[deviceID] = fetchedDevice;
@@ -1926,7 +2043,7 @@ export class Client extends EventEmitter {
         if (deviceID === this.getDevice().deviceID) {
             throw new Error("You can't delete the device you're logged in to.");
         }
-        await ax.delete(
+        await this.ax.delete(
             this.prefixes.HTTP +
                 this.host +
                 "/user/" +
@@ -1940,7 +2057,7 @@ export class Client extends EventEmitter {
         userIDs: string[]
     ): Promise<XTypes.IDevice[]> {
         try {
-            const res = await ax.post(
+            const res = await this.ax.post(
                 this.getHost() + "/deviceList",
                 packer.pack(userIDs) as any,
                 { headers: { "Content-Type": "application/msgpack" } }
@@ -1962,7 +2079,7 @@ export class Client extends EventEmitter {
         userID: string
     ): Promise<XTypes.IDevice[] | null> {
         try {
-            const res = await ax.get(
+            const res = await this.ax.get(
                 this.getHost() + "/user/" + userID + "/devices"
             );
             const devices: XTypes.IDevice[] = packer.unpack(
@@ -1982,7 +2099,9 @@ export class Client extends EventEmitter {
         serverID: string
     ): Promise<XTypes.IServer | null> {
         try {
-            const res = await ax.get(this.getHost() + "/server/" + serverID);
+            const res = await this.ax.get(
+                this.getHost() + "/server/" + serverID
+            );
             return packer.unpack(Buffer.from(res.data));
         } catch (err) {
             return null;
@@ -1993,7 +2112,9 @@ export class Client extends EventEmitter {
         channelID: string
     ): Promise<XTypes.IChannel | null> {
         try {
-            const res = await ax.get(this.getHost() + "/channel/" + channelID);
+            const res = await this.ax.get(
+                this.getHost() + "/channel/" + channelID
+            );
             return packer.unpack(Buffer.from(res.data));
         } catch (err) {
             return null;
@@ -2001,7 +2122,7 @@ export class Client extends EventEmitter {
     }
 
     private async getChannelList(serverID: string): Promise<XTypes.IChannel[]> {
-        const res = await ax.get(
+        const res = await this.ax.get(
             this.getHost() + "/server/" + serverID + "/channels"
         );
         return packer.unpack(Buffer.from(res.data));
@@ -2042,7 +2163,7 @@ export class Client extends EventEmitter {
         }
 
         try {
-            const res = await ax.get(
+            const res = await this.ax.get(
                 this.getHost() + "/user/" + userIdentifier
             );
             const userRecord = packer.unpack(Buffer.from(res.data));
@@ -2681,83 +2802,82 @@ export class Client extends EventEmitter {
     }
 
     private initSocket() {
-        try {
-            if (!this.token) {
-                throw new Error("No token found, did you call login()?");
-            }
-
-            this.conn = new WebSocket(
-                this.prefixes.WS + this.host + "/socket",
-                {
-                    headers: { Cookie: "auth=" + this.token },
-                }
-            );
-            this.conn.on("open", () => {
-                this.log.info("Connection opened.");
-                this.pingInterval = setInterval(this.ping.bind(this), 15000);
-            });
-
-            this.conn.on("close", () => {
-                this.log.info("Connection closed.");
-                if (!this.manuallyClosing) {
-                    this.emit("disconnect");
-                }
-            });
-
-            this.conn.on("error", (error) => {
-                throw error;
-            });
-
-            this.conn.on("message", async (message: Buffer) => {
-                const [header, msg] = unpackMessage(message);
-
-                this.log.debug(
-                    chalk.red.bold("INH ") + XUtils.encodeHex(header)
-                );
-                this.log.debug(
-                    chalk.red.bold("IN ") + JSON.stringify(msg, null, 4)
-                );
-
-                switch (msg.type) {
-                    case "ping":
-                        this.pong(msg.transmissionID);
-                        break;
-                    case "pong":
-                        this.setAlive(true);
-                        break;
-                    case "challenge":
-                        this.log.info("Received challenge from server.");
-                        this.respond(msg as XTypes.IChallMsg);
-                        break;
-                    case "unauthorized":
-                        throw new Error(
-                            "Received unauthorized message from server."
-                        );
-                    case "authorized":
-                        this.log.info(
-                            "Authenticated with userID " + this.user!.userID
-                        );
-                        this.emit("connected");
-                        this.postAuth();
-                        break;
-                    case "success":
-                        break;
-                    case "error":
-                        this.log.warn(JSON.stringify(msg));
-                        break;
-                    case "notify":
-                        this.handleNotify(msg as XTypes.INotifyMsg);
-                        break;
-                    default:
-                        this.log.info("Unsupported message " + msg.type);
-                        break;
-                }
-            });
-        } catch (err) {
-            throw new Error(
-                "Error initiating websocket connection " + String(err)
-            );
+        if (!this.token) {
+            throw new Error("No token found, did you call login()?");
         }
+
+        // Build headers - include both auth token and device token if available
+        const headers: any = {
+            Authorization: `Bearer ${this.token}`,
+        };
+
+        if (this.deviceToken) {
+            headers["X-Device-Token"] = this.deviceToken;
+        }
+
+        this.conn = new WebSocket(this.prefixes.WS + this.host + "/socket", {
+            headers,
+        });
+
+        this.conn.on("open", () => {
+            this.log.info("Connection opened.");
+            this.pingInterval = setInterval(this.ping.bind(this), 15000);
+        });
+
+        this.conn.on("close", () => {
+            this.log.info("Connection closed.");
+            if (!this.manuallyClosing) {
+                this.emit("disconnect");
+            }
+        });
+
+        this.conn.on("error", (error) => {
+            throw error;
+        });
+
+        this.conn.on("message", async (message: Buffer) => {
+            const [header, msg] = unpackMessage(message);
+
+            this.log.debug(chalk.red.bold("INH ") + XUtils.encodeHex(header));
+            this.log.debug(
+                chalk.red.bold("IN ") + JSON.stringify(msg, null, 4)
+            );
+
+            switch (msg.type) {
+                case "ping":
+                    this.pong(msg.transmissionID);
+                    break;
+                case "pong":
+                    this.setAlive(true);
+                    break;
+                case "challenge":
+                    this.log.info("Received challenge from server.");
+                    this.respond(msg as XTypes.IChallMsg);
+                    break;
+                case "unauthorized":
+                    throw new Error(
+                        "Received unauthorized message from server."
+                    );
+                case "authorized":
+                    this.log.info(
+                        "Authenticated with userID " + this.user!.userID
+                    );
+                    this.emit("connected");
+                    this.postAuth();
+                    break;
+                case "success":
+                    break;
+                case "error":
+                    this.log.warn(JSON.stringify(msg));
+                    break;
+                case "notify":
+                    this.handleNotify(msg as XTypes.INotifyMsg);
+                    break;
+                default:
+                    this.log.info("Unsupported message " + msg.type);
+                    break;
+            }
+        });
     }
 
     private setAlive(status: boolean) {
@@ -2800,11 +2920,21 @@ export class Client extends EventEmitter {
 
         this.log.info("fetching mail for device " + this.getDevice().deviceID);
         try {
-            const res = await ax.post(
+            const headers: any = {};
+            if (this.token) {
+                headers["Authorization"] = `Bearer ${this.token}`;
+            }
+            if (this.deviceToken) {
+                headers["X-Device-Token"] = this.deviceToken;
+            }
+
+            const res = await this.ax.post(
                 this.getHost() +
                     "/device/" +
                     this.getDevice().deviceID +
-                    "/mail"
+                    "/mail",
+                null,
+                { headers }
             );
             const inbox: Array<[
                 Uint8Array,
@@ -2858,18 +2988,39 @@ export class Client extends EventEmitter {
     private async retrieveKeyBundle(
         deviceID: string
     ): Promise<XTypes.IKeyBundle> {
-        const res = await ax.post(
+        const res = await this.ax.post(
             this.getHost() + "/device/" + deviceID + "/keyBundle"
         );
         return packer.unpack(Buffer.from(res.data));
     }
 
     private async getOTKCount(): Promise<number> {
-        const res = await ax.get(
+        console.log("=== getOTKCount DEBUG ===");
+        console.log("this.token exists:", !!this.token);
+        console.log("this.deviceToken exists:", !!this.deviceToken);
+        console.log(
+            "this.deviceToken value:",
+            this.deviceToken
+                ? this.deviceToken.substring(0, 30) + "..."
+                : "NULL"
+        );
+
+        const headers: any = {};
+        if (this.token) {
+            headers["Authorization"] = `Bearer ${this.token}`;
+        }
+        if (this.deviceToken) {
+            headers["X-Device-Token"] = this.deviceToken;
+        }
+
+        console.log("Headers being sent:", Object.keys(headers));
+
+        const res = await this.ax.get(
             this.getHost() +
                 "/device/" +
                 this.getDevice().deviceID +
-                "/otk/count"
+                "/otk/count",
+            { headers }
         );
         return packer.unpack(Buffer.from(res.data)).count;
     }
@@ -2889,11 +3040,22 @@ export class Client extends EventEmitter {
 
         const savedKeys = await this.database.savePreKeys(otks, true);
 
-        await ax.post(
+        const headers: any = {};
+        if (this.token) {
+            headers["Authorization"] = `Bearer ${this.token}`;
+        }
+        if (this.deviceToken) {
+            headers["X-Device-Token"] = this.deviceToken;
+        }
+
+        await this.ax.post(
             this.getHost() + "/device/" + this.getDevice().deviceID + "/otk",
             packer.pack(savedKeys.map((key) => this.censorPreKey(key))) as any,
             {
-                headers: { "Content-Type": "application/msgpack" },
+                headers: {
+                    "Content-Type": "application/msgpack",
+                    ...headers,
+                },
             }
         );
     }
