@@ -8,43 +8,46 @@ nodejs for interfacing with xchat server. Use it for a client, a bot, whatever y
 
 ## Quickstart
 
-```ts
+The client now uses an asynchronous factory pattern. You must use `Client.create()` instead of `new Client()`.
+
+```typescript
 import { Client } from "@vex-chat/libvex";
 
 async function main() {
-    // generate a secret key to use, save this somewhere permanent
+    // Generate a secret key (save this securely, it is your identity)
     const privateKey = Client.generateSecretKey();
 
-    const client = new Client(privateKey);
-
-    /* the ready event is emitted when init() is finished.
-    you must wait until this event fires to perform 
-    registration or login. */
-    client.on("ready", async () => {
-        // you must register once before you can log in
-        await client.register(Client.randomUsername());
-        await client.login();
+    // Client.create handles the database connection and crypto initialization for you.
+    const client = await Client.create(privateKey, {
+        host: "api.vex.wtf",
+        logLevel: "info",
     });
 
-    /* The authed event fires when login() successfully completes
-    and the server indicates you are authorized. You must wait to
-    perform any operations besides register() and login() until
-    this occurs. */
-    client.on("authed", async () => {
-        const me = await client.users.me();
+    // Register (only needed once per new key)
+    // await client.register("Username", "Password123");
 
-        // send a message
+    // Login
+    await client.login("Username", "Password123");
+
+    // Connect to the WebSocket
+    // This establishes the real-time connection.
+    await client.connect();
+
+    // Listen for events
+    client.on("connected", async () => {
+        console.log("Connected as", client.toString());
+        const me = client.me.user();
+
+        // Send a message
         await client.messages.send(me.userID, "Hello world!");
     });
 
-    /* Outgoing and incoming messages are emitted here. */
     client.on("message", (message) => {
-        console.log("message:", message);
+        console.log(
+            `Received message from ${message.sender}:`,
+            message.message
+        );
     });
-
-    /* you must call init() to initialize the keyring and 
-    start the client. */
-    client.init();
 }
 
 main();
