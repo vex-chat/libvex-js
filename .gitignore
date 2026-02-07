@@ -12,3 +12,6 @@ databases
 test.key
 files
 avatars
+
+.yalc
+yalc.lock

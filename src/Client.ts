@@ -35,6 +35,7 @@ import { createLogger } from "./utils/createLogger";
 import { formatBytes } from "./utils/formatBytes";
 import { sqlSessionToCrypto } from "./utils/sqlSessionToCrypto";
 import { uuidToUint8 } from "./utils/uint8uuid";
+import { DEFAULT_HOST, ENV_HOST_VAR } from "./utils/constants";
 
 ax.defaults.withCredentials = true;
 ax.defaults.responseType = "arraybuffer";
@@ -507,7 +508,7 @@ export class Client extends EventEmitter {
     ): Uint8Array[] {
         switch (type) {
             case XTypes.WS.MailType.initial:
-                /* 32 bytes for signkey, 32 bytes for ephemeral key, 
+                /* 32 bytes for signkey, 32 bytes for ephemeral key,
                  68 bytes for AD, 6 bytes for otk index (empty for no otk) */
                 const signKey = extra.slice(0, 32);
                 const ephKey = extra.slice(32, 64);
@@ -809,7 +810,12 @@ export class Client extends EventEmitter {
             throw new Error("Could not convert key to X25519!");
         }
 
-        this.host = options?.host || "api.vex.chat";
+        let envHost: string | undefined;
+        if (isNode && process.env[ENV_HOST_VAR]) {
+            envHost = process.env[ENV_HOST_VAR];
+        }
+
+        this.host = options?.host || envHost || DEFAULT_HOST;
         const dbFileName = options?.inMemoryDb
             ? ":memory:"
             : XUtils.encodeHex(this.signKeys.publicKey) + ".sqlite";
@@ -1976,7 +1982,7 @@ export class Client extends EventEmitter {
         return msgpack.decode(Buffer.from(res.data));
     }
 
-    /* Get the currently logged in user. You cannot call this until 
+    /* Get the currently logged in user. You cannot call this until
     after the auth event is emitted. */
     private getUser(): ICensoredUser {
         if (!this.user) {
@@ -2042,7 +2048,7 @@ export class Client extends EventEmitter {
         user: IUser,
         message: Uint8Array,
         group: Uint8Array | null,
-        /* this is passed through if the first message is 
+        /* this is passed through if the first message is
         part of a group message */
         mailID: string | null,
         forward: boolean
@@ -2115,7 +2121,7 @@ export class Client extends EventEmitter {
 
         this.log.info("Encrypted ciphertext.");
 
-        /* 32 bytes for signkey, 32 bytes for ephemeral key, 
+        /* 32 bytes for signkey, 32 bytes for ephemeral key,
         68 bytes for AD, 6 bytes for otk index (empty for no otk) */
         const extra = xConcat(
             this.signKeys.publicKey,
