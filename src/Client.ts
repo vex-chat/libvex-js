@@ -36,6 +36,8 @@ import { formatBytes } from "./utils/formatBytes";
 import { sqlSessionToCrypto } from "./utils/sqlSessionToCrypto";
 import { uuidToUint8 } from "./utils/uint8uuid";
 import fs from "fs";
+import { DEFAULT_HOST, ENV_HOST_VAR } from "./utils/constants";
+
 ax.defaults.withCredentials = true;
 ax.defaults.responseType = "arraybuffer";
 
@@ -830,7 +832,12 @@ export class Client extends EventEmitter {
             throw new Error("Could not convert key to X25519!");
         }
 
-        this.host = options?.host || "api.vex.chat";
+        let envHost: string | undefined;
+        if (isNode && process.env[ENV_HOST_VAR]) {
+            envHost = process.env[ENV_HOST_VAR];
+        }
+
+        this.host = options?.host || envHost || DEFAULT_HOST;
         const dbFileName = options?.inMemoryDb
             ? ":memory:"
             : XUtils.encodeHex(this.signKeys.publicKey) + ".sqlite";
