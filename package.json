@@ -50,8 +50,8 @@
     },
     "dependencies": {
         "@extrahash/sleep": "^1.0.1",
-        "@vex-chat/crypto": "file:.yalc/@vex-chat/crypto",
-        "@vex-chat/types": "file:.yalc/@vex-chat/types",
+        "@vex-chat/crypto": "^0.7.15",
+        "@vex-chat/types": "^0.10.18",
         "axios": "^1.13.2",
         "browser-or-node": "^1.3.0",
         "btoa": "^1.2.1",
