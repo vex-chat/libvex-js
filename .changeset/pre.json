@@ -1,0 +1,8 @@
+{
+    "mode": "pre",
+    "tag": "rc",
+    "initialVersions": {
+        "@vex-chat/libvex": "0.20.8"
+    },
+    "changesets": ["prerelease-rc"]
+}
