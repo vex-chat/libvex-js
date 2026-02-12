@@ -923,12 +923,12 @@
     color "^5.0.2"
     text-hex "1.0.x"
 
-"@stablelib/base64@^1.0.0", "@stablelib/base64@^1.0.1":
+"@stablelib/base64@^1.0.0":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@stablelib/base64/-/base64-1.0.1.tgz#bdfc1c6d3a62d7a3b7bbc65b6cce1bb4561641be"
   integrity sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==
 
-"@stablelib/utf8@^1.0.0", "@stablelib/utf8@^1.0.1":
+"@stablelib/utf8@^1.0.0":
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/@stablelib/utf8/-/utf8-1.0.2.tgz#737974c235b12542356c6c2c062e6985d6139b11"
   integrity sha512-sDL1aB2U8FIpj7SjQJMxbOFIFkKvDKQGPHSrYejHZhtLNSK3qHe6ZIfa0woWkOiaJsdYslFzrc0VWXJZHmSIQQ==
@@ -1268,20 +1268,6 @@
   dependencies:
     "@types/yargs-parser" "*"
 
-"@vex-chat/crypto@1.0.0-rc.0":
-  version "1.0.0-rc.0"
-  resolved "https://registry.yarnpkg.com/@vex-chat/crypto/-/crypto-1.0.0-rc.0.tgz#88b738b2638cb772c6ccc2c6aae0088feb3af200"
-  integrity sha512-5T10Fy3/bRrhxab6jpWBZ/l7L0PG84LfWCSeLfxcFInmJsM94WDXJ/E2pTYNcKztfRGUzUBx0vHpBpCmp6tyPQ==
-  dependencies:
-    "@stablelib/base64" "^1.0.1"
-    "@stablelib/utf8" "^1.0.1"
-    "@vex-chat/types" "1.0.0-rc.0"
-    bip39 "^3.1.0"
-    ed2curve "^0.3.0"
-    msgpackr "^1.10.1"
-    tweetnacl "^1.0.3"
-    uuid "^9.0.0"
-
 "@vex-chat/crypto@^0.7.15":
   version "0.7.19"
   resolved "https://registry.yarnpkg.com/@vex-chat/crypto/-/crypto-0.7.19.tgz#2b94f8cd73cb820f870af4ed9249a9153b6c3087"
@@ -1346,14 +1332,7 @@
     winston "^3.3.3"
     ws "^7.4.0"
 
-"@vex-chat/types@1.0.0-rc.0":
-  version "1.0.0-rc.0"
-  resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-1.0.0-rc.0.tgz#e837dc28fea5cddfa4407232d30100897ed6b7af"
-  integrity sha512-RVr6x5NPd8fKmiv9TbBpvOdEXU9vweaKYUmv5c0k0wFQSkAA6OaCaKxcCwkp5wTqLEOFVGS9KS/Ls3ZKZPbNAg==
-  dependencies:
-    tweetnacl "^1.0.3"
-
-"@vex-chat/types@^0.10.9":
+"@vex-chat/types@^0.10.18", "@vex-chat/types@^0.10.9":
   version "0.10.18"
   resolved "https://registry.yarnpkg.com/@vex-chat/types/-/types-0.10.18.tgz#a5721e10bd0bfe42cf76c3ecc69f08107c68efcf"
   integrity sha512-nx8lcme+y2iL8QnaHGJZaWIXEMePBGKr9Av2gsTpPfP0/c/7KwVqlhe1LnjcGm4EKTjGGzzAoq5k8ZZa4aoi2A==
@@ -1711,7 +1690,7 @@ bindings@^1.5.0:
   dependencies:
     file-uri-to-path "1.0.0"
 
-bip39@^3.0.3, bip39@^3.1.0:
+bip39@^3.0.3:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/bip39/-/bip39-3.1.0.tgz#c55a418deaf48826a6ceb34ac55b3ee1577e18a3"
   integrity sha512-c9kiwdk45Do5GL0vJMe7tS95VjCii65mYAH7DfWl3uW8AVzXKQVUm64i3hzVybBDMp9r7j9iNxR85+ul8MdN/A==
@@ -4978,7 +4957,7 @@ msgpackr-extract@^3.0.2:
     "@msgpackr-extract/msgpackr-extract-linux-x64" "3.0.3"
     "@msgpackr-extract/msgpackr-extract-win32-x64" "3.0.3"
 
-msgpackr@^1.10.1, msgpackr@^1.11.8:
+msgpackr@^1.11.8:
   version "1.11.8"
   resolved "https://registry.yarnpkg.com/msgpackr/-/msgpackr-1.11.8.tgz#8283c79eb6e5d488f6fb3fac4996006baa390614"
   integrity sha512-bC4UGzHhVvgDNS7kn9tV8fAucIYUBuGojcaLiz7v+P63Lmtm0Xeji8B/8tYKddALXxJLpwIeBmUN3u64C4YkRA==
@@ -6831,11 +6810,6 @@ uuid@^8.3.1:
   version "8.3.2"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-8.3.2.tgz#80d5b5ced271bb9af6c445f21a1a04c606cefbe2"
   integrity sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==
-
-uuid@^9.0.0:
-  version "9.0.1"
-  resolved "https://registry.yarnpkg.com/uuid/-/uuid-9.0.1.tgz#e188d4c8853cc722220392c424cd637f32293f30"
-  integrity sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==
 
 v8-to-istanbul@^9.0.1:
   version "9.3.0"
